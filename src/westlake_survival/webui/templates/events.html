@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}讲座活动 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">讲座活动</h1>
+
+<h2 class="section">活动预告</h2>
+{% if events_error %}<div class="note">{{ events_error }}</div>{% endif %}
+{% if events %}
+  <table class="data">
+    <thead>
+      <tr><th>日期</th><th>标题</th><th>类型</th><th>地点</th></tr>
+    </thead>
+    <tbody>
+      {% for item in events %}
+      <tr>
+        <td class="time">{{ item.date.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>
+          {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+          {% else %}{{ item.title }}{% endif %}
+        </td>
+        <td>{{ item.event_type or '—' }}</td>
+        <td>{{ item.venue or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:.82rem">
+    数据来自官网公开页面，可能有延迟；以学校官方通知为准。
+  </p>
+{% elif events_error %}
+  <div class="empty">活动预告暂不可用。</div>
+{% else %}
+  <div class="empty">未来一段时间暂无活动预告。</div>
+{% endif %}
+
+<h2 class="section">西湖新闻</h2>
+{% if news_error %}<div class="note">{{ news_error }}</div>{% endif %}
+{% if news %}
+  <table class="data">
+    <thead>
+      <tr><th>日期</th><th>标题</th></tr>
+    </thead>
+    <tbody>
+      {% for item in news %}
+      <tr>
+        <td class="time">
+          {% if item.date %}{{ item.date.strftime('%Y-%m-%d') }}{% else %}<span class="dim">—</span>{% endif %}
+        </td>
+        <td>
+          {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+          {% else %}{{ item.title }}{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% elif news_error %}
+  <div class="empty">西湖新闻暂不可用。</div>
+{% else %}
+  <div class="empty">暂无新闻。</div>
+{% endif %}
+{% endblock %}

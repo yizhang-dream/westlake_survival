@@ -1,0 +1,71 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!--[if gte mso 9]><xml>
+ <x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+  <x:Name>课程表</x:Name>
+  <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+ </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>
+</xml><![endif]-->
+<style>td { mso-number-format:"\@"; vertical-align:top; }</style>
+</head>
+<body>
+<table border=1 cellpadding=2 cellspacing=0>
+<tr>
+ <th>班级</th>
+ <th>课程代码</th>
+ <th>课程名称</th>
+ <th>日期</th>
+ <th>时间</th>
+ <th>教室</th>
+ <th>教师</th>
+ <th>状态</th>
+<tr>
+ <td>CS101-01</td>
+ <td>CS101</td>
+ <td>计算机程序设计</td>
+ <td>2026/03/05 - 2026/06/18<br><br>2026/03/06 - 2026/06/19</td>
+ <td>星期四 13:30 到 15:55<br><br>星期五 08:00 到 09:35</td>
+ <td>H6-303<br><br>H6-305</td>
+ <td>张三<br>李四</td>
+ <td>已选</td>
+<tr>
+ <td>PHY200-01</td>
+ <td>PHY200</td>
+ <td>普通物理学</td>
+ <td>2026/03/09 – 2026/06/15</td>
+ <td>星期一 10:40 到 12:15</td>
+ <td>A-101</td>
+ <td>王五</td>
+ <td>已选</td>
+<tr>
+ <td>EST2005-01</td>
+ <td>EST2005</td>
+ <td>数据结构与算法设计</td>
+ <td>2026/03/13 到 2026/06/19<br><br>2026/03/13 到 2026/06/19</td>
+ <td>星期五 13:30 到 15:05<br><br>星期五 15:10 到 16:55</td>
+ <td>H6-303<br><br>H6-305</td>
+ <td>赵六, 钱七</td>
+ <td>已选</td>
+<tr>
+ <td>SEM101-01</td>
+ <td>SEM101</td>
+ <td>形势与政策</td>
+ <td>2026/04/10</td>
+ <td>星期五 18:30 到 20:05</td>
+ <td>报告厅</td>
+ <td>孙八</td>
+ <td>已选</td>
+<tr>
+ <td>PE100-05</td>
+ <td>PE100</td>
+ <td>体育（羽毛球）</td>
+ <td>2026/03/11 - 2026/06/17</td>
+ <td>星期三 16:10 到 17:45</td>
+ <td>体育馆</td>
+ <td>周九</td>
+ <td>已选</td>
+</table>
+</body>
+</html>

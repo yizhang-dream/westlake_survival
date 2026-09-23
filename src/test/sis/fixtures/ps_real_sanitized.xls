@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html class='pc chrome win psc_dir-ltr psc_form-xlarge' dir='ltr' lang='zh-cn'>
+<!-- Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved. -->
+<!-- 脱敏说明：本 fixture 由 2026-08-30 从 SIS 手动导出的真实 ps.xls 脱敏而来。
+     脱敏规则：仅将任课教师姓名（中文名 + 英文拼音）替换为「教师A」..「教师I」占位符；
+     课程代码 / 课程名称 / 日期 / 星期和时间 / 教室 / 状态 均按原样保留。
+     原件不含个人标识号，无个人标识信息残留。
+     字节结构保持不变（含导出特征：数据行行末缺闭合标签、单元格内以 br 标签分隔多 meeting pattern）。 -->
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><body><table border='1' cellpadding='3' cellspacing='0'>
+<tr>
+<th>班级</th><th>课程代码</th><th>课程名称</th><th>开始/结束日期</th><th>星期和时间</th><th>教室</th><th>任课教师</th><th>状态</th><th>&nbsp;</th><th>&nbsp;</th></tr>
+<tr>
+<td  >1203</td>
+<td  style="mso-number-format:\@;"  >CST2000</td>
+<td  style="mso-number-format:\@;"  >离散数学</td>
+<td  style="mso-number-format:\@;"  >2026/09/03 - 2026/12/24<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期四 13:30 到 15:05<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E13-509<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师A<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1156</td>
+<td  style="mso-number-format:\@;"  >CST4801</td>
+<td  style="mso-number-format:\@;"  >强化学习原理</td>
+<td  style="mso-number-format:\@;"  >2026/09/01 - 2026/12/22<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期二 16:10 到 17:45<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E10-205<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师B<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1225</td>
+<td  style="mso-number-format:\@;"  >CST4806</td>
+<td  style="mso-number-format:\@;"  >数字人：基础与应用</td>
+<td  style="mso-number-format:\@;"  >2026/09/04 - 2026/12/25<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期五 13:30 到 15:55<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E10-306<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师C<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1255</td>
+<td  style="mso-number-format:\@;"  >HUM1024</td>
+<td  style="mso-number-format:\@;"  >写作与沟通</td>
+<td  style="mso-number-format:\@;"  >2026/09/02 - 2026/12/23<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期三 18:30 到 20:55<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E13-119<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师D<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1466</td>
+<td  style="mso-number-format:\@;"  >HUM1029</td>
+<td  style="mso-number-format:\@;"  >科学文化导论（中）</td>
+<td  style="mso-number-format:\@;"  >2026/09/01 - 2026/12/22<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期二 18:30 到 20:55<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E13-115<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师E<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1085</td>
+<td  style="mso-number-format:\@;"  >MATH1009</td>
+<td  style="mso-number-format:\@;"  >概率论与数理统计</td>
+<td  style="mso-number-format:\@;"  >2026/08/31 - 2026/12/21<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期一 08:00 到 10:35<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E13-308<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师F<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1034</td>
+<td  style="mso-number-format:\@;"  >PHY1004</td>
+<td  style="mso-number-format:\@;"  >物理学实验 Ⅱ</td>
+<td  style="mso-number-format:\@;"  >2026/08/31 - 2026/12/21<br /><br />2026/08/31 - 2026/12/21<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期一 15:10 到 17:45<br /><br />星期一 15:10 到 17:45<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E13-209<br /><br />云谷校区H6-201<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师G,<br />教师H<br /><br />教师G,<br />教师H<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1208</td>
+<td  style="mso-number-format:\@;"  >PHY1009</td>
+<td  style="mso-number-format:\@;"  >大学物理A（下）</td>
+<td  style="mso-number-format:\@;"  >2026/08/31 - 2026/12/21<br /><br />2026/08/31 - 2026/12/21<br /><br />2026/09/03 - 2026/12/24<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期一 13:30 到 15:05<br /><br />星期一 13:30 到 15:05<br /><br />星期四 16:10 到 17:45<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E13-209<br /><br />云谷校区H6-201<br /><br />云谷校区E13-209<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师G,<br />教师H<br /><br />教师G,<br />教师H<br /><br />教师G,<br />教师H<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1252</td>
+<td  style="mso-number-format:\@;"  >POL1003</td>
+<td  style="mso-number-format:\@;"  >形势与政策 Ⅲ</td>
+<td  style="mso-number-format:\@;"  >2026/11/11 - 2026/11/25<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期三 13:30 到 15:55<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E13-129<br /><br /></td>
+<td  style="mso-number-format:\@;"  >待定</td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+<tr>
+<td  >1092</td>
+<td  style="mso-number-format:\@;"  >POL1012</td>
+<td  style="mso-number-format:\@;"  >马克思主义基本原理</td>
+<td  style="mso-number-format:\@;"  >2026/09/03 - 2026/12/24<br /><br /></td>
+<td  style="mso-number-format:\@;"  >星期四 09:50 到 12:15<br /><br /></td>
+<td  style="mso-number-format:\@;"  >云谷校区E13-131<br /><br /></td>
+<td  style="mso-number-format:\@;"  >教师I<br /><br /></td>
+<td  >已注册</td>
+<td  style="mso-number-format:\@;"  >中文课程大纲</td>
+<td  style="mso-number-format:\@;"  >英文课程大纲</td>
+</table></body></html>

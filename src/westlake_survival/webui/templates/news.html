@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}西湖新闻 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">西湖新闻</h1>
+
+<form method="get" action="/news" class="filter">
+  <label>分类
+    <select name="category">
+      <option value="">全部</option>
+      {% for item in categories %}
+      <option value="{{ item }}" {{ 'selected' if item == category else '' }}>{{ item }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit">筛选</button>
+</form>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+{% if news %}
+  <table class="data">
+    <thead>
+      <tr><th>日期</th><th>分类</th><th>标题</th></tr>
+    </thead>
+    <tbody>
+      {% for item in news %}
+      <tr>
+        <td class="time">
+          {% if item.date %}{{ item.date.strftime('%Y-%m-%d') }}{% else %}<span class="dim">—</span>{% endif %}
+        </td>
+        <td>{% if item.category %}<span class="chip">{{ item.category }}</span>{% else %}<span class="dim">—</span>{% endif %}</td>
+        <td>
+          {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+          {% else %}{{ item.title }}{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:.82rem">
+    数据来自官网公开页面，最多显示 {{ limit }} 条；以学校官方通知为准。
+  </p>
+{% elif error %}
+  <div class="empty">西湖新闻暂不可用。</div>
+{% else %}
+  <div class="empty">暂无新闻。</div>
+{% endif %}
+{% endblock %}

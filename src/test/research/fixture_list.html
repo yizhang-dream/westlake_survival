@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>科研进展</title></head>
+<body>
+<div id="app"></div>
+<script src="../../images/researchWestlake.js"></script>
+<script>
+      new researchWestlake("#app", {
+        titleObj: { title2: "科研进展", title3: "Research at Westlake" },
+        abstractStr: "<div class=\"view TRS_UEDITOR trs_paper_default trs_web\"><p>西湖大学聚焦基础前沿科学研究，致力于尖端科技突破，注重学科交叉融合。<\/p><\/div>",
+        mainObj: {
+          brief: "(数据截至2026年3月)",
+          topCountList: [
+            { count: "284", name: "独立实验室" },
+            { count: "2", name: "国家级平台" },
+          ],
+          researchList: [
+          {
+            title: "生命健康 / Good Health & Wellbeing",//标题
+            iconUrl: "./good_health_wellbeing/images/P020241105595046314716.png",
+            mainBg: "./good_health_wellbeing/images/P020241105598911507735.png",//背景图
+            moreObj:{
+          type:'research',
+          moreText:'查看更多',
+          url:"https://www.westlake.edu.cn/news_events/westlakenews/allnews/index.html",
+          target:'_blank'
+        },
+            list: [
+              {
+                url: "https://www.westlake.edu.cn/research/research_at_westlake/good_health_wellbeing/202510/t20251016_60343.html",
+                imgUrl: "./good_health_wellbeing/202510/W020251016821762002388.jpg",
+                abs: "西湖大学卢培龙研究团队及其合作者从头设计新型电压门控阴离子通道"
+              },
+              {
+                url: "https://www.westlake.edu.cn/news_events/westlakenews/academics/202506/t20250627_56392.shtml",
+                imgUrl: "../../news_events/westlakenews/Research/202508/W020250827341773085371.jpg",
+                abs: "Science报道｜施一公团队揭示促凋亡蛋白BAX寡聚成孔的结构基础"
+              },
+              {
+                url: "https://www.westlake.edu.cn/news_events/westlakenews/academics/202503/t20250319_53498.shtml",
+                imgUrl: "../../news_events/westlakenews/Research/202504/W020250402472759649745.png",
+                abs: "Nature报道，他们定位了抑郁症的“藏身之处”"
+              },
+            ]
+          },
+          {
+            title: "医学创新 / Treatment & Cures for Diseases",//标题
+            list: [
+              {
+                url: "https://www.westlake.edu.cn/news_events/westlakenews/Research/202511/t20251114_61277.html",
+                imgUrl: "../../news_events/westlakenews/Research/202511/W020251114321661380682.jpg",
+                abs: "免疫细胞“王牌情报员”cDC1的突围之战 | Science报道"
+              },
+              {
+                url: "https://www.westlake.edu.cn/news_events/westlakenews/Research/202510/t20251027_60756.html",
+                imgUrl: "../../news_events/westlakenews/Research/202510/W020251105563659902438.png",
+                abs: "小鼠少吃蛋白质有抗衰老潜力，那人呢？｜Cell报道"
+              },
+            ]
+          },
+          ],
+        },
+        mounted: function () { },
+      });
+</script>
+</body></html>

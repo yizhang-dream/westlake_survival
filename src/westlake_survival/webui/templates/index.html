@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}仪表盘 · 西湖生存手册{% endblock %}
+
+{% macro short_value(val) -%}
+  {%- if val is none or val == "" or val == {} or val == [] -%}
+    <span class="dim">—</span>
+  {%- elif val is mapping -%}
+    {%- set label = val.get('title') or val.get('name') or val.get('text') or val.get('grade') or val.get('campus') -%}
+    {%- set extra = val.get('start') or val.get('due_at') or val.get('time') or val.get('campus') -%}
+    {%- if label -%}{{ label }}{% if extra and extra != label %} <span class="muted">· {{ extra }}</span>{% endif %}
+    {%- else -%}{{ val | tojson }}{%- endif -%}
+  {%- elif val is sequence and val is not string -%}
+    {%- if val -%}{{ val | length }} 条{%- else -%}<span class="dim">—</span>{%- endif -%}
+  {%- else -%}
+    {{ val }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<h1 class="page">现在</h1>
+
+{% if not available %}
+  <div class="note">context 模块暂不可用（或数据源缺失），卡片以「—」占位。页面其余功能不受影响。</div>
+{% endif %}
+
+<div class="grid cols-2">
+  <div class="card hero">
+    <div class="label">日期</div>
+    <div class="value">{{ ctx.get('date') | fmt_date }}</div>
+    <div class="muted">{{ ctx.get('weekday_cn') or (ctx.get('date') | weekday_cn) }}</div>
+  </div>
+  <div class="card hero">
+    <div class="label">教学周</div>
+    <div class="value">
+      {% if ctx.get('week_number') is not none %}
+        第 {{ ctx.get('week_number') }} 周
+      {% else %}<span class="dim">—</span>{% endif %}
+    </div>
+    <div class="muted">{{ ctx.get('semester_name') or '当前学期 —' }}</div>
+  </div>
+</div>
+
+<h2 class="section">接着发生</h2>
+<div class="grid cols-4">
+  {% for key, label in fields %}
+  <div class="card">
+    <div class="label">{{ label }}</div>
+    <div class="value small">{{ short_value(ctx.get(key)) }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<h2 class="section">最近事件</h2>
+{% if next_event and next_event.get('title') %}
+  <div class="card">
+    <div class="value small">{{ next_event.get('title') }}</div>
+    <div class="muted">
+      {{ next_event.get('start') | fmt_date }}
+      {%- set end = next_event.get('end') %}
+      {%- if end and end != next_event.get('start') %} ~ {{ end | fmt_date }}{% endif %}
+      {%- set d = (end or next_event.get('start')) | days_until(today) %}
+      {%- if d is not none %}
+        · {% if d < 0 %}已进行中{% elif d == 0 %}今天{% else %}{{ d }} 天后{% endif %}
+      {%- endif %}
+    </div>
+  </div>
+{% else %}
+  <div class="empty">暂无即将到来的校历事件（或校历数据不可用）。</div>
+{% endif %}
+
+<h2 class="section">下班车</h2>
+{% if departures %}
+  <table class="data">
+    <thead><tr><th>时刻</th><th>校区</th><th>日别</th></tr></thead>
+    <tbody>
+      {% for item in departures %}
+      <tr>
+        <td class="time">{{ item.get('time') }}</td>
+        <td>{{ item.get('campus') }}</td>
+        <td>{{ item.get('day_kind') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="empty">暂无班车数据。</div>
+{% endif %}
+{% endblock %}

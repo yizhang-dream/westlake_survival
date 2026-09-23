@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}全站搜索 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">全站搜索</h1>
+
+<form method="get" action="/search" class="filter">
+  <label>关键词
+    <input type="search" name="q" value="{{ keyword }}" placeholder="搜索官网内容">
+  </label>
+  <button type="submit">搜索</button>
+</form>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+{% if hits %}
+  <p class="muted" style="font-size:.85rem">共 {{ total }} 条，本页 {{ hits | length }} 条。</p>
+  <table class="data">
+    <thead>
+      <tr><th>日期</th><th>标题 / 摘要</th></tr>
+    </thead>
+    <tbody>
+      {% for hit in hits %}
+      <tr>
+        <td class="time">
+          {% if hit.date %}{{ hit.date | fmt_date }}{% else %}<span class="dim">—</span>{% endif %}
+        </td>
+        <td>
+          {% if hit.url %}<a href="{{ hit.url }}" target="_blank" rel="noopener">{{ hit.clean_title }}</a>
+          {% else %}{{ hit.clean_title }}{% endif %}
+          {% if hit.clean_desc %}<div class="muted" style="font-size:.82rem">{{ hit.clean_desc }}</div>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% elif error %}
+  <div class="empty">搜索暂不可用。</div>
+{% elif not searched %}
+  <div class="empty">输入关键词后开始搜索。</div>
+{% else %}
+  <div class="empty">没有找到与「{{ keyword }}」相关的结果。</div>
+{% endif %}
+{% endblock %}

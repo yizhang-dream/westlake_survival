@@ -1,0 +1,1133 @@
+"""``westlake_survival`` 统一命令行：``westlake <子命令>``。
+
+顶层 click group :data:`cli` 在此定义，各子命令直接调用对应模块的 Python
+API（多数 I/O 子命令都要能被离线测试，故模块在函数体内惰性导入）。
+
+约定：
+
+- 所有会发起 I/O 的命令都用 :func:`_handle_errors` 包裹：捕获
+  :class:`~westlake_survival.exceptions.WestlakeError`（含 :class:`AuthError` /
+  :class:`OffCampusError` 等子类），向 stderr 打印中文友好提示并以退出码 1 结束；
+  :class:`OffCampusError` 额外提示连接校园 VPN。
+- ``--version`` 输出版本号；``python -m westlake_survival`` 等价于 ``westlake``。
+- ``digest`` 把快照 / 活动 / 班车 / 周次 / Canvas 截止合成晨报文本，各源独立
+  降级；``probe`` 逐项探测「堵点」状态；``cache clear`` 清理本地 ETag 缓存。
+- ``sso creds`` 支持 keyring（系统钥匙串）：``set`` 缺省在 keyring 可用时优先
+  写入，``status`` 显示内存 / 环境变量 / keyring / 文件四个来源。
+"""
+
+from __future__ import annotations
+
+import functools
+import os
+from datetime import date
+from pathlib import Path
+from unicodedata import east_asian_width
+
+import click
+
+from westlake_survival._version import __version__
+from westlake_survival.calendar import AcademicCalendar
+from westlake_survival.campus import cli_group as campus_cmd
+from westlake_survival.careers import cli_group as careers_cmd
+from westlake_survival.contact import cli_group as contact_cmd
+from westlake_survival.events import cli_group as events_cmd
+from westlake_survival.exceptions import AuthError, OffCampusError, WestlakeError
+from westlake_survival.faculty import cli_group as faculty_cmd
+from westlake_survival.news import cli_group as news_cmd
+from westlake_survival.research import cli_group as research_cmd
+from westlake_survival.search import cli_group as search_cmd
+from westlake_survival.sis.aid import cli_group as aid_cmd
+from westlake_survival.sis.evals import cli_group as evals_cmd
+from westlake_survival.sis.profile import cli_group as profile_cmd
+from westlake_survival.sis.records import cli_group as records_cmd
+from westlake_survival.transit import Campus, DayKind
+
+#: 星期几的中文名（``date.weekday()`` 0=周一）。
+_WEEKDAY_CN = ("周一", "周二", "周三", "周四", "周五", "周六", "周日")
+
+#: Canvas 缺少访问令牌时的引导。
+_CANVAS_TOKEN_HINT = (
+    "获取令牌：登录 Canvas 网页 → 账户 → 设置 → 新建访问令牌；\n"
+    "随后设置环境变量 WESTLAKE_CANVAS_TOKEN，或写入 "
+    "~/.westlake_survival/canvas_token.txt（首行）。"
+)
+
+
+# --------------------------------------------------------------------------- #
+# 通用：错误处理与表格输出
+# --------------------------------------------------------------------------- #
+def _print_error(exc: WestlakeError) -> None:
+    """向 stderr 打印中文错误提示。"""
+    click.secho(f"错误：{exc}", fg="red", err=True)
+    if isinstance(exc, OffCampusError):
+        click.secho(
+            "提示：该服务仅校园网/VPN 内可达，请先连接西湖大学 VPN："
+            "https://vpn.westlake.edu.cn/",
+            err=True,
+        )
+
+
+def _handle_errors(func):
+    """装饰器：把 :class:`WestlakeError` 转成中文提示 + 退出码 1。"""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except WestlakeError as exc:
+            _print_error(exc)
+            raise SystemExit(1) from exc
+
+    return wrapper
+
+
+def _width(text: str) -> int:
+    """按东亚宽度估算显示宽度（全角/宽字符记 2 列）。"""
+    return sum(2 if east_asian_width(ch) in ("W", "F") else 1 for ch in text)
+
+
+def _print_table(rows, headers) -> None:
+    """打印对齐的文本表格；按东亚宽度处理中文列宽。"""
+    table = [[("" if c is None else str(c)) for c in row] for row in rows]
+    table.insert(0, [str(h) for h in headers])
+    widths = [max(_width(r[i]) for r in table) for i in range(len(headers))]
+    for index, row in enumerate(table):
+        cells = [c + " " * (widths[i] - _width(c)) for i, c in enumerate(row)]
+        click.echo("  ".join(cells).rstrip())
+        if index == 0:
+            click.echo("  ".join("-" * w for w in widths))
+
+
+# --------------------------------------------------------------------------- #
+# sso —— 凭据与登录
+# --------------------------------------------------------------------------- #
+@click.group(name="sso", help="统一身份认证：凭据管理与登录验证。")
+def sso_cmd() -> None:
+    """SSO（统一身份认证）相关命令。"""
+
+
+@sso_cmd.group(name="creds", help="凭据管理（set / status）。")
+def sso_creds() -> None:
+    """凭据写入与来源检测。"""
+
+
+#: keyring（系统钥匙串）集成的函数名候选。
+#:
+#: ``sso.creds`` 的 keyring 接口由并行开发提供，命名未必与本文一致；故一律
+#: 用 :func:`_find_callable` 按候选名探测，**任何候选都缺失时降级为原有的
+#: 三级来源（内存 / 环境变量 / 配置文件）行为**，绝不因缺函数而报错。
+_KEYRING_WRITE_NAMES = (
+    "save_credentials_keyring",
+    "write_keyring_credentials",
+    "keyring_write",
+    "write_to_keyring",
+    "save_keyring_credentials",
+    "store_keyring_credentials",
+    "keyring_set",
+)
+_KEYRING_READ_NAMES = (
+    "read_credentials_keyring",
+    "read_keyring_credentials",
+    "keyring_read",
+    "read_from_keyring",
+    "load_keyring_credentials",
+    "keyring_get",
+)
+_KEYRING_AVAILABLE_NAMES = (
+    "keyring_available",
+    "is_keyring_available",
+    "has_keyring",
+    "keyring_supported",
+)
+
+
+def _find_callable(module, names) -> object | None:
+    """返回 *module* 上第一个可调用的候选函数；都没有返回 ``None``。"""
+    for name in names:
+        attr = getattr(module, name, None)
+        if callable(attr):
+            return attr
+    return None
+
+
+def _keyring_writer(creds_mod):
+    """keyring 写入函数；``sso.creds`` 未提供时返回 ``None``。"""
+    return _find_callable(creds_mod, _KEYRING_WRITE_NAMES)
+
+
+def _keyring_reader(creds_mod):
+    """keyring 读取函数；``sso.creds`` 未提供时返回 ``None``。"""
+    return _find_callable(creds_mod, _KEYRING_READ_NAMES)
+
+
+def _keyring_available(creds_mod) -> bool:
+    """keyring 是否可用（有探测函数用其结果，否则要求读写函数齐备）。"""
+    for name in _KEYRING_AVAILABLE_NAMES:
+        attr = getattr(creds_mod, name, None)
+        if isinstance(attr, bool):
+            return attr
+        if callable(attr):
+            try:
+                return bool(attr())
+            except Exception:  # noqa: BLE001 - 探测失败即视为不可用
+                return False
+    return _keyring_writer(creds_mod) is not None and _keyring_reader(creds_mod) is not None
+
+
+def _as_cred_pair(value) -> tuple[str, str] | None:
+    """把 keyring 读取结果规整为 ``(sid, password)``；无法识别返回 ``None``。
+
+    兼容两种契约：``(sid, password)`` 二元组 / ``None``，以及 ``sid:password``
+    字符串。``False``（写入结果标志位等）一律视为无凭据。
+    """
+    if not value or value is True:
+        return None
+    if isinstance(value, str):
+        if ":" not in value:
+            return None
+        sid, _, password = value.partition(":")
+        return (sid.strip(), password.strip()) if sid.strip() and password.strip() else None
+    if isinstance(value, (tuple, list)):
+        if len(value) < 2:
+            return None
+        sid, password = str(value[0] or "").strip(), str(value[1] or "").strip()
+        return (sid, password) if sid and password else None
+    if isinstance(value, dict):
+        sid = str(value.get("sid") or value.get("username") or "").strip()
+        password = str(value.get("password") or "").strip()
+        return (sid, password) if sid and password else None
+    return None
+
+
+def _keyring_lookup(creds_mod) -> tuple[str, str] | None:
+    """从 keyring 读凭据；无接口 / 无记录 / 读失败均返回 ``None``。"""
+    reader = _keyring_reader(creds_mod)
+    if reader is None:
+        return None
+    try:
+        return _as_cred_pair(reader())
+    except Exception:  # noqa: BLE001 - 读钥匙串失败不应阻断状态查询
+        return None
+
+
+def _keyring_state(creds_mod) -> tuple[bool, bool]:
+    """返回 ``(keyring 中是否有凭据, keyring 是否可用)``。"""
+    if not _keyring_available(creds_mod):
+        return False, False
+    return (_keyring_lookup(creds_mod) is not None), True
+
+
+@sso_creds.command(name="set")
+@click.option("--sid", default=None, help="学号（SID）；缺省时交互输入。")
+@click.option("--password", default=None, help="密码；缺省时交互输入（隐藏）。")
+@click.option(
+    "--keyring/--no-keyring",
+    "use_keyring",
+    default=None,
+    help="写入系统钥匙串（keyring）；缺省在 keyring 可用时优先写入并提示，"
+    "--no-keyring 强制写配置文件。",
+)
+@_handle_errors
+def sso_creds_set(
+    sid: str | None, password: str | None, use_keyring: bool | None
+) -> None:
+    """写入凭据：keyring 可用时优先写入钥匙串，否则写配置文件。
+
+    缺省参数时会提示输入学号与密码（密码输入隐藏且需二次确认）。
+    keyring 需要可选依赖：``pip install 'westlake_survival[secure]'``。
+    """
+    from westlake_survival.sso import cred_path
+    from westlake_survival.sso import creds as creds_mod
+
+    if not sid:
+        sid = click.prompt("西湖大学学号 (SID)", type=str)
+    if not password:
+        password = click.prompt("密码", hide_input=True, confirmation_prompt=True)
+
+    if use_keyring is not False and _keyring_available(creds_mod):
+        writer = _keyring_writer(creds_mod)
+        try:
+            result = writer(sid, password)
+        except Exception as exc:  # noqa: BLE001 - 写钥匙串失败退回文件路径
+            result = False
+            click.secho(
+                f"警告：写入 keyring 失败（{exc.__class__.__name__}），回退到配置文件。",
+                fg="yellow",
+                err=True,
+            )
+        # 写入函数可能返回 None（视为成功）或 False（钥匙串后端不可用，
+        # 如 sso.creds 的 save_credentials_keyring 契约）；False 时退回文件。
+        if result is not False:
+            click.secho("凭据已写入 keyring（系统钥匙串）。", fg="green")
+            click.echo("提示：keyring 优先于明文配置文件；如需写文件请用 --no-keyring。")
+            return
+        click.secho("警告：keyring 后端不可用，回退到配置文件。", fg="yellow", err=True)
+    elif use_keyring:
+        click.secho(
+            "警告：keyring 不可用（未安装 [secure] extra 或 sso.creds 未提供接口），"
+            "回退到配置文件。",
+            fg="yellow",
+            err=True,
+        )
+
+    from westlake_survival.sso import write_credentials
+
+    target = write_credentials(sid, password)
+    click.secho(f"凭据已写入：{target}", fg="green")
+    if cred_path().exists():
+        click.echo("提示：明文配置文件安全性低于 keyring，可用 --keyring 尝试写入钥匙串。")
+
+
+@sso_creds.command(name="status")
+def sso_creds_status() -> None:
+    """检测当前凭据来源（内存 / 环境变量 / keyring / 配置文件 / 无）。
+
+    优先级与 :func:`westlake_survival.sso.read_credentials` 一致；只显示来源
+    与路径、以及四来源的「有 / 无」，绝不打印密码。
+    """
+    from westlake_survival.sso import cred_path
+    from westlake_survival.sso import creds as creds_mod
+
+    memory = getattr(creds_mod, "_MEMORY", {}) or {}
+    path = cred_path()
+    env_value = os.environ.get(creds_mod.ENV_VAR)
+
+    memory_ok = bool(memory.get("sid") and memory.get("password"))
+    env_ok = bool(env_value and env_value.strip())
+    keyring_ok, keyring_available = _keyring_state(creds_mod)
+    file_ok = path.exists()
+
+    if memory_ok:
+        click.secho("凭据来源：内存（cred_set）", bold=True)
+        click.echo("说明：进程内凭据优先级最高，退出即丢失，不落盘。")
+    elif env_ok:
+        click.secho(f"凭据来源：环境变量 {creds_mod.ENV_VAR}", bold=True)
+        click.echo("说明：格式为 学号:密码，环境变量优先级高于 keyring 与配置文件。")
+    elif keyring_ok:
+        click.secho("凭据来源：keyring（系统钥匙串）", bold=True)
+        click.echo("说明：keyring 优先级高于明文配置文件，凭据由系统加密封存。")
+    elif file_ok:
+        click.secho(f"凭据来源：配置文件 {path}", bold=True)
+    else:
+        click.secho("凭据来源：无", bold=True)
+        click.echo(f"期望的配置文件路径：{path}")
+        click.echo("设置方法：westlake sso creds set（密码输入隐藏）")
+
+    click.echo("来源清单（只报有 / 无，不回显凭据）：")
+    click.echo(f"  - 内存：{'有' if memory_ok else '无'}")
+    click.echo(f"  - 环境变量 {creds_mod.ENV_VAR}：{'有' if env_ok else '无'}")
+    if keyring_available:
+        click.echo(f"  - keyring：{'有' if keyring_ok else '无'}")
+    else:
+        click.echo("  - keyring：不可用（未安装 [secure] extra 或 sso.creds 未提供接口）")
+    click.echo(f"  - 配置文件 {path}：{'有' if file_ok else '无'}")
+
+
+@sso_cmd.command(name="login")
+@_handle_errors
+def sso_login() -> None:
+    """用已配置凭据尝试登录 SIS，验证凭据是否有效。"""
+    from westlake_survival.sso import SISAuth
+
+    SISAuth().ensure()
+    click.secho("登录成功：凭据有效，SIS 会话已建立。", fg="green")
+
+
+# --------------------------------------------------------------------------- #
+# calendar —— 校历
+# --------------------------------------------------------------------------- #
+@click.group(name="calendar", help="校历：日期/周次/学期/事件。")
+def calendar_cmd() -> None:
+    """校历查询命令。"""
+
+
+def _load_calendar() -> AcademicCalendar:
+    """加载校历（网络失败时由模块内部回退到内置数据）。"""
+    return AcademicCalendar.load()
+
+
+@calendar_cmd.command(name="today")
+@_handle_errors
+def calendar_today() -> None:
+    """显示今天的日期、星期、学期、周次与当日事件。"""
+    calendar = _load_calendar()
+    today = date.today()
+    click.echo(f"日期：{today.isoformat()}（{_WEEKDAY_CN[today.weekday()]}）")
+
+    semester = calendar.current(today)
+    if semester is None:
+        click.echo("学期：当前不在任何学期的教学范围内")
+        click.echo("周次：—（假期或学期外）")
+        return
+
+    week = semester.week_of(today)
+    click.echo(f"学期：{semester.name}")
+    click.echo(f"周次：第 {week} 周" if week else "周次：—（假期或学期外）")
+
+    events = [e for e in semester.events if e.covers(today)]
+    if events:
+        click.echo("今日事件：")
+        for event in events:
+            click.echo(f"  - {event.title}")
+    else:
+        click.echo("今日事件：无")
+
+
+@calendar_cmd.command(name="events")
+@_handle_errors
+def calendar_events() -> None:
+    """列出当前学期（或最近学期）的全部校历事件。"""
+    calendar = _load_calendar()
+    semester = calendar.current(date.today())
+    if semester is None and calendar.semesters:
+        semester = calendar.semesters[-1]
+    if semester is None:
+        click.secho("未找到任何学期数据。", fg="red", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"学期：{semester.name}（{semester.start.isoformat()} ~ {semester.end.isoformat()}）")
+    rows = [
+        (e.start.isoformat(), (e.end.isoformat() if e.end else "—"), e.title)
+        for e in semester.events
+    ]
+    _print_table(rows, ("开始", "结束", "事件"))
+
+
+@calendar_cmd.command(name="week")
+@click.argument("n", type=int)
+@_handle_errors
+def calendar_week(n: int) -> None:
+    """显示本学期第 N 周的起止日期（周一 ~ 周日）。"""
+    calendar = _load_calendar()
+    semester = calendar.current(date.today())
+    if semester is None and calendar.semesters:
+        semester = calendar.semesters[-1]
+    if semester is None:
+        click.secho("未找到任何学期数据。", fg="red", err=True)
+        raise SystemExit(1)
+
+    total = semester.teaching_weeks()
+    if n < 1 or n > total:
+        click.secho(f"第 {n} 周超出本学期范围（共 {total} 周）。", fg="red", err=True)
+        raise SystemExit(1)
+    click.echo(
+        f"{semester.name} 第 {n} 周：{semester.date_of(n, 1).isoformat()} "
+        f"~ {semester.date_of(n, 7).isoformat()}"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# transit —— 校园巴士
+# --------------------------------------------------------------------------- #
+@click.group(name="transit", help="校园巴士：下一班 / 时刻表 / 导出日历。")
+def transit_cmd() -> None:
+    """校园巴士命令。"""
+
+
+def _campus(value: str | None) -> Campus | None:
+    return Campus(value) if value else None
+
+
+@transit_cmd.command(name="next")
+@click.option("--campus", type=click.Choice([c.value for c in Campus]), default=None, help="只看某校区（始发）。")
+@click.option("--limit", type=int, default=3, show_default=True, help="返回条数。")
+@_handle_errors
+def transit_next(campus: str | None, limit: int) -> None:
+    """显示下一批发车时刻（默认取前 3 班）。"""
+    from westlake_survival.transit import transit
+
+    data = transit()
+    departures = data.next_departures(campus=_campus(campus), limit=limit)
+    if not departures:
+        click.echo("暂无后续班车信息。")
+        return
+    rows = [
+        (str(i), time_str, table.campus.value, table.day_kind.value)
+        for i, (table, time_str) in enumerate(departures, start=1)
+    ]
+    _print_table(rows, ("序号", "时刻", "始发校区", "日别"))
+
+
+@transit_cmd.command(name="table")
+@click.option("--campus", type=click.Choice([c.value for c in Campus]), default=None, help="校区。")
+@click.option("--day", type=click.Choice([d.value for d in DayKind]), default=None, help="日别。")
+@_handle_errors
+def transit_table(campus: str | None, day: str | None) -> None:
+    """显示指定校区/日别的班车时刻表。"""
+    from westlake_survival.transit import transit
+
+    data = transit()
+    campus_enum = _campus(campus)
+    day_enum = DayKind(day) if day else None
+    tables = [
+        t
+        for t in data.tables
+        if (campus_enum is None or t.campus == campus_enum)
+        and (day_enum is None or t.day_kind == day_enum)
+    ]
+    if not tables:
+        click.echo("未找到匹配的时刻表。")
+        return
+    for table in tables:
+        click.echo(f"【{table.campus.value} · {table.day_kind.value}】{table.direction_note}")
+        rows = [(section, "、".join(times) or "—") for section, times in (
+            ("上午", table.morning),
+            ("午间", table.noon),
+            ("晚间", table.night),
+        )]
+        _print_table(rows, ("时段", "时刻"))
+
+
+@transit_cmd.command(name="ical")
+@click.option("--days", type=int, default=14, show_default=True, help="导出未来天数。")
+@click.option("--out", type=click.Path(dir_okay=False, path_type=Path), default=None, help="写入 .ics 文件；缺省打印到标准输出。")
+@_handle_errors
+def transit_ical(days: int, out: Path | None) -> None:
+    """导出未来若干天的班车日历（.ics）。"""
+    from westlake_survival.transit import transit_to_ical
+
+    text = transit_to_ical(weekdays_ahead=days)
+    if out is None:
+        click.echo(text, nl=False)
+        return
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8")
+    click.secho(f"已写入：{out}", fg="green")
+
+
+# --------------------------------------------------------------------------- #
+# canvas —— Canvas LMS
+# --------------------------------------------------------------------------- #
+def _handle_canvas_errors(func):
+    """Canvas 命令专用：AuthError 额外给出令牌获取引导。"""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except AuthError as exc:
+            click.secho(f"错误：{exc}", fg="red", err=True)
+            # 库自身缺 token 的 AuthError 已含引导；仅在消息未提及时补充。
+            if "新建访问令牌" not in str(exc):
+                click.secho(_CANVAS_TOKEN_HINT, err=True)
+            raise SystemExit(1) from exc
+        except WestlakeError as exc:
+            _print_error(exc)
+            raise SystemExit(1) from exc
+
+    return wrapper
+
+
+@click.group(name="canvas", help="Canvas LMS：课程与作业截止。")
+def canvas_cmd() -> None:
+    """Canvas 命令（需要个人访问令牌）。"""
+
+
+@canvas_cmd.command(name="courses")
+@_handle_canvas_errors
+def canvas_courses() -> None:
+    """列出当前账号的 Canvas 课程。"""
+    from westlake_survival.canvas import canvas
+
+    courses = canvas().list_courses()
+    rows = [(c.course_code or "—", c.name or "—", c.term_name or "—") for c in courses]
+    _print_table(rows, ("课程代码", "课程名称", "学期"))
+
+
+@canvas_cmd.command(name="deadlines")
+@click.option("--limit", type=int, default=10, show_default=True, help="返回条数。")
+@_handle_canvas_errors
+def canvas_deadlines(limit: int) -> None:
+    """列出即将到期的作业截止时间。"""
+    from westlake_survival.canvas import canvas
+
+    items = canvas().upcoming_deadlines(limit=limit)
+    rows = [
+        (
+            a.due_at.strftime("%Y-%m-%d %H:%M") if a.due_at else "—",
+            a.name or "—",
+            a.html_url or "",
+        )
+        for a in items
+    ]
+    _print_table(rows, ("截止时间", "作业", "链接"))
+
+
+@canvas_cmd.command(name="exams")
+@click.option("--days", type=int, default=None, help="只看未来 N 天（含今天）；缺省不过滤。")
+@_handle_canvas_errors
+def canvas_exams(days: int | None) -> None:
+    """列出考试安排（测验型作业 ∪ 课程日历事件）。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import KIND_QUIZ
+
+    if days is not None and days < 0:
+        raise click.UsageError(f"--days 必须 >= 0，得到 {days}")
+
+    items = canvas().exams(days=days)
+    rows: list[tuple[str, str, str, str]] = []
+    for item in items:
+        when = item.due_at if item.kind == KIND_QUIZ else item.start_at
+        label = "测验" if item.kind == KIND_QUIZ else "日历"
+        rows.append(
+            (
+                when.strftime("%Y-%m-%d %H:%M") if when else "—",
+                item.title or "—",
+                label,
+                item.url or "",
+            )
+        )
+    _print_table(rows, ("时间", "名称", "类型", "链接"))
+
+
+# --------------------------------------------------------------------------- #
+# sis —— 教务课表
+# --------------------------------------------------------------------------- #
+@click.group(name="sis", help="教务 SIS：课表与导出。")
+def sis_cmd() -> None:
+    """SIS（教务）命令。"""
+
+
+@sis_cmd.command(name="schedule")
+@_handle_errors
+def sis_schedule() -> None:
+    """打印本学期课表节次。"""
+    from westlake_survival.sis import get_schedule
+
+    sessions = get_schedule()
+    if not sessions:
+        click.echo("课表为空（可能尚未选课或未到教学周）。")
+        return
+    rows = []
+    for s in sessions:
+        weekday = _WEEKDAY_CN[s.weekday - 1] if 1 <= s.weekday <= 7 else str(s.weekday)
+        time_slot = f"{s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}"
+        rows.append((s.title or "—", s.teacher or "—", weekday, time_slot, s.room or "—"))
+    _print_table(rows, ("课程", "教师", "星期", "时间", "地点"))
+
+
+@sis_cmd.command(name="grades")
+@_handle_errors
+def sis_grades() -> None:
+    """打印全部学期成绩（按页面顺序，最近学期在前）。"""
+    from westlake_survival.sis import grades as _grades
+
+    items = _grades()
+    if not items:
+        click.echo("成绩为空（可能尚无成绩记录）。")
+        return
+    rows = [
+        (
+            g.term or "—",
+            g.course_code or "—",
+            g.course_title or "—",
+            g.grade or "—",
+            g.credits or "—",
+        )
+        for g in items
+    ]
+    _print_table(rows, ("学期", "课程代码", "课程名称", "等级", "学分"))
+
+
+@sis_cmd.command(name="exams")
+@_handle_errors
+def sis_exams() -> None:
+    """打印当前学期考试安排（页头学期由 SIS 决定）。"""
+    from westlake_survival.sis import exam_schedule
+
+    items = exam_schedule()
+    if not items:
+        click.echo("考试安排为空（可能尚未排期）。")
+        return
+    rows = [
+        (
+            e.course_code or "—",
+            e.course_title or "—",
+            e.date or "—",
+            e.time or "—",
+            e.exam_type or "—",
+            e.method or "—",
+            e.venue or "—",
+            e.seat or "—",
+        )
+        for e in items
+    ]
+    _print_table(rows, ("课程代码", "课程名称", "日期", "时间", "类型", "方式", "考场", "座位"))
+
+
+@sis_cmd.command(name="ical")
+@click.option("--out", type=click.Path(dir_okay=False, path_type=Path), default="schedule.ics", show_default=True, help="写入 .ics 文件。")
+@_handle_errors
+def sis_ical(out: Path) -> None:
+    """把课表导出为 .ics 日历文件。"""
+    from westlake_survival.ical import save_ics
+    from westlake_survival.sis import get_schedule
+
+    sessions = get_schedule()
+    if not sessions:
+        click.secho("课表为空，未生成日历文件。", fg="red", err=True)
+        raise SystemExit(1)
+    target = save_ics(sessions, out)
+    click.secho(f"已写入：{target}", fg="green")
+
+
+# --------------------------------------------------------------------------- #
+# lib —— 图书馆
+# --------------------------------------------------------------------------- #
+@click.group(name="lib", help="图书馆：书目检索与个人借阅。")
+def lib_cmd() -> None:
+    """图书馆命令。"""
+
+
+@lib_cmd.command(name="search")
+@click.argument("keyword")
+@click.option("--page", type=int, default=1, show_default=True, help="页码。")
+@_handle_errors
+def lib_search(keyword: str, page: int) -> None:
+    """检索图书馆书目（按题名）。"""
+    from westlake_survival.lib import search
+
+    books = search(keyword, page=page)
+    if not books:
+        click.echo("未找到匹配的书目。")
+        return
+    rows = [(b.title or "—", b.author or "—", b.call_no or "—", b.location or "—") for b in books]
+    _print_table(rows, ("题名", "作者", "索书号", "馆藏地"))
+
+
+@lib_cmd.command(name="loans")
+@_handle_errors
+def lib_loans() -> None:
+    """列出个人当前借阅记录（需登录）。"""
+    from westlake_survival.lib import my_loans
+
+    loans = my_loans()
+    if not loans:
+        click.echo("当前无借阅记录。")
+        return
+    rows = [
+        (
+            loan.title or "—",
+            loan.due_date or "—",
+            "—" if loan.renewable is None else ("可续借" if loan.renewable else "不可续借"),
+            loan.location or "—",
+        )
+        for loan in loans
+    ]
+    _print_table(rows, ("题名", "应还日期", "续借", "馆藏地"))
+
+
+# --------------------------------------------------------------------------- #
+# pms —— 自助文印
+# --------------------------------------------------------------------------- #
+@click.group(name="pms", help="自助文印：打印网点与任务。")
+def pms_cmd() -> None:
+    """自助文印（联创云打印）命令。"""
+
+
+@pms_cmd.command(name="stations")
+@_handle_errors
+def pms_stations() -> None:
+    """列出全部打印网点（无需登录）。"""
+    from westlake_survival.pms import pms
+
+    stations = pms().list_stations()
+    if not stations:
+        click.echo("未获取到打印网点。")
+        return
+    rows = [
+        (
+            s.name or "—",
+            s.campus or "—",
+            s.position or s.room_name or "—",
+            s.status_text or ("空闲" if s.is_idle else "—"),
+            "、".join(s.papers) or "—",
+        )
+        for s in stations
+    ]
+    _print_table(rows, ("网点", "校区", "位置", "状态", "纸型"))
+
+
+@pms_cmd.command(name="jobs")
+@_handle_errors
+def pms_jobs() -> None:
+    """列出个人打印任务（需登录）。"""
+    from westlake_survival.pms import pms
+
+    jobs = pms().list_print_jobs()
+    if not jobs:
+        click.echo("当前无打印任务。")
+        return
+    rows = [
+        (
+            job.name or "—",
+            str(job.copies) if job.copies is not None else "—",
+            str(job.pages) if job.pages is not None else "—",
+            job.status_text or "—",
+        )
+        for job in jobs
+    ]
+    _print_table(rows, ("文件", "份数", "页数", "状态"))
+
+
+# --------------------------------------------------------------------------- #
+# context —— 此刻西湖
+# --------------------------------------------------------------------------- #
+@click.command(name="context")
+@click.option(
+    "--level",
+    type=click.Choice(["terse", "normal", "verbose"]),
+    default="normal",
+    show_default=True,
+    help="信息量档位。",
+)
+@_handle_errors
+def context_cmd(level: str) -> None:
+    """打印"此刻西湖"中文快照（日期 / 周次 / 事件 / 班车 / 天气）。"""
+    from westlake_survival.context import Level, snapshot
+
+    click.echo(snapshot(Level(level)).to_str())
+
+
+# --------------------------------------------------------------------------- #
+# digest —— 晨报一条龙
+# --------------------------------------------------------------------------- #
+def _digest_source(lines: list[str], title: str, factory, *, placeholder: str = "（暂不可用）") -> None:
+    """把某个数据源渲染成 digest 的一节；失败时降级为占位行、绝不中断。"""
+    lines.append(f"## {title}")
+    try:
+        content = factory()
+    except Exception as exc:  # noqa: BLE001 - 各源独立降级，绝不炸整份晨报
+        content = [f"{placeholder}（{exc.__class__.__name__}）"]
+    lines.extend(content or ["（暂无）"])
+    lines.append("")
+
+
+def _digest_overview() -> list[str]:
+    """概览节：复用 context 快照（TERSE 档，纯本地）渲染一行紧凑摘要。
+
+    只取快照的日期 / 星期 / 学期 / 周次字段，避免把 ``to_str()`` 里的事件 /
+    班车小节与下方各节重复。
+    """
+    from westlake_survival.context import Level, snapshot
+
+    ctx = snapshot(Level.TERSE)
+    parts = [ctx.date.isoformat(), ctx.weekday_cn]
+    if ctx.semester_name:
+        parts.append(ctx.semester_name)
+        if ctx.week_number is not None:
+            parts.append(f"第{ctx.week_number}周")
+    return ["- " + " · ".join(parts)]
+
+
+def _digest_events() -> list[str]:
+    """今日 / 明日活动节（``events.upcoming(2)``）。"""
+    from westlake_survival.events import upcoming
+
+    items = upcoming(2)
+    if not items:
+        return ["今日 / 明日暂无活动预告。"]
+    return [
+        f"- {item.date.strftime('%m-%d %H:%M')} {item.title}"
+        + (f"（{item.venue}）" if item.venue else "")
+        for item in items[:5]
+    ]
+
+
+def _digest_shuttle() -> list[str]:
+    """下一班校车节（transit 有内置兜底，基本总可用）。"""
+    from westlake_survival.transit import transit
+
+    departures = transit().next_departures(limit=3)
+    if not departures:
+        return ["暂无后续班车信息。"]
+    return [f"- {ts} 从 {table.campus.value} 开出" for table, ts in departures]
+
+
+def _digest_week() -> list[str]:
+    """本周次节（校历）。"""
+    from westlake_survival.calendar import AcademicCalendar
+
+    today = date.today()
+    calendar = AcademicCalendar.load()
+    result = calendar.week_of(today)
+    if result is None:
+        return ["当前不在任何学期的教学周内。"]
+    semester, week = result
+    lines = [f"- 学期：{semester.name}", f"- 本周：第 {week} 周（共 {semester.teaching_weeks()} 周）"]
+    events = [e for e in semester.events if e.covers(today)]
+    if events:
+        lines.append("- 今日校历：" + "、".join(e.title for e in events))
+    return lines
+
+
+def _digest_canvas() -> list[str]:
+    """Canvas 截止节：仅在配置了 WESTLAKE_CANVAS_TOKEN 时并入。"""
+    token_env = "WESTLAKE_CANVAS_TOKEN"
+    try:
+        from westlake_survival.canvas import TOKEN_ENV_VAR as token_env  # type: ignore[assignment]
+    except Exception:  # noqa: BLE001 - 模块形状异常时用默认变量名
+        pass
+    if not (os.environ.get(token_env) or "").strip():
+        return [f"（未配置 {token_env}，跳过 Canvas 截止）"]
+    from westlake_survival.canvas import canvas
+
+    items = canvas().upcoming_deadlines(limit=5)
+    if not items:
+        return ["暂无即将到期的 Canvas 作业。"]
+    return [
+        f"- {a.due_at.strftime('%m-%d %H:%M') if a.due_at else '—'} {a.name or '（未命名作业）'}"
+        for a in items
+    ]
+
+
+@click.command(name="digest")
+@click.option(
+    "--level",
+    type=click.Choice(["terse", "normal"]),
+    default="normal",
+    show_default=True,
+    help="信息量档位：normal 含活动/班车/周次/Canvas 截止，terse 只保留本地快算与周次。",
+)
+def digest_cmd(level: str) -> None:
+    """晨报一条龙：快照 + 活动 + 班车 + 周次（可选 Canvas 截止）合成一段可推送中文文本。"""
+    terse = level == "terse"
+    header = f"# 西湖大学晨报 · {date.today().isoformat()} {_WEEKDAY_CN[date.today().weekday()]}"
+    lines: list[str] = [header, ""]
+    _digest_source(lines, "概览", _digest_overview)
+    if not terse:
+        _digest_source(lines, "今日 / 明日活动", _digest_events)
+        _digest_source(lines, "下一班校车", _digest_shuttle)
+    _digest_source(lines, "本周次", _digest_week)
+    if not terse:
+        _digest_source(lines, "Canvas 截止", _digest_canvas)
+    click.echo("\n".join(lines).rstrip())
+
+
+# --------------------------------------------------------------------------- #
+# probe —— 堵点状态探测
+# --------------------------------------------------------------------------- #
+#: probe 每项请求的超时（秒）。
+PROBE_TIMEOUT = 8.0
+
+#: probe 里 SIS 选课组件路径（Study Shopping Cart）。
+SIS_SHOP_CART_COMPONENT = "SSR_STUDENT_FL.SSR_SHOP_CART_FL.GBL"
+
+#: OPAC 应用基址（实测 404 的内部端点）。
+OPAC_PROBE_URL = "http://172.16.10.223:8180/opac/"
+
+
+def _probe_sis_cart() -> tuple[str, str]:
+    """探测 SIS 选课组件授权状态（登录态 GET）。
+
+    PeopleSoft 对未开放选课的角色返回「not authorized」正文，``fetch_page``
+    会把它翻成 :class:`ActionError`；此处把该情形判为「选课窗口未开」，其余
+    异常（校外 / 未登录等）交由外层收敛为「失败」。
+    """
+    from westlake_survival.exceptions import ActionError
+    from westlake_survival.sis.pages import fetch_page
+
+    try:
+        body = fetch_page(SIS_SHOP_CART_COMPONENT)
+    except ActionError as exc:
+        if "not authorized" in str(exc).lower():
+            return "选课窗口未开", "组件未授权（正文含 not authorized）"
+        raise
+    if "not authorized" in body.lower():
+        return "选课窗口未开", "组件正文含 not authorized"
+    return "已授权（可开发选课功能！）", "组件页可正常访问"
+
+
+def _probe_opac() -> tuple[str, str]:
+    """探测 OPAC 端点状态码（404 = 仍未恢复）。"""
+    from westlake_survival._net import http_session
+
+    response = http_session().get(OPAC_PROBE_URL, timeout=PROBE_TIMEOUT, allow_redirects=False)
+    status = response.status_code
+    if status == 404:
+        return f"HTTP {status}", "仍未恢复（服务端 404）"
+    if status < 400:
+        return f"HTTP {status}", "已恢复"
+    return f"HTTP {status}", "异常状态码"
+
+
+def _probe_pms() -> tuple[str, str]:
+    """探测打印系统匿名接口（Station/GetList）可达性。"""
+    from westlake_survival._net import http_session
+
+    base = None
+    try:
+        from westlake_survival import pms as pms_pkg
+
+        resolver = getattr(pms_pkg, "resolve_base_url", None)
+        if callable(resolver):
+            base = resolver()
+        else:
+            base = getattr(pms_pkg, "PMS_BASE", None)
+    except Exception:  # noqa: BLE001 - pms 模块形状变化时退回默认基址
+        base = None
+    base = (base or "http://print.lib.westlake.edu.cn:9130").rstrip("/")
+    url = f"{base}/api/client/Station/GetList"
+    response = http_session().get(url, timeout=PROBE_TIMEOUT)
+    status = response.status_code
+    if status >= 400:
+        return f"HTTP {status}", "接口不可达"
+    try:
+        payload = response.json()
+    except ValueError:
+        return f"HTTP {status}", "响应非 JSON"
+    code = payload.get("code") if isinstance(payload, dict) else None
+    if code == 0:
+        count = len(payload.get("result") or []) if isinstance(payload, dict) else 0
+        return "可达", f"匿名可读，{count} 个网点"
+    return f"HTTP {status}", f"信封 code={code}"
+
+
+def _probe_canvas_token() -> tuple[str, str]:
+    """探测 Canvas token 是否配置。"""
+    token_env = "WESTLAKE_CANVAS_TOKEN"
+    try:
+        from westlake_survival.canvas import TOKEN_ENV_VAR as token_env  # type: ignore[assignment]
+    except Exception:  # noqa: BLE001 - 模块形状异常时用默认变量名
+        pass
+    if (os.environ.get(token_env) or "").strip():
+        return "已配置", f"环境变量 {token_env} 非空"
+    try:
+        from westlake_survival.canvas import resolve_token
+
+        resolved = resolve_token()
+    except Exception:  # noqa: BLE001 - 解析失败按未配置处理
+        resolved = None
+    if resolved:
+        return "已配置", "来自 token 文件"
+    return "未配置", f"设置环境变量 {token_env} 或写入 canvas_token.txt"
+
+
+#: probe 各项：(中文名, 探测函数)。探测函数返回 ``(状态, 说明)``。
+PROBE_ITEMS = (
+    ("SIS 选课组件授权", _probe_sis_cart),
+    ("OPAC 端点", _probe_opac),
+    ("打印系统匿名接口", _probe_pms),
+    ("Canvas token", _probe_canvas_token),
+)
+
+
+def _run_probe_item(func) -> tuple[str, str]:
+    """跑一项探测；任何异常都收敛为「失败」状态，绝不炸整表。"""
+    try:
+        return func()
+    except Exception as exc:  # noqa: BLE001 - 每项失败不影响其余项
+        message = str(exc).strip() or exc.__class__.__name__
+        return "失败", message.replace("\n", " ")
+
+
+@click.command(name="probe")
+def probe_cmd() -> None:
+    """堵点状态探测（只读 GET，逐项 8 秒超时）：SIS 选课 / OPAC / 打印 / Canvas token。"""
+    rows = []
+    for name, func in PROBE_ITEMS:
+        status, detail = _run_probe_item(func)
+        rows.append((name, status, detail))
+    _print_table(rows, ("探测项", "状态", "说明"))
+
+
+# --------------------------------------------------------------------------- #
+# cache —— 本地缓存管理
+# --------------------------------------------------------------------------- #
+@click.group(name="cache", help="本地缓存管理（清除校历 / 班车 / 活动等 ETag 缓存）。")
+def cache_cmd() -> None:
+    """缓存管理命令。"""
+
+
+@cache_cmd.command(name="clear")
+@click.option(
+    "--module",
+    "module",
+    default=None,
+    help="只清某模块的缓存（前缀匹配，如 events / transit / calendar）；缺省清空全部。",
+)
+@_handle_errors
+def cache_clear(module: str | None) -> None:
+    """清除本地缓存文件，返回清除数量。"""
+    from westlake_survival import _cache
+
+    removed = _cache.clear(module)
+    if module:
+        click.secho(f"已清除 {removed} 个缓存文件（模块：{module}）。", fg="green")
+    else:
+        click.secho(f"已清除 {removed} 个缓存文件（全部）。", fg="green")
+
+
+# --------------------------------------------------------------------------- #
+# webui —— 本地 Web 界面
+# --------------------------------------------------------------------------- #
+@click.group(name="webui", help="本地 Web 界面（Flask，需 [webui] 可选依赖）。")
+def webui_cmd() -> None:
+    """本地 Web 界面命令。"""
+
+
+@webui_cmd.command(name="serve")
+@click.option("--host", default="127.0.0.1", show_default=True, help="绑定地址。")
+@click.option("--port", type=int, default=2018, show_default=True, help="端口。")
+def webui_serve(host: str, port: int) -> None:
+    """启动本地 Web 界面（默认 http://127.0.0.1:2018/）。"""
+    try:
+        from westlake_survival.webui import run
+    except ImportError as exc:  # Flask 是可选依赖
+        click.secho(
+            f"错误：缺少 Web 界面依赖（{exc}）。请安装可选依赖：pip install 'westlake_survival[webui]'",
+            fg="red",
+            err=True,
+        )
+        raise SystemExit(1) from exc
+    try:
+        run(host=host, port=port)
+    except WestlakeError as exc:
+        _print_error(exc)
+        raise SystemExit(1) from exc
+
+
+# --------------------------------------------------------------------------- #
+# 顶层 group
+# --------------------------------------------------------------------------- #
+@click.group(
+    name="westlake",
+    help="西湖大学生存手册命令行。使用 `westlake <子命令> --help` 查看详情。",
+)
+@click.version_option(__version__, "-V", "--version", prog_name="westlake")
+def cli() -> None:
+    """westlake_survival 统一命令行入口。"""
+
+
+for _group in (
+    sso_cmd,
+    calendar_cmd,
+    transit_cmd,
+    canvas_cmd,
+    sis_cmd,
+    evals_cmd,
+    profile_cmd,
+    records_cmd,
+    aid_cmd,
+    lib_cmd,
+    pms_cmd,
+    search_cmd,
+    news_cmd,
+    research_cmd,
+    events_cmd,
+    careers_cmd,
+    faculty_cmd,
+    campus_cmd,
+    contact_cmd,
+    context_cmd,
+    digest_cmd,
+    probe_cmd,
+    cache_cmd,
+    webui_cmd,
+):
+    cli.add_command(_group)
+del _group
+
+
+__all__ = ["cli"]

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html class='   psc_dir-ltr psc_form-xlarge' dir='ltr' lang='en'>
+<!-- Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved. -->
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><body><table border='1' cellpadding='3' cellspacing='0'>
+<tr>
+<th>Class</th><th>Course Code</th><th>Course Title</th><th>Start/End Dates</th><th>Time</th><th>Room</th><th>Instructor</th><th>Status</th><th>&nbsp;</th><th>&nbsp;</th></tr>
+<tr>
+<td  >1203</td>
+<td  style="mso-number-format:\@;"  >CST2000</td>
+<td  style="mso-number-format:\@;"  >Discrete Mathematics</td>
+<td  style="mso-number-format:\@;"  >2026/09/03 - 2026/12/24<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Thurs 13:30 To 15:05<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E13-509,Yungu<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师A<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1156</td>
+<td  style="mso-number-format:\@;"  >CST4801</td>
+<td  style="mso-number-format:\@;"  >Foundations of Reinforcement Learning</td>
+<td  style="mso-number-format:\@;"  >2026/09/01 - 2026/12/22<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Tues 16:10 To 17:45<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E10-205<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师B<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1225</td>
+<td  style="mso-number-format:\@;"  >CST4806</td>
+<td  style="mso-number-format:\@;"  >Virtual Humans: Foundations and Applications</td>
+<td  style="mso-number-format:\@;"  >2026/09/04 - 2026/12/25<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Fri 13:30 To 15:55<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >云谷校区E10-306<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师C<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1255</td>
+<td  style="mso-number-format:\@;"  >HUM1024</td>
+<td  style="mso-number-format:\@;"  >Writing and Communication</td>
+<td  style="mso-number-format:\@;"  >2026/09/02 - 2026/12/23<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Wed 18:30 To 20:55<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E13-119,Yungu<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师D<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1466</td>
+<td  style="mso-number-format:\@;"  >HUM1029</td>
+<td  style="mso-number-format:\@;"  >Introduction to Scicentific Culture - CN</td>
+<td  style="mso-number-format:\@;"  >2026/09/01 - 2026/12/22<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Tues 18:30 To 20:55<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E13-115,Yungu<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师E<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1085</td>
+<td  style="mso-number-format:\@;"  >MATH1009</td>
+<td  style="mso-number-format:\@;"  >Probability and Statistics</td>
+<td  style="mso-number-format:\@;"  >2026/08/31 - 2026/12/21<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Mon 08:00 To 10:35<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E13-507,Yungu<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师F<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1034</td>
+<td  style="mso-number-format:\@;"  >PHY1004</td>
+<td  style="mso-number-format:\@;"  >General Physics Laboratory Ⅱ</td>
+<td  style="mso-number-format:\@;"  >2026/08/31 - 2026/12/21<br />
+<br />
+2026/08/31 - 2026/12/21<br />
+<br />
+2026/08/31 - 2026/12/21<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Mon 15:10 To 17:45<br />
+<br />
+Mon 15:10 To 17:45<br />
+<br />
+Mon 15:10 To 17:45<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E13-209,Yungu<br />
+<br />
+H6-201,Yungu Campus<br />
+<br />
+H6-203,Yungu Campus<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师G,<br />
+教师H<br />
+<br />
+教师G,<br />
+教师H<br />
+<br />
+教师G,<br />
+教师H<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1208</td>
+<td  style="mso-number-format:\@;"  >PHY1009</td>
+<td  style="mso-number-format:\@;"  >General Physics II</td>
+<td  style="mso-number-format:\@;"  >2026/08/31 - 2026/12/21<br />
+<br />
+2026/08/31 - 2026/12/21<br />
+<br />
+2026/09/03 - 2026/12/24<br />
+<br />
+2026/08/31 - 2026/12/21<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Mon 13:30 To 15:05<br />
+<br />
+Mon 13:30 To 15:05<br />
+<br />
+Thurs 16:10 To 17:45<br />
+<br />
+Mon 13:30 To 15:05<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E13-209,Yungu<br />
+<br />
+H6-201,Yungu Campus<br />
+<br />
+E13-209,Yungu<br />
+<br />
+H6-203,Yungu Campus<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师G,<br />
+教师H<br />
+<br />
+教师G,<br />
+教师H<br />
+<br />
+教师G,<br />
+教师H<br />
+<br />
+教师G,<br />
+教师H<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1252</td>
+<td  style="mso-number-format:\@;"  >POL1003</td>
+<td  style="mso-number-format:\@;"  >Situation and Policies Ⅲ</td>
+<td  style="mso-number-format:\@;"  >2026/11/11 - 2026/11/25<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Wed 13:30 To 15:55<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E10-201<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >TBA</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+<tr>
+<td  >1092</td>
+<td  style="mso-number-format:\@;"  >POL1012</td>
+<td  style="mso-number-format:\@;"  >Basic Principles of Marxism</td>
+<td  style="mso-number-format:\@;"  >2026/09/03 - 2026/12/24<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >Thurs 09:50 To 12:15<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >E13-131,Yungu<br />
+<br />
+</td>
+<td  style="mso-number-format:\@;"  >教师I<br />
+<br />
+</td>
+<td  >Enrolled</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(CN)</td>
+<td  style="mso-number-format:\@;"  >View Syllabus(EN)</td>
+</table></body></html>

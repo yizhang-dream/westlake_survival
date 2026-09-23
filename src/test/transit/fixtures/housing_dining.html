@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8">
+    <title>住宿餐饮 - 西湖大学</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // 页面左侧导航与内容组件数据（截取自 www.westlake.edu.cn/campus_life/housing_dining/ 2026-09-22）
+      var components = [
+        {
+          keyword: "住宿",
+          type: "1",
+          notice: "<div class=\"view\">本科生宿舍、研究生公寓...</div>",
+          list: [
+            { title: "宿舍楼", listItem: [{ titleCampus: "云谷", detail: "墩余路600号" }] },
+          ],
+        },
+        {
+          keyword: "食堂",
+          type: "1",
+          notice: "<div class=\"view\">各校区食堂营业时间</div>",
+          list: [
+            { title: "食堂", listItem: [{ titleCampus: "云谷", detail: "早餐 07:00-09:00" }] },
+          ],
+        },
+        //交通方式
+        {
+          keyword: "交通方式",
+          type: "1",
+
+          notice: "<div class=\"view TRS_UEDITOR trs_paper_default trs_web\"><p><a href=\"https:\/\/security.zjwsvip.com\/#\/h5shuttleRoute\/1906876984879099905\" target=\"_blank\" needdownload=\"false\" data-needdownload=\"false\" data-needparse=\"false\" style=\"color: #ee7823;text-decoration: underline;\">点击查看班车实时信息<\/a>，法定假期 \/ 调休日班车安排，以学校邮件通知为准。<\/p><\/div>",
+
+          list: [
+            {
+                title:"工作日班车时间表",
+                titleEn:'Workday Shuttle Bus Schedule',
+                listItem:[
+                {
+                  titleCampus:'云谷',
+                  morning:['07:10','08:40','09:45','11:00'],
+                  noon:['12:30','13:00','14:00','15:30','17:45'],
+                  night:['18:30','19:45','21:00','21:15'],
+                },
+                {
+                  titleCampus:'云栖',
+                  morning:['06:45','07:10','08:40','09:30','11:00'],
+                  noon:['12:30','14:00','15:15','17:00','17:45'],
+                  night:['18:30','19:45','21:00'],
+                },
+                {
+                  titleCampus:'铜鉴湖',
+                  otherCar1:['06:35','07:00','08:30','09:20','10:50','12:20','13:50','15:05','16:50','17:35','18:20','19:35','20:50'],
+                  otherCar2:['08:20','09:50','10:45','12:00','13:30','14:00','15:00','16:30','18:50','19:30','20:40','22:00','22:10'],
+                }
+              ]
+            },
+            {
+              title:"周末班车时间表",
+              titleEn:'Weekend Shuttle Bus Schedule',
+              listItem:[
+                {
+                  titleCampus:'云谷',
+                  morning:['08:00','09:00'],
+                  noon:['13:00','15:00','17:00'],
+                  night:['20:00'],
+                },
+                {
+                  titleCampus:'云栖',
+                  morning:['09:10','10:10'],
+                  noon:['14:10','16:10','18:10'],
+                  night:['21:10'],
+                },
+                {
+                  titleCampus:'铜鉴湖',
+                  otherCar1:['09:00','10:00','14:00','16:00','18:00','21:00'],
+                  otherCar2:['08:55','09:55','13:55','15:55','17:55','20:55'],
+                }
+              ]
+            },
+          ]
+        },
+      ];
+      followLeftChange: true;
+    </script>
+    <script src="../../images/housingDining.js"></script>
+  </body>
+</html>

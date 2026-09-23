@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}教师检索 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">教师检索</h1>
+
+<form method="get" action="/faculty" class="filter">
+  <label>学院
+    <select name="school">
+      <option value="">全部</option>
+      {% for item in schools %}
+      <option value="{{ item }}" {{ 'selected' if item == school else '' }}>{{ item }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>关键词
+    <input type="search" name="keyword" value="{{ keyword }}" placeholder="姓名 / 英文名 / 学科 / 实验室">
+  </label>
+  <button type="submit">检索</button>
+</form>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+{% if has_results %}
+  <p class="muted" style="font-size:.85rem">
+    共 {{ rows | length }} 人{% if school %}　学院：{{ school }}{% endif %}{% if keyword %}　关键词：{{ keyword }}{% endif %}
+  </p>
+  <table class="data">
+    <thead>
+      <tr>
+        <th>姓名</th><th>学院</th><th>方向</th>
+        {% if has_works %}<th>代表作</th>{% endif %}
+        <th>链接</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in rows %}
+      <tr>
+        <td>
+          {{ m.name }}{% if m.name_en %}<div class="muted" style="font-size:.8rem">{{ m.name_en }}</div>{% endif %}
+        </td>
+        <td>{{ m.school or '—' }}</td>
+        <td>
+          {% if m.subject or m.lab %}
+            {{ m.subject or '—' }}{% if m.lab %}<div class="muted" style="font-size:.8rem">{{ m.lab }}</div>{% endif %}
+          {% else %}<span class="dim">—</span>{% endif %}
+        </td>
+        {% if has_works %}<td>{{ m.works or '—' }}</td>{% endif %}
+        <td>
+          {% if m.url %}<a href="{{ m.url }}" target="_blank" rel="noopener">官网主页</a>
+          {% else %}<span class="dim">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:.82rem">
+    数据来自官网公开页面，可能有延迟；详情请以官网主页为准。
+  </p>
+{% elif error %}
+  <div class="empty">教师名录暂不可用。</div>
+{% elif not searched %}
+  <div class="empty">输入学院或关键词后开始检索。</div>
+{% else %}
+  <div class="empty">未找到匹配的教师。</div>
+{% endif %}
+{% endblock %}

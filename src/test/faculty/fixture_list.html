@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Faculty list fixture</title></head>
+<body>
+<div id="app"></div>
+<script>
+// 从真实列表页 https://www.westlake.edu.cn/about/faculty/（2026-09-22 实测）
+// 裁剪出的 faculty 组件片段：schoolOPtions 原样，memberList 取前 4 条真实
+// 条目（原样），再追加 1 条构造条目覆盖「相对 url」「多段 <br>」「show:false」。
+new faculty("#app", {
+      schoolOPtions: [
+        { value: "理学院", label: "理学院" },
+        { value: "工学院", label: "工学院" },
+        { value: "生命科学学院", label: "生命科学学院" },
+        { value: "医学院", label: "医学院" },
+      ],
+      subjectOptions: [
+        { value: "材料科学与工程", label: "材料科学与工程" },
+        { value: "物理学", label: "物理学" },
+      ],
+      memberList: [
+        {
+          imgUrl: "./science/202606/W020260611362809332339.jpg",
+          name: "李奕璠博士",
+          nameEn: "",
+          school: "理学院",
+          subject: "物理学</br>冷原子量子调控实验室",
+          url: "https://www.westlake.edu.cn/faculty/yifan-li.html",
+          target: "_blank",
+          show: true,
+        },
+        {
+          imgUrl: "./science/202602/W020260224502173805723_ORIGIN.jpg",
+          name: "孙凤梧博士",
+          nameEn: "",
+          school: "理学院",
+          subject: "</br>早期宇宙实验室",
+          url: "https://www.westlake.edu.cn/faculty/fengwu-sun.html",
+          target: "_blank",
+          show: true,
+        },
+        {
+          imgUrl: "./science/202510/W020251103376693303066_ORIGIN.png",
+          name: "林文斌博士",
+          nameEn: "Wenbin Lin, Ph.D.",
+          school: "理学院与工学院与医学院（兼聘）",
+          subject: "化学</br>可持续发展与人类健康分子材料实验室",
+          url: "https://www.westlake.edu.cn/faculty/wenbin-lin.html",
+          target: "_blank",
+          show: true,
+        },
+        {
+          imgUrl: "./science/202605/W020260519357554031123.png",
+          name: "纪文杰博士",
+          nameEn: "",
+          school: "理学院",
+          subject: "物理学</br>量子物质理论实验室",
+          url: "https://www.westlake.edu.cn/faculty/wenjie-ji.html",
+          target: "_blank",
+          show: true,
+        },
+        {
+          imgUrl: "./medicine/202604/W020260403387379861986.png",
+          name: "张举恩博士",
+          nameEn: "Juen Zhang, Ph.D.",
+          school: "医学院",
+          subject: "生物学<br>大脑与身体交互实验室<br>人工光合作用与太阳能燃料中心",
+          url: "/faculty/juen-zhang.html",
+          target: "_blank",
+          show: false,
+        },
+      ],
+      mounted: function () { },
+    });
+</script>
+</body>
+</html>

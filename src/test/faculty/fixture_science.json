@@ -1,0 +1,94 @@
+{
+  "traceId": "1790190440053001",
+  "msg": "请求成功",
+  "data": {
+    "outputData": [
+      {
+        "id": "cf36704538c04985a3d93970afc2d654",
+        "LANGUAGE": "Chinese",
+        "fullName": "鲍芳琳",
+        "chinesePinyin": "bao fang lin",
+        "workType": "1",
+        "remark": "人工智能物理实验室",
+        "title": "博士",
+        "kexi": "2",
+        "urlLast": "463dff58c14c4aacab2e573f9294c77b",
+        "photograph": "/file/download?fileKey=acf9fe60d8664ad69ac720aaf569fea2.jpg",
+        "linkUrl": "https://www.westlake.edu.cn/faculty/fanglin-bao.shtml",
+        "sort": 94,
+        "STATUS": 1
+      },
+      {
+        "id": "61d205ffc1474ebfb7290192bbbsa719",
+        "LANGUAGE": "Chinese",
+        "fullName": "程建军",
+        "chinesePinyin": "cheng jian jun",
+        "workType": "2",
+        "remark": "高分子化学与生物材料实验室",
+        "title": "博士",
+        "kexi": "1",
+        "urlLast": "bd7009901ef146b1af8440f67ff855ef",
+        "photograph": "/file/download?fileKey=997d33b1eeaa4949bb645e86f817ff09.jpeg",
+        "linkUrl": "https://www.westlake.edu.cn/faculty/jianjun-cheng.html",
+        "sort": 95,
+        "STATUS": 1
+      },
+      {
+        "id": "aaa11122233344455566677788899900",
+        "LANGUAGE": "Chinese",
+        "fullName": "曹趣",
+        "chinesePinyin": "cao qu",
+        "workType": "1",
+        "remark": "量子场论与弦论实验室",
+        "title": "博士",
+        "kexi": "2",
+        "photograph": "/file/download?fileKey=00000000000000000000000000000001.jpg",
+        "linkUrl": "https://www.westlake.edu.cn/faculty/qu-cao.html",
+        "sort": 12,
+        "STATUS": 1
+      },
+      {
+        "id": "bbb11122233344455566677788899900",
+        "LANGUAGE": "Chinese",
+        "fullName": "Weronika Czerniawska",
+        "chinesePinyin": "",
+        "workType": "3",
+        "remark": "数学教研室",
+        "title": "博士",
+        "kexi": "4",
+        "photograph": "/file/download?fileKey=00000000000000000000000000000002.jpg",
+        "linkUrl": "https://www.westlake.edu.cn/academics/undergraduate_studies/common_courses/TeachingFaculty/weronika-czerniawska.html",
+        "sort": 40,
+        "STATUS": 1
+      },
+      {
+        "id": "ccc11122233344455566677788899900",
+        "LANGUAGE": "Chinese",
+        "fullName": "鲍芳琳",
+        "chinesePinyin": "bao fang lin",
+        "workType": "1",
+        "remark": "人工智能物理实验室",
+        "title": "博士",
+        "kexi": "2",
+        "photograph": "/file/download?fileKey=acf9fe60d8664ad69ac720aaf569fea2.jpg",
+        "linkUrl": "https://www.westlake.edu.cn/faculty/fanglin-bao.shtml",
+        "sort": 94,
+        "STATUS": 1
+      },
+      {
+        "id": "ddd11122233344455566677788899900",
+        "LANGUAGE": "Chinese",
+        "fullName": "王盼",
+        "chinesePinyin": "wang pan",
+        "workType": "4",
+        "remark": "有机功能材料实验室",
+        "title": "博士",
+        "kexi": "1",
+        "photograph": "",
+        "linkUrl": "https://www.westlake.edu.cn/faculty/pan-wang.html",
+        "sort": 50,
+        "STATUS": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,78 @@
+<!--
+  从真实「餐饮住宿」页面 https://www.westlake.edu.cn/campus_life/housing_dining/
+  （2026-09-22 实测）裁剪：保留 new housingDining(...) 内联调用与 allData 结构，
+  住宿/食堂/咖啡轻食/其他校园服务各留 1-2 个校区 1-2 条，交通方式只留 notice
+  外链（删掉其大数组）。营业时间保留真实 HTML 变体：</br>、<br/>、<br>、
+  </span></p><p>。字符串转义与真实页面一致（\/ 转义斜杠）。
+-->
+<script>
+new housingDining("#app", {
+  titleObj: { title1: "校园生活", title2: "饮食住宿" },
+  allData: [
+    //住宿
+    { keyword: "住宿", type: "0", data: [
+      { label: "云谷校区", list: [
+        { imgUrl: "./accommodation/yungu/a.jpg", name: "本科生公寓", address: "H1-H4",
+          date: "24小时管家服务<p><\/p><\/br>4人套单间\/5人套单间<\/br><\/br>公寓配套：共享洗衣机、烘干机、饮水机", phone: "" },
+        { imgUrl: "./accommodation/yungu/b.jpg", name: "研究生公寓", address: "C11-C15，F12-F15",
+          date: "24小时管家服务<\/br><\/br>2人套单间<\/br><\/br>公寓配套：共享洗衣机、烘干机、微波炉", phone: "0571-88888888" },
+      ] },
+      { label: "云栖校区", list: [
+        { imgUrl: "./accommodation/yunqi/a.jpg", name: "学生公寓", address: "云栖校区一期 6号楼、7号楼",
+          date: "24小时管家服务<\/br><\/br>双人间<\/br><\/br>公寓配套：共享洗衣机、烘干机、饮水机", phone: "" },
+      ] },
+    ] },
+    //食堂
+    { keyword: "食堂", type: "0",
+      notice: '如果您有关于学校膳食工作的意见建议，欢迎向学校膳食委员会邮箱<span>（food@westlake.edu.cn）</span>反馈。',
+      data: [
+      { label: "云谷校区", list: [
+        { imgUrl: "./dining_hall/yungu/a.jpg", name: "C17食堂", address: "云谷校区C17",
+          food: "中式快餐、美食档口、夜宵、水果超市",
+          date: "早餐时间: 06:45-9:00<\/br>午餐时间: 11:00-13:00<\/br>晚餐时间: 17:00-19:00<\/br>夜宵时间: 19:30-23:00" },
+        { imgUrl: "./dining_hall/yungu/b.jpg", name: "C19食堂", address: "云谷校区C19",
+          food: "精品快餐、民族风味、西餐、轻食、美食档口",
+          date: "早餐时间：06:45-9:00<br/>午餐时间：11:00-13:00<br/>晚餐时间：17:00-19:00" },
+      ] },
+      { label: "云栖校区", list: [
+        { imgUrl: "./dining_hall/yunqi/a.png", name: "6号楼食堂", address: "云栖校区6号楼",
+          food: "中式快餐、民族风味、西餐、美食档口、夜宵",
+          date: "早餐时间：06:45-9:00<br/>午餐时间：11:00-13:00<br/>晚餐时间：17:00-19:00<br/>夜宵时间：19:30-23:00" },
+      ] },
+    ] },
+    //咖啡轻食
+    { keyword: "咖啡轻食", type: "0",
+      notice: '如果您有关于学校膳食工作的意见建议，欢迎向学校膳食委员会邮箱<span>（food@westlake.edu.cn）</span>反馈。',
+      data: [
+      { label: "云谷校区", list: [
+        { imgUrl: "./coffee/yungu/a.jpg", name: "行政楼咖啡吧", address: "A1#一楼", food: "",
+          date: "周一至周五 07:30-19:00</span></p><p>周六至周日 08:00-17:00</p>" },
+        { imgUrl: "./coffee/yungu/b.jpg", name: "面包店", address: "C12#-102/104", food: "",
+          date: "周一至周日 8:00-20:00" },
+      ] },
+      { label: "云栖校区", list: [
+        { imgUrl: "./coffee/yunqi/a.jpg", name: "咖啡吧", address: "5号楼-1楼", food: "",
+          date: "周一至周五 07:30-18:30</span></p><p>周六至周日 08:30-16:30</p>" },
+      ] },
+    ] },
+    //其他校园服务
+    { keyword: "其他校园服务", type: "0",
+      notice: '如果您有关于学校膳食工作的意见建议，欢迎向学校膳食委员会邮箱<span>（food@westlake.edu.cn）</span>反馈。',
+      data: [
+      { label: "云谷校区", list: [
+        { imgUrl: "./school_services/yungu/a.png", name: "校园超市", address: "C19#1楼", food: "",
+          date: "<p>人工服务<br><span>周一至周五 09:00-21:00<\/span><\/p><p>无人自助<br><span>24小时<\/p>" },
+        { imgUrl: "./school_services/yungu/b.jpg", name: "理发服务", address: "C12-101", food: "",
+          date: "周一至周六 10:30-21:30" },
+      ] },
+    ] },
+    //交通方式
+    { keyword: "交通方式", type: "1",
+      notice: "<div class=\"view TRS_UEDITOR\"><p><a href=\"https:\/\/security.zjwsvip.com\/#\/h5shuttleRoute\/1906876984879099905\" target=\"_blank\">点击查看班车实时信息<\/a>，法定假期 \/ 调休日班车安排，以学校邮件通知为准。<\/p><\/div>",
+      list: [ { title: "工作日班车时间表", listItem: [
+        { titleCampus: "云谷", morning: ["07:10", "08:40"], noon: [], night: [] },
+      ] } ] },
+  ],
+  mounted: function () { },
+});
+</script>

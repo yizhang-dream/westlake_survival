@@ -1,0 +1,787 @@
+"""MCP（Model Context Protocol）stdio 服务器：把西湖大学数据以只读工具暴露给 AI 客户端。
+
+零第三方依赖：只用标准库实现 MCP over stdio 的最小面（JSON-RPC 2.0 行协议），
+不引入 ``mcp`` / ``anyio`` 等包。协议语义对标常见校园 CLI 的 MCP server
+（只读工具、stdio、无写操作），实现为自研。
+
+协议实现
+========
+* 传输：stdin 一行一条 JSON 消息，stdout 一行一条 JSON 响应；日志一律走
+  stderr（**stdout 只放协议数据**，否则会污染客户端解析）。
+* 方法：``initialize`` 握手、``notifications/initialized``（通知，忽略）、
+  ``tools/list``、``tools/call``、``ping``；未知方法返回标准 JSON-RPC 错误
+  （``-32601 Method not found``）。
+* 错误码：``-32700`` 解析错误 / ``-32600`` 非法请求 / ``-32601`` 方法不存在 /
+  ``-32602`` 参数错误 / ``-32603`` 内部错误。
+* 工具执行失败**不走 JSON-RPC 错误**，而是返回 ``isError: true`` 的
+  ``content``（MCP 约定），因此客户端能拿到可读的中文报错文本。
+  ``tools/call`` 里的未知工具名属协议层错误，返回 ``-32602``。
+* 检测到 stdin EOF 即退出；每条响应写完立即 flush。
+
+只读工具（每个对应库内一个公开 API，参数 0~2 个，全部异常兜底不崩进程）
+=======================================================================
+``sis_schedule`` / ``sis_grades`` / ``sis_exams`` / ``sis_evals_pending`` /
+``calendar_today`` / ``calendar_week`` / ``transit_next`` / ``news_latest`` /
+``events_upcoming`` / ``research_latest`` / ``site_search`` / ``faculty_search`` /
+``campus_dining`` / ``campus_housing`` / ``contact_info`` / ``context_snapshot`` /
+``canvas_deadlines``。
+
+所有工具惰性 import 各自业务模块（缺依赖/缺模块时返回 ``isError``），
+输出统一转成紧凑 JSON 文本（dataclass 优先用其 ``to_dict``，否则递归序列化）。
+
+运行
+====
+::
+
+    python -m westlake_survival.mcp_server
+
+ZCode / Claude Desktop 等 MCP 客户端接入配置（把路径换成本机实际值）::
+
+    {
+      "mcpServers": {
+        "westlake": {
+          "command": "D:/westlake_survival/.venv/Scripts/python.exe",
+          "args": ["-m", "westlake_survival.mcp_server"],
+          "env": {
+            "PYTHONPATH": "D:/westlake_survival/src",
+            "WESTLAKE_CANVAS_TOKEN": ""
+          }
+        }
+      }
+    }
+
+``WESTLAKE_CANVAS_TOKEN`` 可选（仅 ``canvas_deadlines`` 需要；缺省从
+``~/.westlake_survival/canvas_token.txt`` 首行读取，都没有时该工具返回获取引导）。
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import json
+import logging
+import os
+import sys
+from datetime import date, datetime, timedelta, time
+from enum import Enum
+from typing import Any, Iterable
+
+from westlake_survival._version import __version__
+
+logger = logging.getLogger("westlake_survival.mcp")
+
+#: 服务器名（``initialize`` 的 ``serverInfo.name``）。
+SERVER_NAME = "westlake_survival"
+
+#: 兜底协议版本；客户端在 ``initialize.params.protocolVersion`` 里给了版本时回显它，
+#: 最大化与各版本客户端的兼容性。
+DEFAULT_PROTOCOL_VERSION = "2025-06-18"
+
+#: 中文星期名（周一 .. 周日）。
+_WEEKDAY_CN = ("周一", "周二", "周三", "周四", "周五", "周六", "周日")
+
+#: 校区取值（与 :data:`westlake_survival.campus.CAMPUS_CHOICES` 同口径）。
+_CAMPUS_ENUM = ("云谷", "云栖", "铜鉴湖")
+
+
+class ToolHint(Exception):
+    """工具返回的"引导信息"（非错误）：以正常 ``content`` 文本呈现。
+
+    目前只有 ``canvas_deadlines`` 缺 token 时用——给客户端一段可照做的配置
+    引导，而不是一个红字错误。
+    """
+
+
+# --------------------------------------------------------------------------- #
+# JSON-RPC 错误码
+# --------------------------------------------------------------------------- #
+PARSE_ERROR = -32700
+INVALID_REQUEST = -32600
+METHOD_NOT_FOUND = -32601
+INVALID_PARAMS = -32602
+INTERNAL_ERROR = -32603
+
+
+# --------------------------------------------------------------------------- #
+# 序列化：任意对象 → JSON 可序列化结构
+# --------------------------------------------------------------------------- #
+def _to_plain(value: Any) -> Any:
+    """把库内返回的对象递归转成 JSON 可序列化结构。
+
+    优先级：枚举→``.value``（必须先于标量，见下）、None/标量原样、日期时间→
+    ISO 字符串、``to_dict()``→递归、dataclass→``asdict`` 后递归、容器→逐项
+    递归，最后兜底 ``str()``。
+    """
+    # 枚举先于标量判断：``class Campus(str, Enum)`` 也是 ``str`` 实例，
+    # 若被标量分支拦下，``json.dumps`` 会输出 ``"Campus.YUNGU"`` 而非 ``"云谷"``。
+    if isinstance(value, Enum):
+        return _to_plain(value.value)
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    # 库内模型的 ``to_dict()`` 是权威序列化口径，优先于泛化的 asdict 兜底。
+    to_dict = getattr(value, "to_dict", None)
+    if callable(to_dict):
+        return _to_plain(to_dict())
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return _to_plain(dataclasses.asdict(value))
+    if isinstance(value, dict):
+        return {str(k): _to_plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [_to_plain(item) for item in value]
+    return str(value)
+
+
+def _dumps(value: Any) -> str:
+    """紧凑 JSON 文本（单行，无多余空白）。"""
+    return json.dumps(_to_plain(value), ensure_ascii=False, separators=(",", ":"))
+
+
+# --------------------------------------------------------------------------- #
+# 参数取值辅助（把类型/范围错误变成可读 ValueError → isError 文本）
+# --------------------------------------------------------------------------- #
+def _opt_int(args: dict, key: str, default: int, *, minimum: int | None = None,
+             maximum: int | None = None) -> int:
+    """从 ``args`` 取整数参数 ``key``（缺省 ``default``），越界/类型错抛 ValueError。"""
+    raw = args.get(key, default)
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise ValueError(f"参数 {key} 必须是整数，得到 {raw!r}")
+    value = int(raw)
+    if raw != value:
+        raise ValueError(f"参数 {key} 必须是整数，得到 {raw!r}")
+    if minimum is not None and value < minimum:
+        raise ValueError(f"参数 {key} 必须 >= {minimum}，得到 {value}")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"参数 {key} 必须 <= {maximum}，得到 {value}")
+    return value
+
+
+def _opt_str(args: dict, key: str) -> str | None:
+    """从 ``args`` 取字符串参数；缺省/空串/非字符串返回 ``None``。"""
+    raw = args.get(key)
+    if not isinstance(raw, str):
+        return None
+    raw = raw.strip()
+    return raw or None
+
+
+# --------------------------------------------------------------------------- #
+# 工具实现（每个惰性 import 对应业务模块；抛异常即 isError）
+# --------------------------------------------------------------------------- #
+def _tool_sis_schedule(args: dict) -> Any:
+    """本学期课表节次。"""
+    from westlake_survival.sis import get_schedule
+
+    return [session.to_dict() for session in get_schedule()]
+
+
+def _tool_sis_grades(args: dict) -> Any:
+    """全部学期成绩。"""
+    from westlake_survival.sis import grades
+
+    return [grade.to_dict() for grade in grades()]
+
+
+def _tool_sis_exams(args: dict) -> Any:
+    """当前学期考试安排。"""
+    from westlake_survival.sis import exam_schedule
+
+    return [slot.to_dict() for slot in exam_schedule()]
+
+
+def _tool_sis_evals_pending(args: dict) -> Any:
+    """未完成的评教任务。"""
+    from westlake_survival.sis import pending_evaluations
+
+    return [task.to_dict() for task in pending_evaluations()]
+
+
+def _tool_calendar_today(args: dict) -> Any:
+    """今天的日期 / 学期 / 周次 / 当日校历事件。"""
+    from westlake_survival.calendar import AcademicCalendar
+
+    calendar = AcademicCalendar.load()
+    today = date.today()
+    semester = calendar.current(today)
+    payload: dict[str, Any] = {
+        "date": today.isoformat(),
+        "weekday": _WEEKDAY_CN[today.weekday()],
+        "semester": None,
+        "week": None,
+        "is_teaching_day": None,
+        "is_holiday": None,
+        "events": [],
+    }
+    if semester is None:
+        return payload
+    payload["semester"] = semester.name
+    payload["week"] = semester.week_of(today)
+    payload["is_teaching_day"] = semester.is_teaching_day(today)
+    payload["is_holiday"] = semester.is_holiday(today)
+    payload["events"] = [
+        {"title": e.title, "start": e.start.isoformat(),
+         "end": e.end.isoformat() if e.end else None}
+        for e in semester.events
+        if e.covers(today)
+    ]
+    return payload
+
+
+def _tool_calendar_week(args: dict) -> Any:
+    """第 N 周的起止日期（缺省取当前周）。"""
+    from westlake_survival.calendar import AcademicCalendar
+
+    calendar = AcademicCalendar.load()
+    today = date.today()
+    semester = calendar.current(today)
+    if semester is None and calendar.semesters:
+        semester = calendar.semesters[-1]
+    if semester is None:
+        raise ValueError("未找到任何学期数据，无法换算周次")
+
+    total = semester.teaching_weeks()
+    raw = args.get("week")
+    if raw is None:
+        week = semester.week_of(today)
+        if week is None:
+            raise ValueError(
+                f"今天不在 {semester.name} 的教学周内，请显式指定 week（1..{total}）"
+            )
+    else:
+        week = _opt_int(args, "week", 1, minimum=1, maximum=max(1, total))
+    return {
+        "semester": semester.name,
+        "week": week,
+        "total_weeks": total,
+        "start": semester.date_of(week, 1).isoformat(),
+        "end": semester.date_of(week, 7).isoformat(),
+    }
+
+
+def _tool_transit_next(args: dict) -> Any:
+    """下一批发车时刻（可按校区过滤）。"""
+    from westlake_survival.transit import Campus, transit
+
+    campus_name = _opt_str(args, "campus")
+    campus = Campus(campus_name) if campus_name else None
+    limit = _opt_int(args, "limit", 3, minimum=1, maximum=20)
+    departures = transit().next_departures(campus=campus, limit=limit)
+    return [
+        {
+            "time": time_str,
+            "campus": table.campus.value,
+            "day_kind": table.day_kind.value,
+            "direction": table.direction_note,
+        }
+        for table, time_str in departures
+    ]
+
+
+def _tool_news_latest(args: dict) -> Any:
+    """西湖新闻最新条目。"""
+    from westlake_survival.news import latest
+
+    limit = _opt_int(args, "limit", 10, minimum=1, maximum=50)
+    return [
+        {
+            "title": item.title,
+            "category": item.category,
+            "date": item.date.isoformat() if item.date else None,
+            "url": item.url,
+        }
+        for item in latest(limit=limit)
+    ]
+
+
+def _tool_events_upcoming(args: dict) -> Any:
+    """未来 N 天的活动预告。"""
+    from westlake_survival.events import upcoming
+
+    days = _opt_int(args, "days", 14, minimum=0, maximum=90)
+    return [
+        {
+            "title": item.title,
+            "date": item.date.isoformat(),
+            "time_range": item.time_range,
+            "venue": item.venue,
+            "organizer": item.organizer,
+            "event_type": item.event_type,
+            "url": item.url,
+        }
+        for item in upcoming(days=days)
+    ]
+
+
+def _tool_research_latest(args: dict) -> Any:
+    """科研进展最新条目。"""
+    from westlake_survival.research import latest
+
+    limit = _opt_int(args, "limit", 10, minimum=1, maximum=50)
+    return [
+        {
+            "title": item.title,
+            "category": item.category,
+            "date": item.date.isoformat() if item.date else None,
+            "url": item.url,
+        }
+        for item in latest(limit=limit)
+    ]
+
+
+def _tool_site_search(args: dict) -> Any:
+    """官网全站搜索。"""
+    from westlake_survival.search import search
+
+    query = _opt_str(args, "query")
+    if not query:
+        raise ValueError("参数 query 不能为空")
+    page = _opt_int(args, "page", 1, minimum=1)
+    result = search(query, page=page)
+    return {
+        "query": query,
+        "page": result.page,
+        "page_count": result.page_count,
+        "total": result.total,
+        "hits": [
+            {
+                "title": hit.clean_title,
+                "url": hit.url,
+                "date": hit.date.isoformat() if hit.date else None,
+                "desc": hit.clean_desc,
+            }
+            for hit in result.hits
+        ],
+    }
+
+
+def _tool_faculty_search(args: dict) -> Any:
+    """教师名录检索（按学院 / 关键词）。"""
+    from westlake_survival.faculty import members
+
+    school = _opt_str(args, "school")
+    keyword = _opt_str(args, "keyword")
+    return [
+        {
+            "name": member.name,
+            "name_en": member.name_en,
+            "school": member.school,
+            "subject": member.subject,
+            "lab": member.lab,
+            "url": member.url,
+        }
+        for member in members(school=school, keyword=keyword)
+    ]
+
+
+def _tool_campus_dining(args: dict) -> Any:
+    """餐饮点（食堂 / 咖啡轻食）。"""
+    from westlake_survival.campus import dining
+
+    campus = _opt_str(args, "campus")
+    return _to_plain(dining(campus=campus))
+
+
+def _tool_campus_housing(args: dict) -> Any:
+    """校内公寓信息。"""
+    from westlake_survival.campus import housing
+
+    campus = _opt_str(args, "campus")
+    return _to_plain(housing(campus=campus))
+
+
+def _tool_contact_info(args: dict) -> Any:
+    """三校区地址交通 + 常用联系电话/邮箱。"""
+    from westlake_survival.contact import GENERAL_CONTACTS, campuses, contacts
+
+    return {
+        "campuses": _to_plain(campuses()),
+        "contacts": _to_plain(contacts()),
+        "general": _to_plain(GENERAL_CONTACTS),
+    }
+
+
+def _tool_context_snapshot(args: dict) -> Any:
+    """"此刻西湖"快照（日期 / 周次 / 事件 / 班车 / 天气）。"""
+    from westlake_survival.context import Level, snapshot
+
+    level_name = _opt_str(args, "level") or Level.NORMAL.value
+    try:
+        level = Level(level_name)
+    except ValueError as exc:
+        allowed = " / ".join(item.value for item in Level)
+        raise ValueError(f"参数 level 必须是 {allowed} 之一，得到 {level_name!r}") from exc
+    return _to_plain(snapshot(level).to_dict())
+
+
+def _tool_canvas_deadlines(args: dict) -> Any:
+    """未来 N 天内到期的 Canvas 作业；无 token 时返回获取引导。"""
+    from westlake_survival.canvas import CHINA_TZ, canvas, resolve_token
+
+    if resolve_token() is None:
+        raise ToolHint(
+            "未配置 Canvas API token，无法查询作业截止时间。请在 Canvas 网页"
+            "「账户 → 设置 → 新建访问令牌」生成令牌后，设置环境变量 "
+            "WESTLAKE_CANVAS_TOKEN（或写入 ~/.westlake_survival/canvas_token.txt "
+            "首行），再重试。"
+        )
+
+    days = _opt_int(args, "days", 14, minimum=1, maximum=180)
+    now = datetime.now(CHINA_TZ)
+    cutoff = now + timedelta(days=days)
+    items = canvas().upcoming_deadlines(limit=200)
+    selected = [
+        item
+        for item in items
+        if item.due_at is not None and now <= item.due_at <= cutoff
+    ]
+    return [
+        {
+            "name": item.name,
+            "due_at": item.due_at.isoformat(),
+            "course_id": item.course_id,
+            "url": item.html_url,
+        }
+        for item in selected
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# 工具清单（name / description / inputSchema / handler）
+# --------------------------------------------------------------------------- #
+_CAMPUS_SCHEMA = {
+    "type": "string",
+    "enum": list(_CAMPUS_ENUM),
+    "description": "校区名，缺省表示全部校区。",
+}
+
+
+def _schema(properties: dict[str, Any] | None = None,
+            required: list[str] | None = None) -> dict[str, Any]:
+    """构造一个 ``type: object`` 的 inputSchema（无参数时 ``properties`` 为空）。"""
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": properties or {},
+        "additionalProperties": False,
+    }
+    if required:
+        schema["required"] = required
+    return schema
+
+
+def _int_param(description: str, *, minimum: int, maximum: int | None = None) -> dict[str, Any]:
+    """构造一个整数参数 schema。"""
+    param: dict[str, Any] = {"type": "integer", "minimum": minimum, "description": description}
+    if maximum is not None:
+        param["maximum"] = maximum
+    return param
+
+
+def _str_param(description: str, *, enum: list[str] | None = None) -> dict[str, Any]:
+    """构造一个字符串参数 schema。"""
+    param: dict[str, Any] = {"type": "string", "description": description}
+    if enum:
+        param["enum"] = enum
+    return param
+
+_TOOL_SPECS: tuple[dict[str, Any], ...] = (
+    {
+        "name": "sis_schedule",
+        "description": "取本学期 SIS 课表节次（课程 / 教师 / 星期 / 时间 / 地点）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_schedule,
+    },
+    {
+        "name": "sis_grades",
+        "description": "取全部学期成绩（学期 / 课程 / 等级 / 学分）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_grades,
+    },
+    {
+        "name": "sis_exams",
+        "description": "取当前学期考试安排（日期 / 时间 / 类型 / 考场 / 座位）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_exams,
+    },
+    {
+        "name": "sis_evals_pending",
+        "description": "取尚未完成的评教任务。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_evals_pending,
+    },
+    {
+        "name": "calendar_today",
+        "description": "今天的日期 / 星期 / 学期 / 教学周次 / 当日校历事件。",
+        "inputSchema": _schema(),
+        "handler": _tool_calendar_today,
+    },
+    {
+        "name": "calendar_week",
+        "description": "第 N 个教学周的起止日期（缺省取当前周）。",
+        "inputSchema": _schema({"week": _int_param("教学周次，从 1 起。", minimum=1)}),
+        "handler": _tool_calendar_week,
+    },
+    {
+        "name": "transit_next",
+        "description": "校园巴士下一批发车时刻（可指定始发校区）。",
+        "inputSchema": _schema(
+            {
+                "campus": _CAMPUS_SCHEMA,
+                "limit": _int_param("返回条数，默认 3。", minimum=1, maximum=20),
+            }
+        ),
+        "handler": _tool_transit_next,
+    },
+    {
+        "name": "news_latest",
+        "description": "西湖新闻最新条目。",
+        "inputSchema": _schema(
+            {"limit": _int_param("最多返回条数，默认 10。", minimum=1, maximum=50)}
+        ),
+        "handler": _tool_news_latest,
+    },
+    {
+        "name": "events_upcoming",
+        "description": "未来 N 天内的活动预告（含今天）。",
+        "inputSchema": _schema(
+            {"days": _int_param("未来天数窗口，默认 14。", minimum=0, maximum=90)}
+        ),
+        "handler": _tool_events_upcoming,
+    },
+    {
+        "name": "research_latest",
+        "description": "科研进展最新条目。",
+        "inputSchema": _schema(
+            {"limit": _int_param("最多返回条数，默认 10。", minimum=1, maximum=50)}
+        ),
+        "handler": _tool_research_latest,
+    },
+    {
+        "name": "site_search",
+        "description": "西湖大学官网全站搜索。",
+        "inputSchema": _schema(
+            {
+                "query": _str_param("检索词。"),
+                "page": _int_param("页码，从 1 起，默认 1。", minimum=1),
+            },
+            required=["query"],
+        ),
+        "handler": _tool_site_search,
+    },
+    {
+        "name": "faculty_search",
+        "description": "教师名录检索（可按学院或关键词过滤）。",
+        "inputSchema": _schema(
+            {
+                "school": _str_param("学院名，如「理学院」「工学院」。"),
+                "keyword": _str_param("关键词，匹配姓名 / 英文名 / 学科 / 实验室。"),
+            }
+        ),
+        "handler": _tool_faculty_search,
+    },
+    {
+        "name": "campus_dining",
+        "description": "餐饮点信息（食堂 / 咖啡轻食 的位置、供餐与营业时间）。",
+        "inputSchema": _schema({"campus": _CAMPUS_SCHEMA}),
+        "handler": _tool_campus_dining,
+    },
+    {
+        "name": "campus_housing",
+        "description": "校内公寓信息（地址、配套服务、联系电话）。",
+        "inputSchema": _schema({"campus": _CAMPUS_SCHEMA}),
+        "handler": _tool_campus_housing,
+    },
+    {
+        "name": "contact_info",
+        "description": "三校区地址与交通 + 常用联系电话 / 邮箱。",
+        "inputSchema": _schema(),
+        "handler": _tool_contact_info,
+    },
+    {
+        "name": "context_snapshot",
+        "description": "「此刻西湖」快照：日期 / 周次 / 校历事件 / 班车 / 天气 / 待办截止。",
+        "inputSchema": _schema(
+            {"level": _str_param("信息量档位，默认 normal。", enum=["terse", "normal", "verbose"])}
+        ),
+        "handler": _tool_context_snapshot,
+    },
+    {
+        "name": "canvas_deadlines",
+        "description": "未来 N 天内到期的 Canvas 作业截止（需配置 Canvas API token）。",
+        "inputSchema": _schema(
+            {"days": _int_param("未来天数窗口，默认 14。", minimum=1, maximum=180)}
+        ),
+        "handler": _tool_canvas_deadlines,
+    },
+)
+
+#: 工具名 → spec，供分发用（保持定义顺序）。
+_TOOLS_BY_NAME: dict[str, dict[str, Any]] = {spec["name"]: spec for spec in _TOOL_SPECS}
+
+
+def list_tools() -> list[dict[str, Any]]:
+    """``tools/list`` 的载荷（不含内部 handler）。"""
+    return [
+        {
+            "name": spec["name"],
+            "description": spec["description"],
+            "inputSchema": spec["inputSchema"],
+        }
+        for spec in _TOOL_SPECS
+    ]
+
+
+def call_tool(name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    """执行一个工具，返回 MCP 的 ``tools/call`` 结果对象。
+
+    工具内部异常一律转成 ``isError: true`` 的可读文本，绝不向上抛；只有工具名
+    不存在时才由调用方（:func:`dispatch`）转成 JSON-RPC ``-32602``。
+    """
+    spec = _TOOLS_BY_NAME.get(name)
+    if spec is None:
+        raise KeyError(name)
+    args = arguments if isinstance(arguments, dict) else {}
+    try:
+        payload = spec["handler"](args)
+    except ToolHint as hint:
+        return {"content": [{"type": "text", "text": str(hint)}]}
+    except Exception as exc:  # noqa: BLE001 - 工具边界：任何异常都转 isError
+        logger.warning("工具 %s 执行失败：%s: %s", name, type(exc).__name__, exc)
+        message = str(exc) or type(exc).__name__
+        return {
+            "content": [{"type": "text", "text": f"{type(exc).__name__}: {message}"}],
+            "isError": True,
+        }
+    return {"content": [{"type": "text", "text": _dumps(payload)}]}
+
+
+# --------------------------------------------------------------------------- #
+# JSON-RPC 分发
+# --------------------------------------------------------------------------- #
+def _error(request_id: Any, code: int, message: str) -> dict[str, Any]:
+    return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
+
+
+def _result(request_id: Any, result: Any) -> dict[str, Any]:
+    return {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+
+def _initialize(params: dict[str, Any]) -> dict[str, Any]:
+    version = params.get("protocolVersion")
+    if not isinstance(version, str) or not version.strip():
+        version = DEFAULT_PROTOCOL_VERSION
+    return {
+        "protocolVersion": version.strip(),
+        "serverInfo": {"name": SERVER_NAME, "version": __version__},
+        "capabilities": {"tools": {"listChanged": False}},
+    }
+
+
+def dispatch(message: Any) -> dict[str, Any] | None:
+    """处理一条已解析的 JSON-RPC 消息；通知（无 ``id``）返回 ``None``。"""
+    if not isinstance(message, dict):
+        return _error(None, INVALID_REQUEST, "请求必须是 JSON 对象")
+
+    request_id = message.get("id")
+    method = message.get("method")
+    if not isinstance(method, str):
+        return _error(request_id, INVALID_REQUEST, "缺少 method 字段")
+
+    is_notification = "id" not in message or request_id is None
+    params = message.get("params")
+    if not isinstance(params, dict):
+        params = {}
+
+    try:
+        if method == "initialize":
+            result = _initialize(params)
+        elif method == "ping":
+            result = {}
+        elif method == "tools/list":
+            result = {"tools": list_tools()}
+        elif method == "tools/call":
+            name = params.get("name")
+            if not isinstance(name, str) or not name:
+                return None if is_notification else _error(
+                    request_id, INVALID_PARAMS, "tools/call 缺少 name 参数"
+                )
+            try:
+                result = call_tool(name, params.get("arguments"))
+            except KeyError:
+                return None if is_notification else _error(
+                    request_id, INVALID_PARAMS, f"未知工具：{name}"
+                )
+        elif method.startswith("notifications/"):
+            # initialized / cancelled / progress 等通知：静默忽略。
+            return None
+        else:
+            return None if is_notification else _error(
+                request_id, METHOD_NOT_FOUND, f"未知方法：{method}"
+            )
+    except Exception as exc:  # noqa: BLE001 - 分发边界：兜底为内部错误
+        logger.exception("处理方法 %s 时发生未预期异常", method)
+        return None if is_notification else _error(
+            request_id, INTERNAL_ERROR, f"{type(exc).__name__}: {exc}"
+        )
+
+    if is_notification:
+        return None
+    return _result(request_id, result)
+
+
+def handle_line(line: str) -> str | None:
+    """处理一行输入文本，返回一行待写出的响应；通知/空行返回 ``None``。"""
+    text = line.strip()
+    if not text:
+        return None
+    try:
+        message = json.loads(text)
+    except json.JSONDecodeError as exc:
+        logger.warning("无法解析输入行：%s", exc)
+        return _dumps(_error(None, PARSE_ERROR, f"JSON 解析失败：{exc.msg}"))
+    if isinstance(message, list):
+        return _dumps(_error(None, INVALID_REQUEST, "不支持 JSON-RPC 批量请求"))
+    response = dispatch(message)
+    return _dumps(response) if response is not None else None
+
+
+def serve(stdin: Iterable[str] | None = None, stdout: Any = None) -> None:
+    """逐行读取 ``stdin``、写响应到 ``stdout``；读到 EOF 即返回。"""
+    source = stdin if stdin is not None else sys.stdin
+    sink = stdout if stdout is not None else sys.stdout
+    for raw in source:
+        response = handle_line(raw)
+        if response is None:
+            continue
+        sink.write(response + "\n")
+        sink.flush()
+
+
+def _force_utf8(stream: Any) -> None:
+    """尽量把标准流重配为 UTF-8（Windows 管道默认可能是 GBK，中文会编不出去）。"""
+    reconfigure = getattr(stream, "reconfigure", None)
+    if not callable(reconfigure):
+        return
+    try:
+        reconfigure(encoding="utf-8")
+    except (ValueError, OSError):  # pragma: no cover - 流不可重配（已替换等）
+        pass
+
+
+def main() -> int:
+    """入口：``python -m westlake_survival.mcp_server``。"""
+    logging.basicConfig(
+        stream=sys.stderr,
+        level=os.environ.get("WESTLAKE_MCP_LOG", "WARNING").upper(),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    _force_utf8(sys.stdin)
+    _force_utf8(sys.stdout)
+    _force_utf8(sys.stderr)
+    logger.info("%s MCP server 启动（stdio）", SERVER_NAME)
+    serve()
+    logger.info("%s MCP server 退出（stdin EOF）", SERVER_NAME)
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover - 由 __main__ / 测试覆盖
+    raise SystemExit(main())

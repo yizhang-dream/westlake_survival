@@ -1,0 +1,80 @@
+<!-- 自 https://www.westlake.edu.cn/about/contact_us/ 2026-09-22 实测裁剪：三校区地址、
+     每校区两条自驾路线与地铁/公交班次、mapList 与 contactList 全量，保留组件尾部
+     mounted: function(){} 回调（真实存在的 function 字段，故不能整块 js_literal）。 -->
+<script>
+new contactUs("#app", {
+  titleObj: { title1: "走进西湖", title2: "联系我们" },
+  transportObj: {
+    addressArr: [
+      { campus: "云谷校区", address: "浙江省杭州市西湖区墩余路600号<\/br>邮编：310030" },
+      { campus: "云栖校区", address: "浙江省杭州市西湖区石龙山街18号<\/br>邮编：310024" },
+      { campus: "云栖校区（铜鉴湖园区）", address: "浙江省杭州市西湖区转塘街道石龙山工业区块25号<br>邮编：310024" },
+    ],
+    trafficList: [
+      {
+        index: 0,
+        //english 字段用不上删除了
+        chinese: "1、杭长（宜）高速紫金港互通 – 灯彩街 – 墩余路<br\/>2、长深高速紫金港枢纽 – 灯彩街 – 墩余路",
+        metro: "4号线池华街站",
+        metroOperatingHours: [
+          { bound: "池华街方向", time: "首班车06:00，末班车22:40" },
+          { bound: "浦沿方向", time: "首班车06:00，末班车22:30" },
+        ],
+        bus: "西湖大学云谷校区，349路",
+        busOperatingHours: [
+          { bound: "三墩地铁站方向", time: "首班车05:30，末班车21:30" },
+          { bound: "火车西站方向", time: "首班车06:30，末班车19:30" },
+        ],
+        mapImgUrl: "./address/yungu/202309/W020241028583941229157.png",//用于手机端
+      },
+      {
+        index: 1,
+        chinese: "1、长深高速转塘互通 – 云河街 – 洙泗路 – 石龙山街<br\/>2、紫之隧道 – 之江路 – 洙泗路 – 石龙山街",
+        metro: "6号线科海路站",
+        metroOperatingHours: [
+          { bound: "双浦方向", time: "首班车06:20，末班车23:59" },
+        ],
+        bus: "石龙山街云梦路口，121路",
+        busOperatingHours: [
+          { bound: "蒋村公交中心站方向", time: "首班车07:00，末班车18:00" },
+        ],
+        mapImgUrl: "./address/yunqi/202309/W020241128382301015922.png",//用于手机端
+      },
+      {
+        index: 2,
+        chinese: "1、彩虹快速路 – 云河街 – 洙泗路 – 石龙山西路 – 石龙山街<br\/>2、紫之隧道 – 之江路 – 洙泗路 – 石龙山西路 – 石龙山街",
+        metro: "6号线科海路站",
+        metroOperatingHours: [
+          { bound: "双浦方向", time: "首班车06:20，末班车23:59" },
+        ],
+        bus: "石龙山站，121路",
+        busOperatingHours: [
+          { bound: "云栖小镇方向", time: "首班车06:00，末班车19:30" },
+        ],
+        mapImgUrl: "",//用于手机端
+      },
+    ],
+  },
+  mapList: [
+    { text: "云谷", imgUrl: "./address/yungu/202309/W020241028583928377634.png",//用于手机端
+    },
+    { text: "云栖", imgUrl: "./address/yunqi/202309/W020241128382300898987.png",//用于手机端
+    },
+  ],
+  contactList: [
+    {
+      title: "想咨询招生政策",
+      content: "<div class=\"view TRS_UEDITOR\"><p><span style=\"text-decoration-line: underline;\"><\/span><\/p><p><span>本科生招生<\/span><\/p><p><span><span>电话：0<\/span>571-88996767<\/span><\/p><p><span>邮箱：<\/span><span>ugadmissions@westlake.edu.cn<\/span><\/p><p><span>博士生招生<\/span><\/p><p>电话：0571-86886872<\/p><p>邮箱：admissions@westlake.edu.cn<\/p><\/div>",
+    },
+    {
+      title: "想参加校园活动",
+      content: "<div class=\"view TRS_UEDITOR\"><p>您可以关注官方微信公众号（<strong>西湖大学WestlakeUniversity<\/strong>），我们会不定期发布对外开放的一些活动名额。<\/p><\/div>",
+    },
+    {
+      title: "想捐赠支持西湖",
+      content: "<div class=\"view TRS_UEDITOR\"><p><strong>联系方式<\/strong>：13071113309（微信同号）<\/p><p>工作人员小WE，随时在线为您解答<\/p><\/div>",
+    },
+  ],
+  mounted: function () { },
+});
+</script>

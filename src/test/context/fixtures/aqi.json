@@ -1,0 +1,25 @@
+{
+  "latitude": 30.300003,
+  "longitude": 120.100006,
+  "generationtime_ms": 0.46,
+  "utc_offset_seconds": 28800,
+  "timezone": "Asia/Shanghai",
+  "timezone_abbreviation": "GMT+8",
+  "elevation": 5.0,
+  "current_units": {
+    "time": "iso8601",
+    "interval": "seconds",
+    "pm10": "μg/m³",
+    "pm2_5": "μg/m³",
+    "us_aqi": "USAQI",
+    "european_aqi": "EAQI"
+  },
+  "current": {
+    "time": "2026-09-22T03:00",
+    "interval": 3600,
+    "pm10": 62.6,
+    "pm2_5": 55.6,
+    "us_aqi": 151,
+    "european_aqi": 75
+  }
+}
