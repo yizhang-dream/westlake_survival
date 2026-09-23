@@ -1,0 +1,48 @@
+{
+  "data": {
+    "ldata": [
+      {
+        "doctitle": "方睿博士",
+        "en_name": "Rui Fang, Ph.D.",
+        "xsszm": "F",
+        "recurl": "https://www.westlake.edu.cn/faculty/rui-fang.html",
+        "fulldate": "2026-06-01",
+        "school": "生命科学学院",
+        "email": "fangrui@westlake.edu.cn",
+        "website": "",
+        "Subject2": "蛋白质聚集与降解实验室",
+        "Subject3": "",
+        "docphoto": "https://www.westlake.edu.cn/about/faculty/life_science/202606/W020260601000000000001.jpg",
+        "subject": "生物学"
+      },
+      {
+        "doctitle": "肖宇晨博士",
+        "en_name": "Yuchen Xiao, Ph.D.",
+        "xsszm": "X",
+        "recurl": "https://www.westlake.edu.cn/faculty/yuchen-xiao.html",
+        "fulldate": "2026-05-20",
+        "school": "生命科学学院与理学院（兼聘）",
+        "email": "xiaoyuchen@westlake.edu.cn",
+        "website": "",
+        "Subject2": "意识与认知神经科学实验室",
+        "Subject3": "认知科学中心",
+        "docphoto": "https://www.westlake.edu.cn/about/faculty/life_science/202605/W020260520000000000002.jpg",
+        "subject": "生物学"
+      },
+      {
+        "doctitle": "白蕊博士",
+        "en_name": "Rui Bai, Ph.D.",
+        "xsszm": "B",
+        "recurl": "https://www.westlake.edu.cn/faculty/rui-bai.html",
+        "fulldate": "2026-03-12",
+        "school": "生命科学学院",
+        "email": "bairui@westlake.edu.cn",
+        "website": "",
+        "Subject2": "RNA功能与调控实验室",
+        "Subject3": "",
+        "docphoto": "https://www.westlake.edu.cn/about/faculty/life_science/202603/W020260312587939888972_ORIGIN.jpg",
+        "subject": "生物学"
+      }
+    ]
+  }
+}

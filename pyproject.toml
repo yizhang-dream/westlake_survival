@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "westlake_survival"
+dynamic = ["version"]
+description = "API-level access to Westlake University services — 在 API 层面调用西湖大学各服务系统"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "westlake_survival contributors" }]
+keywords = ["westlake", "university", "sis", "canvas", "library", "westlake-survival"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Education",
+]
+dependencies = [
+    "requests>=2.28",
+    "click>=8.1",
+    "beautifulsoup4>=4.12",
+    "python-dateutil>=2.8",
+    "tzdata>=2024.1",
+]
+
+[project.optional-dependencies]
+webui = ["flask>=3.0"]
+test = ["pytest>=8.0"]
+secure = ["keyring>=25"]
+
+[project.scripts]
+westlake = "westlake_survival.cli:cli"
+westlake-mcp = "westlake_survival.mcp_server:main"
+
+[project.urls]
+Reference = "https://github.com/dumixthestpd/sustech_survival"
+
+[tool.hatch.version]
+path = "src/westlake_survival/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/westlake_survival"]
+
+[tool.pytest.ini_options]
+testpaths = ["src/test"]
+pythonpath = ["src"]
+markers = [
+    "live: tests requiring campus network and/or a valid session (excluded by default)",
+]
+addopts = "-m 'not live' --strict-markers"
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["westlake_survival"]

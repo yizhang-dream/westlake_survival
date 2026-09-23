@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}班车 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">校区班车</h1>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+<h2 class="section">现在出发</h2>
+{% if departures %}
+  <table class="data">
+    <thead><tr><th>时刻</th><th>校区</th><th>日别</th><th>方向</th></tr></thead>
+    <tbody>
+      {% for tbl, ts in departures %}
+      <tr>
+        <td class="time hl">{{ ts }}</td>
+        <td>{{ tbl.campus.value }}</td>
+        <td>{{ tbl.day_kind.value }}</td>
+        <td class="muted">{{ tbl.direction_note }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:.82rem">
+    日别仅按公历星期推断，不含法定假期 / 调休；假期以学校邮件通知为准。
+  </p>
+{% else %}
+  <div class="empty">暂无班车数据。</div>
+{% endif %}
+
+{% for campus in campuses %}
+  {% for kind in day_kinds %}
+    {% set table = tables.get((campus.name, kind.name)) %}
+    <h2 class="section">{{ campus.value }} · {{ kind.value }}</h2>
+    {% if table and (table.morning or table.noon or table.night) %}
+      <div class="muted" style="font-size:.82rem;margin-bottom:.4rem">{{ table.direction_note }}</div>
+      <table class="data">
+        <thead><tr><th>时段</th><th>发车时刻（从 {{ campus.value }} 开出）</th></tr></thead>
+        <tbody>
+          {% for group_label, times in [('早间', table.morning), ('午间', table.noon), ('晚间', table.night)] %}
+            {% if times %}
+            <tr>
+              <td class="muted">{{ group_label }}</td>
+              <td>
+                {% for ts in times %}
+                  {% set hl = (campus.name, kind.name, ts) in highlight %}
+                  <span class="{% if hl %}chip{% else %}time{% endif %}"
+                        style="margin-right:.4rem">{{ ts }}</span>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">无时刻表数据。</div>
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+{% endblock %}

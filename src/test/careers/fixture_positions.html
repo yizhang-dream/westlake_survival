@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Careers fixture</title></head>
+<body>
+<div id="app"></div>
+<script>
+new career("#app", {
+      titleObj: {
+        title1: "人才招聘",
+        title2: "岗位信息",
+        title3: "Open Positions",
+      },
+      categoryList: ["学术人才", "专职教学", "科研团队", "博士后", "直属机构", "其他关联机构",],
+      typeList: ["全职", "兼职",],
+      pageSize: 15,
+      roleList: [
+        {
+          category: "博士后",//类别
+          dept: "西湖大学生命科学学院贾洁敏课题组博士后招聘启事",
+          type: "全职, 生命科学学院, 中国杭州，云谷校区",//1、岗位性质2、部门3、官网地址
+          url: "https://www.westlake.edu.cn/careers/OpenPositions/postdoctoral_fellow/bshsls/202508/t20250827_58219.html",
+          url2: "",//外部链接，url2优先展示
+          target: "_self",
+          date:"2026-09-20",
+        },
+        {
+          category: "科研团队",//类别
+          dept: "西湖大学医学院钟声实验室研究系列招聘",
+          type: "全职, 医学院, 中国杭州",//1、岗位性质2、部门3、官网地址
+          url: "https://www.westlake.edu.cn/careers/OpenPositions/research_team/kymedical/202609/t20260918_69873.html",
+          url2: "",//外部链接，url2优先展示
+          target: "_self",
+          date:"2026-09-18",
+        },
+        {
+          category: "博士后",//类别
+          dept: "西湖大学工学院宫先达实验室博士后招聘启事",
+          type: "全职, 工学院, 中国杭州，云谷校区",//1、岗位性质2、部门3、官网地址
+          url: "https://www.westlake.edu.cn/careers/OpenPositions/postdoctoral_fellow/bsheng/202609/t20260918_69869.html",
+          url2: "",//外部链接，url2优先展示
+          target: "_self",
+          date:"2026-09-18",
+        },
+        {
+          category: "科研团队",//类别
+          dept: "生命科学学院许田实验室助理研究员、科研助理（人工智能，生物信息方向）招聘启事",
+          type: "全职, 生命科学学院, 中国杭州，云谷校区",//1、岗位性质2、部门3、官网地址
+          url: "https://www.westlake.edu.cn/careers/OpenPositions/research_team/kysls/202609/t20260911_69728.html",
+          url2: "",//外部链接，url2优先展示
+          target: "_self",
+          date:"2026-09-15",
+        },
+        {
+          category: "科研团队",//类别
+          dept: "西湖大学可信及通用人工智能实验室科研助理招聘启事",
+          type: "全职, 工学院, 中国杭州，云谷校区",//1、岗位性质2、部门3、官网地址
+          url: "https://www.westlake.edu.cn/careers/OpenPositions/research_team/kyeng/202609/t20260914_69798.html",
+          url2: "",//外部链接，url2优先展示
+          target: "_self",
+          date:"2026-09-14",
+        },
+        {
+          category: "博士后",//类别
+          dept: "西湖大学工学院金耀初实验室博士后招聘启事",
+          type: "全职, 工学院, 中国杭州，云谷校区",//1、岗位性质2、部门3、官网地址
+          url: "https://www.westlake.edu.cn/careers/OpenPositions/postdoctoral_fellow/bsheng/202609/t20260914_69790.html",
+          url2: "",//外部链接，url2优先展示
+          target: "_self",
+          date:"2026-09-14",
+        },
+      ],
+      mounted: function () { },
+    });
+</script>
+</body>
+</html>

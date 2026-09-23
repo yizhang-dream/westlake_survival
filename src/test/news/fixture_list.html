@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>西湖新闻</title></head>
+<body>
+<div id="app"></div>
+<script>
+      new allNews("#app", {
+      turnToEn: function (str) {
+        let val;
+        switch (str) {
+          case '全部':
+            val = "all";
+            break;
+        };
+        return val
+
+      },
+      topicsList: [
+         {
+           imgUrl: "../people/202609/W020260922412722347323.jpg",
+           title: "人物",
+           content: "本校“最大气”的两位老师！",
+           time: "2026-09-22 11:24:35",
+           url: "https://www.westlake.edu.cn/news_events/westlakenews/people/202609/t20260922_69940.html",
+         },
+         {
+           imgUrl: "../News/202609/W020260921626288601782.png",
+           title: "资讯",
+           content: "73个“小小宇宙”，等你来投下一颗星",
+           time: "2026-09-21 17:18:49",
+           url: "https://www.westlake.edu.cn/news_events/westlakenews/News/202609/t20260921_69914.html",
+         },
+         {
+           imgUrl: "../people/202609/W020260917499866819436.png",
+           title: "人物",
+           content: "两位国际天文奥赛金牌少年，在西湖撞了个满怀",
+           time: "2026-09-17 13:48:25",
+           url: "https://www.westlake.edu.cn/news_events/westlakenews/people/202609/t20260917_69845.html",
+         },
+         {
+           imgUrl: "../News/202609/W020260916599572978132_ORIGIN.jpg",
+           title: "资讯",
+           content: "与中国最大生物医药企业牵手",
+           time: "2026-09-16 16:34:10",
+           url: "https://www.westlake.edu.cn/news_events/westlakenews/News/202609/t20260916_69822.html",
+         },
+      ],
+      page: 1,
+    })
+</script>
+</body></html>

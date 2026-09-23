@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>科研进展详情</title></head>
+<body>
+<div id="app"></div>
+<script>
+      new newsDetail("#app", {
+      mainObj: {
+        Data:  "2025-10-16 21:59:19",//黄色框时间字段 前端截取
+        mainTitle: "西湖大学卢培龙研究团队及其合作者从头设计新型电压门控阴离子通道",
+        Author:  "",
+        Category: "学术",//该字段 用于展示列表筛选
+        categoryUrl: "https://www.westlake.edu.cn/news_events/westlakenews/allnews/?type=学术",
+        keywords: "学术",
+        detailContent: "<div class=\"view TRS_UEDITOR trs_paper_default trs_word\"><p style=\"text-indent: 0.29in; margin-bottom: 0in; font-size: 16px;\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;;\">离子通道在神经传导、肌肉收缩和细胞信号转导等关键生物学过程中发挥重要作用，其开闭状态受电压、配体或机械力等特定刺激的精确调控。</span></p><p style=\"text-indent: 0.29in;\"><span>北京时间2025年10月16日，西湖大学卢培龙团队在《Cell》发表相关研究成果。</span></p></div>",
+        downloadLists: [],
+        otherProgram: {
+          title: "相关新闻",
+          programList: [
+            {
+              title: "世界首次！西湖大学团队实现跨膜孔蛋白的精确从头设计",
+              time: "2020-08-26 11:00:00",
+              url: "https://www.westlake.edu.cn/news_events/westlakenews/academics/202009/t20200924_7143.shtml"
+            },
+          ],
+        },
+      },
+
+      mounted: function () { },
+    })
+</script>
+</body></html>

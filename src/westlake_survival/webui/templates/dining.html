@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}餐饮 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">餐饮</h1>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+{% if has_spots %}
+  {% for campus, spots in groups %}
+  <h2 class="section">{{ campus }} 校区</h2>
+  <table class="data">
+    <thead>
+      <tr><th>名称</th><th>地点</th><th>营业时间</th></tr>
+    </thead>
+    <tbody>
+      {% for spot in spots %}
+      <tr>
+        <td>
+          {{ spot.name or '—' }}
+          {% if spot.food %}<div class="muted" style="font-size:.8rem">{{ spot.food }}</div>{% endif %}
+        </td>
+        <td>{{ spot.address or '—' }}</td>
+        <td>
+          {% if spot.hours %}
+            {% for line in spot.hours %}<div class="time">{{ line }}</div>{% endfor %}
+          {% else %}<span class="dim">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endfor %}
+  <p class="muted" style="font-size:.82rem">
+    数据来自官网公开页面，可能有延迟；以现场公示为准。
+  </p>
+{% elif error %}
+  <div class="empty">餐饮数据暂不可用。</div>
+{% else %}
+  <div class="empty">暂无餐饮数据。</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>详情</title></head>
+<body>
+<div id="app"></div>
+<script>
+      new newsDetail("#app", {
+      mainObj: {
+        Data:  "2026-09-22 11:24:35",//黄色框时间字段 前端截取
+        mainTitle: "本校“最大气”的两位老师！",//大标题
+        Author:  "",
+        Category: "人物",//该字段 用于展示列表筛选
+        categoryUrl: "https://www.westlake.edu.cn/news_events/westlakenews/allnews/",//点击分类跳转
+         type: "人物",
+        typeMap: {//中文类型转英文映射
+          '资讯': 'universitynews',
+          '人物': 'people'
+        },
+        detailContent: "<p style=\"text-indent: 2em; margin-bottom: 12px;\">如果你是80后、90后，是否还记得一部童年电影《大气层消失》？电影里，列车毒气泄漏烧穿了某地区上空的大气臭氧层，一个中国男孩在动物朋友们的帮助下寻找泄漏源，最终拯救了地球。</p>",
+      },
+
+      mounted: function () { },
+    })
+</script>
+</body></html>

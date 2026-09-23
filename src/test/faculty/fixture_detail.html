@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Faculty detail fixture</title></head>
+<body>
+<div id="app"></div>
+<script>
+// 从真实教师主页 https://www.westlake.edu.cn/faculty/yifan-li.html
+// （2026-09-22 实测）裁剪出的 facultyDetail 组件片段：
+// personObj 各字段原样保留（含 subject 尾部逗号、bottomUrl 为空），
+// biographyStr / historyStr / researchStr 截短但保留真实的 HTML 结构与
+// "<\/p>" 这类转义，以及末尾的 mounted 函数回调（用于验证不能整块解析）。
+// representativeList（2026-09-23 实测结构：2 项，各含 title / content）为
+// **脱敏**片段：人名、邮箱等真实个人信息一律替换为 ***，仅保留字段结构与
+// 富文本形态（含 class 属性、<strong>/<span> 嵌套、<\/p> 转义）。
+new facultyDetail("#app", {
+      bgUrl: window.assetsPublicPath + "faculty_detail_banner.png",
+      titleObj1: {
+        text: "走进西湖",
+        url: "https://www.westlake.edu.cn/about/",
+        target: "_self"
+      },
+      titleObj2: {
+        text: "导师团队",
+        url: "https://www.westlake.edu.cn/about/faculty/",
+        target: "_self"
+      },
+      personObj: {
+        imgUrl: "./W020260611362809332339.jpg",
+        name: "李奕璠博士",
+        post: "理学院",
+        subject: "物理学,",
+        lab: "冷原子量子调控实验室",
+        email: "liyifan@westlake.edu.cn",
+        bottomLabel: "网站",
+        bottomUrl: "",
+        bottomTarget: "_self",
+        msg: "开拓，奋进，创新，我们与西湖一起成长。",
+      },
+      videoObj: {
+        imgUrl: "",
+        videoUrl: "",
+      },
+      biographyTitle: "个人简介",
+      biographyStr: "<div class=\"view TRS_UEDITOR trs_paper_default trs_web\"><p>李奕璠，1994年生，河南南阳人。2016年、2021年分别获清华大学学士、博士学位。将于2027年1月加入西湖大学物理系任助理教授、特聘研究员，组建“冷原子量子调控实验室”。<\/p><p><br\/><\/p><\/div>",
+      historyStr: "<div class=\"view TRS_UEDITOR trs_paper_default trs_web\"><p>2027- <\/p><p>西湖大学，助理教授、特聘研究员<\/p><p>2021  <\/p><p>清华大学，博士<\/p><\/div>",
+      researchTitle: "学术成果及研究方向",
+      researchStr: "<div class=\"view TRS_UEDITOR trs_paper_default trs_web\"><p>李奕璠博士长期从事基于超冷原子体系的量子精密测量实验研究。<\/p><p>相关成果发表于 Science、Physical Review X 等期刊。<\/p><\/div>",
+      // 脱敏片段：字段结构（title / content）与富文本形态取自真实页面，
+      // 但人名、邮箱等个人信息一律替换为 ***。
+      representativeList: [
+        {
+          title: "代表论文",
+          content: "<div class=\"view TRS_UEDITOR trs_paper_default trs_word\"><p style=\"margin: 0 30px 8px 0;font-family: Calibri, sans-serif\"><span style=\"font-family: &#39;Times New Roman&#39;, serif\">[1] ***, *** and ***, A representative paper title, <strong>Science</strong> 391,374-378 (2026). <\/span><\/p><p style=\"margin: 0 30px 8px 0\"><span style=\"font-family: &#39;Times New Roman&#39;, serif\">[2] ***, ***, Another representative paper, <strong>Phys. Rev. Lett.<\/strong> 133, 153601 (2024). <\/span><\/p><\/div>",
+        },
+        {
+          title: "联系我们",
+          content: "<div class=\"view TRS_UEDITOR trs_paper_default trs_web\"><p>电子邮箱：***@westlake.edu.cn<\/p><p>课题组长期招收博士研究生。<\/p><p><br\/><\/p><\/div>",
+        },
+      ],
+      mounted: function () { },
+    });
+</script>
+</body>
+</html>
