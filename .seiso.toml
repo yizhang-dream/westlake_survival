@@ -1,0 +1,14 @@
+# 当前维护入口；课程、素材、历史原件不纳入扫描。
+preview = false
+include = [
+  "AGENTS.md",
+  "README.md",
+]
+
+[[kinds]]
+path = "AGENTS.md"
+kind = "reference"
+
+[[kinds]]
+path = "README.md"
+kind = "readme"
