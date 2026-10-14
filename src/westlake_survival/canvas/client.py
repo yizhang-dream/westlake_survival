@@ -21,10 +21,11 @@ Token 解析顺序（`:class:`CanvasClient` 构造时确定）：
 
 from __future__ import annotations
 
+import mimetypes
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterator, Mapping
+from typing import Any, Iterator, Mapping, Sequence
 
 import requests
 
@@ -32,15 +33,25 @@ from westlake_survival._net import DEFAULT_TIMEOUT, http_session
 from westlake_survival.canvas.models import (
     CHINA_TZ,
     QUIZ_SUBMISSION_TYPE,
+    SUBMISSION_TYPE_TEXT,
+    SUBMISSION_TYPE_UPLOAD,
+    SUBMISSION_TYPE_URL,
     Announcement,
     Assignment,
     Course,
     ExamEvent,
     File,
     QuizItem,
+    Submission,
     User,
 )
-from westlake_survival.exceptions import AuthError, NotFound, ParseError, WestlakeError
+from westlake_survival.exceptions import (
+    ActionError,
+    AuthError,
+    NotFound,
+    ParseError,
+    WestlakeError,
+)
 
 #: Canvas API 根地址；测试可用 ``WESTLAKE_CANVAS_BASE`` 环境变量覆盖。
 CANVAS_BASE = "https://canvas.westlake.edu.cn/api/v1"
@@ -56,6 +67,9 @@ PER_PAGE = 50
 
 #: 下载文件时的分块大小（字节）。
 DOWNLOAD_CHUNK_SIZE = 8192
+
+#: 文件上传（传输文件本体）的超时秒数；大文件走 VPN 时 15s 不够用。
+UPLOAD_TIMEOUT = 120.0
 
 #: 分页翻页的页数上限；防止服务端 ``rel=next`` 成环导致无限请求。
 MAX_PAGES = 200
@@ -187,6 +201,24 @@ class CanvasClient:
             params=dict(params) if params else None,
             headers=self._auth_headers(),
             timeout=DEFAULT_TIMEOUT,
+        )
+        self._raise_for_status(response)
+        return response
+
+    def _post(
+        self,
+        path: str,
+        *,
+        data: Any = None,
+        timeout: float = DEFAULT_TIMEOUT,
+    ) -> requests.Response:
+        """带认证的 POST；错误映射同 :meth:`_get`。"""
+        self._require_token()
+        response = self._session.post(
+            self._url(path),
+            data=data,
+            headers=self._auth_headers(),
+            timeout=timeout,
         )
         self._raise_for_status(response)
         return response
@@ -412,6 +444,205 @@ class CanvasClient:
             announcements.append(announcement)
         return announcements
 
+    # ------------------------------------------------------------------
+    # 作业提交（写操作）：定位作业 → 上传文件 → POST submission → 回读
+    # ------------------------------------------------------------------
+    def get_assignment(self, course_id: int | str, assignment_id: int | str) -> Assignment:
+        """取单个作业详情（``GET /courses/:cid/assignments/:aid``）。"""
+        return Assignment.from_json(
+            self._json(self._get(f"/courses/{course_id}/assignments/{assignment_id}"))
+        )
+
+    def find_course(self, keyword: str) -> Course:
+        """按课程 id 或名称关键词定位唯一课程。
+
+        *keyword* 为纯数字时按课程 id 精确取；否则在 active 课程的
+        ``name`` / ``course_code`` 上做大小写不敏感的子串匹配。零命中抛
+        :class:`NotFound`，多个命中抛 :class:`ActionError`（附候选清单）。
+        """
+        course_id = self._coerce_int(str(keyword).strip())
+        if course_id is not None:
+            return self.get_course(course_id)
+        text = str(keyword).strip().lower()
+        if not text:
+            raise ActionError("课程关键词为空：请给课程 id 或名称关键词。")
+        matches = [
+            course
+            for course in self.list_courses()
+            if text in (course.name or "").lower() or text in (course.course_code or "").lower()
+        ]
+        if not matches:
+            raise NotFound(
+                f"没有匹配「{keyword}」的 active 课程；"
+                "请用 `westlake canvas courses` 查看课程名，或直接用课程 id。"
+            )
+        if len(matches) > 1:
+            listed = "；".join(
+                f"{c.course_code or ''} {c.name}（id={c.id}）" for c in matches[:8]
+            )
+            raise ActionError(f"「{keyword}」匹配到多门课程：{listed}。请换更精确的关键词或用 id。")
+        return matches[0]
+
+    def find_assignment(self, course_id: int | str, keyword: str) -> Assignment:
+        """按作业 id 或名称关键词定位课程内唯一作业（规则同 :meth:`find_course`）。"""
+        assignment_id = self._coerce_int(str(keyword).strip())
+        if assignment_id is not None:
+            return self.get_assignment(course_id, assignment_id)
+        text = str(keyword).strip().lower()
+        if not text:
+            raise ActionError("作业关键词为空：请给作业 id 或名称关键词。")
+        matches = [
+            assignment
+            for assignment in self.list_assignments(course_id)
+            if text in (assignment.name or "").lower()
+        ]
+        if not matches:
+            raise NotFound(
+                f"课程 {course_id} 下没有匹配「{keyword}」的作业；"
+                "请用 `westlake canvas assignments --course …` 查看作业名或 id。"
+            )
+        if len(matches) > 1:
+            listed = "；".join(f"{a.name}（id={a.id}）" for a in matches[:8])
+            raise ActionError(f"「{keyword}」匹配到多个作业：{listed}。请换更精确的关键词或用 id。")
+        return matches[0]
+
+    def upload_course_file(self, course_id: int | str, file_path: Path | str) -> File:
+        """把本地文件上传到课程文件区，返回 :class:`File`（含 ``id``）。
+
+        供 :meth:`submit_assignment` 内部使用；独立调用产生的文件会留在
+        课程文件区，不会自动附着到任何作业。
+        """
+        return self._upload_file(f"/courses/{course_id}/files", Path(file_path))
+
+    def _upload_file(self, context_path: str, file_path: Path) -> File:
+        """Canvas 三步文件上传：预检（notify）→ 上传本体 → 服务端落位。
+
+        预检响应给出一次性的 ``upload_url`` + ``upload_params``；上传本体
+        时**不能再带 Authorization 头**（``upload_url`` 可能是 S3 等外站
+        预签名地址），认证信息已在预检阶段绑定。requests 会自动跟随上传
+        后的 303 重定向，最终响应体即文件 JSON。
+        """
+        try:
+            size = file_path.stat().st_size
+        except OSError as exc:
+            raise ActionError(f"无法读取文件 {file_path}：{exc}") from exc
+        name = file_path.name
+        content_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
+        notify = self._post(
+            f"{context_path}",
+            data={"name": name, "size": str(size), "content_type": content_type},
+        )
+        info = self._json(notify)
+        upload_url = info.get("upload_url") if isinstance(info, Mapping) else None
+        upload_params = info.get("upload_params") if isinstance(info, Mapping) else None
+        if not upload_url or not isinstance(upload_params, Mapping):
+            raise ParseError("Canvas 文件上传预检响应缺少 upload_url / upload_params。")
+        with open(file_path, "rb") as handle:
+            upload = self._session.post(
+                upload_url,
+                data=dict(upload_params),
+                files={"file": (name, handle, content_type)},
+                timeout=UPLOAD_TIMEOUT,
+            )
+        self._raise_for_status(upload)
+        uploaded = File.from_json(self._json(upload))
+        if uploaded.id is None:
+            raise ParseError(f"文件 {name} 上传后未返回文件 id，无法用于提交。")
+        return uploaded
+
+    def submit_assignment(
+        self,
+        course_id: int | str,
+        assignment_id: int | str,
+        *,
+        file_paths: Sequence[Path | str] = (),
+        text: str | None = None,
+        url: str | None = None,
+        dry_run: bool = False,
+    ) -> Submission | dict[str, Any]:
+        """提交作业（本人提交，支持文件 / 文本 / 链接三种类型之一）。
+
+        文件提交先按 Canvas 官方流程把文件上传到课程文件区
+        （:meth:`upload_course_file`），再 ``POST
+        /courses/:cid/assignments/:aid/submissions`` 附带 ``file_ids``；
+        文本 / 链接提交分别对应 ``online_text_entry`` / ``online_url``。
+
+        Args:
+            course_id / assignment_id: 课程与作业 id。
+            file_paths: 本地文件路径列表（``online_upload``）。
+            text: 文本提交内容（``online_text_entry``）。
+            url: 链接提交 URL（``online_url``）。
+            dry_run: 只做预检（作业存在、未锁定、类型允许、文件可读），
+                返回描述字典，**不发提交请求也不上传文件**。
+
+        Returns:
+            真提交返回 :class:`Submission`；``dry_run=True`` 返回计划字典。
+
+        Raises:
+            ActionError: 提交方式给了多种或没给、作业已锁定、作业不
+                支持所选提交类型、文件不可读，或 Canvas 拒绝提交。
+        """
+        wanted = {
+            SUBMISSION_TYPE_UPLOAD: bool(file_paths),
+            SUBMISSION_TYPE_TEXT: bool(text and text.strip()),
+            SUBMISSION_TYPE_URL: bool(url and url.strip()),
+        }
+        chosen = [kind for kind, hit in wanted.items() if hit]
+        if len(chosen) != 1:
+            raise ActionError(
+                "提交方式必须且只能给一种：文件（file_paths）/ 文本（text）/ 链接（url）。"
+            )
+        kind = chosen[0]
+        assignment = self.get_assignment(course_id, assignment_id)
+        if assignment.locked_for_user:
+            raise ActionError(f"作业「{assignment.name}」已锁定，无法提交。")
+        allowed = assignment.submission_types
+        if allowed and kind not in allowed:
+            raise ActionError(
+                f"作业「{assignment.name}」不支持 {kind} 提交；"
+                f"允许的类型：{'、'.join(allowed)}。"
+            )
+        files = [Path(path) for path in file_paths]
+        for path in files:
+            if not path.is_file():
+                raise ActionError(f"文件不存在或不是普通文件：{path}")
+        if dry_run:
+            return {
+                "dry_run": True,
+                "assignment_id": assignment.id,
+                "assignment": assignment.name,
+                "submission_type": kind,
+                "files": [path.name for path in files],
+                "text_preview": (text or "")[:100],
+                "url": url,
+                "due_at": assignment.due_at.isoformat() if assignment.due_at else None,
+            }
+        pairs: list[tuple[str, str]] = [("submission[submission_type]", kind)]
+        if kind == SUBMISSION_TYPE_UPLOAD:
+            uploaded = [self.upload_course_file(course_id, path) for path in files]
+            pairs.extend(
+                ("submission[file_ids][]", str(item.id)) for item in uploaded if item.id
+            )
+        elif kind == SUBMISSION_TYPE_TEXT:
+            pairs.append(("submission[body]", text or ""))
+        else:
+            pairs.append(("submission[url]", url or ""))
+        response = self._post(
+            f"/courses/{course_id}/assignments/{assignment_id}/submissions",
+            data=pairs,
+        )
+        return Submission.from_json(self._json(response))
+
+    def get_submission(self, course_id: int | str, assignment_id: int | str) -> Submission:
+        """读取本人在某作业上的当前提交（``GET .../submissions/self``）。"""
+        return Submission.from_json(
+            self._json(
+                self._get(
+                    f"/courses/{course_id}/assignments/{assignment_id}/submissions/self"
+                )
+            )
+        )
+
     @staticmethod
     def _coerce_int(value: Any) -> int | None:
         try:
@@ -425,6 +656,7 @@ __all__ = [
     "PER_PAGE",
     "TOKEN_ENV_VAR",
     "TOKEN_FILENAME",
+    "UPLOAD_TIMEOUT",
     "CanvasClient",
     "resolve_base_url",
     "resolve_token",

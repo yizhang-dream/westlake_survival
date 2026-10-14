@@ -167,6 +167,11 @@ class Assignment:
 #: 判断作业是否为测验（quiz）的 submission_type 值。
 QUIZ_SUBMISSION_TYPE = "online_quiz"
 
+#: 三种 API 可提交的 submission_type 值（文件上传 / 文本 / 链接）。
+SUBMISSION_TYPE_UPLOAD = "online_upload"
+SUBMISSION_TYPE_TEXT = "online_text_entry"
+SUBMISSION_TYPE_URL = "online_url"
+
 #: 日历事件类型标识。
 KIND_QUIZ = "quiz"
 KIND_CALENDAR_EVENT = "calendar-event"
@@ -269,6 +274,50 @@ class File:
 
 
 @dataclass
+class Submission:
+    """作业提交（``POST .../submissions`` / ``GET .../submissions/self``）。
+
+    ``workflow_state`` 常见值：``submitted``（已提交待评分）、``graded``
+    （已评分）、``unsubmitted``（从未提交）。文件提交的附件在
+    :attr:`attachments`（:class:`File` 列表）；文本/链接提交分别在
+    :attr:`body` / :attr:`url`。
+    """
+
+    id: int | None = None
+    assignment_id: int | None = None
+    user_id: int | None = None
+    workflow_state: str | None = None
+    submitted_at: datetime | None = None
+    late: bool | None = None
+    score: float | None = None
+    body: str | None = None
+    url: str | None = None
+    preview_url: str | None = None
+    attachments: list[File] = field(default_factory=list)
+
+    @classmethod
+    def from_json(cls, data: Any) -> "Submission":
+        obj = _as_dict(data)
+        raw_attachments = obj.get("attachments")
+        attachments: list[File] = []
+        if isinstance(raw_attachments, list):
+            attachments = [File.from_json(item) for item in raw_attachments]
+        return cls(
+            id=obj.get("id"),
+            assignment_id=obj.get("assignment_id"),
+            user_id=obj.get("user_id"),
+            workflow_state=obj.get("workflow_state"),
+            submitted_at=parse_datetime(obj.get("submitted_at")),
+            late=obj.get("late"),
+            score=obj.get("score"),
+            body=obj.get("body"),
+            url=obj.get("url"),
+            preview_url=obj.get("preview_url"),
+            attachments=attachments,
+        )
+
+
+@dataclass
 class Announcement:
     """课程公告（``GET /courses/:id/discussion_topics?only_announcements=true``）。"""
 
@@ -297,12 +346,16 @@ __all__ = [
     "KIND_CALENDAR_EVENT",
     "KIND_QUIZ",
     "QUIZ_SUBMISSION_TYPE",
+    "SUBMISSION_TYPE_TEXT",
+    "SUBMISSION_TYPE_UPLOAD",
+    "SUBMISSION_TYPE_URL",
     "Announcement",
     "Assignment",
     "Course",
     "ExamEvent",
     "File",
     "QuizItem",
+    "Submission",
     "User",
     "parse_datetime",
 ]

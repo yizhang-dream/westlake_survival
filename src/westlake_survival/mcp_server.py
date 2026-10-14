@@ -24,7 +24,8 @@
 ``calendar_today`` / ``calendar_week`` / ``transit_next`` / ``news_latest`` /
 ``events_upcoming`` / ``research_latest`` / ``site_search`` / ``faculty_search`` /
 ``campus_dining`` / ``campus_housing`` / ``contact_info`` / ``context_snapshot`` /
-``canvas_deadlines``。
+``canvas_deadlines``；另有写操作工具 ``canvas_submit``（交作业，缺省只预检，
+``confirm=true`` 才真正提交）。
 
 所有工具惰性 import 各自业务模块（缺依赖/缺模块时返回 ``isError``），
 输出统一转成紧凑 JSON 文本（dataclass 优先用其 ``to_dict``，否则递归序列化）。
@@ -50,8 +51,9 @@ ZCode / Claude Desktop 等 MCP 客户端接入配置（把路径换成本机实�
       }
     }
 
-``WESTLAKE_CANVAS_TOKEN`` 可选（仅 ``canvas_deadlines`` 需要；缺省从
-``~/.westlake_survival/canvas_token.txt`` 首行读取，都没有时该工具返回获取引导）。
+``WESTLAKE_CANVAS_TOKEN`` 可选（``canvas_deadlines`` / ``canvas_submit`` 需要；
+缺省从 ``~/.westlake_survival/canvas_token.txt`` 首行读取，都没有时这两个工具
+返回获取引导）。
 """
 
 from __future__ import annotations
@@ -445,6 +447,73 @@ def _tool_canvas_deadlines(args: dict) -> Any:
     ]
 
 
+def _tool_canvas_submit(args: dict) -> Any:
+    """提交 Canvas 作业（写操作）；``confirm=true`` 才真正提交，否则只预检。"""
+    from westlake_survival.canvas import canvas, resolve_token
+
+    if resolve_token() is None:
+        raise ToolHint(
+            "未配置 Canvas API token，无法提交作业。请在 Canvas 网页"
+            "「账户 → 设置 → 新建访问令牌」生成令牌后，设置环境变量 "
+            "WESTLAKE_CANVAS_TOKEN（或写入 ~/.westlake_survival/canvas_token.txt "
+            "首行），再重试。"
+        )
+
+    course = _opt_str(args, "course")
+    assignment = _opt_str(args, "assignment")
+    if not course or not assignment:
+        raise ValueError("参数 course 与 assignment 必填（课程/作业的 id 或名称关键词）。")
+    raw_files = args.get("files") or []
+    if not isinstance(raw_files, list) or not all(isinstance(i, str) and i for i in raw_files):
+        raise ValueError("参数 files 须为本地文件路径的字符串数组。")
+    text = _opt_str(args, "text")
+    url = _opt_str(args, "url")
+    confirm = bool(args.get("confirm"))
+
+    client = canvas()
+    found_course = client.find_course(course)
+    found_assignment = client.find_assignment(found_course.id, assignment)
+    plan = client.submit_assignment(
+        found_course.id,
+        found_assignment.id,
+        file_paths=raw_files,
+        text=text,
+        url=url,
+        dry_run=True,
+    )
+    plan.update(
+        {
+            "course_id": found_course.id,
+            "course": f"{found_course.course_code or ''} {found_course.name}".strip(),
+            "confirm": confirm,
+        }
+    )
+    if not confirm:
+        plan["hint"] = "预检通过但未提交。确认无误后带 confirm=true 重新调用才会真正提交。"
+        return _to_plain(plan)
+    submission = client.submit_assignment(
+        found_course.id,
+        found_assignment.id,
+        file_paths=raw_files,
+        text=text,
+        url=url,
+    )
+    return _to_plain(
+        {
+            "submitted": True,
+            "workflow_state": submission.workflow_state,
+            "submitted_at": (
+                submission.submitted_at.isoformat() if submission.submitted_at else None
+            ),
+            "late": submission.late,
+            "attachments": [
+                {"file_id": a.id, "name": a.display_name} for a in submission.attachments
+            ],
+            "preview_url": submission.preview_url,
+        }
+    )
+
+
 # --------------------------------------------------------------------------- #
 # 工具清单（name / description / inputSchema / handler）
 # --------------------------------------------------------------------------- #
@@ -611,6 +680,32 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             {"days": _int_param("未来天数窗口，默认 14。", minimum=1, maximum=180)}
         ),
         "handler": _tool_canvas_deadlines,
+    },
+    {
+        "name": "canvas_submit",
+        "description": (
+            "提交 Canvas 作业（写操作，需 Canvas API token）：上传文件 / 文本 / 链接。"
+            "缺省只预检返回提交计划；confirm=true 才真正提交。"
+        ),
+        "inputSchema": _schema(
+            {
+                "course": _str_param("课程 id 或名称关键词。"),
+                "assignment": _str_param("作业 id 或名称关键词。"),
+                "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "本地文件路径列表（online_upload 提交方式）。",
+                },
+                "text": _str_param("文本提交内容（online_text_entry）。"),
+                "url": _str_param("链接提交地址（online_url）。"),
+                "confirm": {
+                    "type": "boolean",
+                    "description": "true 时真正提交；缺省只预检。文件/文本/链接三选一。",
+                },
+            },
+            ["course", "assignment"],
+        ),
+        "handler": _tool_canvas_submit,
     },
 )
 

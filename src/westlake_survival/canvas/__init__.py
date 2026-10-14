@@ -8,6 +8,7 @@
     client.me()                       # 当前用户
     client.list_courses()             # active 课程
     client.upcoming_deadlines(5)      # 即将到期的作业
+    client.submit_assignment(101, 202, file_paths=["hw1.pdf"])  # 交作业
 
 模块级还提供一个便捷函数 :func:`upcoming_deadlines`，等价于
 ``canvas().upcoming_deadlines(...)``。
@@ -23,22 +24,30 @@ from westlake_survival.canvas.client import (
 )
 from westlake_survival.canvas.models import (
     CHINA_TZ,
+    SUBMISSION_TYPE_TEXT,
+    SUBMISSION_TYPE_UPLOAD,
+    SUBMISSION_TYPE_URL,
     Announcement,
     Assignment,
     Course,
     File,
+    Submission,
     User,
 )
 
 __all__ = [
     "CANVAS_BASE",
     "CHINA_TZ",
+    "SUBMISSION_TYPE_TEXT",
+    "SUBMISSION_TYPE_UPLOAD",
+    "SUBMISSION_TYPE_URL",
     "TOKEN_ENV_VAR",
     "Announcement",
     "Assignment",
     "CanvasClient",
     "Course",
     "File",
+    "Submission",
     "User",
     "canvas",
     "reset_canvas",
