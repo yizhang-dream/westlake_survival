@@ -510,9 +510,24 @@ class CanvasClient:
         """把本地文件上传到课程文件区，返回 :class:`File`（含 ``id``）。
 
         供 :meth:`submit_assignment` 内部使用；独立调用产生的文件会留在
-        课程文件区，不会自动附着到任何作业。
+        课程文件区，不会自动附着到任何作业。注意：部分 Canvas 实例
+        （如西湖）禁止学生向课程文件区上传，此时会抛 :class:`AuthError`，
+        提交流程内部会自动退回本人文件区（见 :meth:`_upload_for_submission`）。
         """
         return self._upload_file(f"/courses/{course_id}/files", Path(file_path))
+
+    def _upload_for_submission(self, course_id: int | str, file_path: Path) -> File:
+        """为提交作业上传文件：先课程文件区，被拒（401）时退回本人文件区。
+
+        Canvas 官方流程把提交文件传到课程文件区，但西湖实例对学生关闭了
+        该入口（HTTP 401 unauthorized）；本人文件区上传可用，且
+        ``POST submissions`` 引用本人文件 id 同样生效（提交时服务端会克隆
+        文件到提交记录），两条路最终效果一致。
+        """
+        try:
+            return self.upload_course_file(course_id, file_path)
+        except AuthError:
+            return self._upload_file("/users/self/files", file_path)
 
     def _upload_file(self, context_path: str, file_path: Path) -> File:
         """Canvas 三步文件上传：预检（notify）→ 上传本体 → 服务端落位。
@@ -619,7 +634,7 @@ class CanvasClient:
             }
         pairs: list[tuple[str, str]] = [("submission[submission_type]", kind)]
         if kind == SUBMISSION_TYPE_UPLOAD:
-            uploaded = [self.upload_course_file(course_id, path) for path in files]
+            uploaded = [self._upload_for_submission(course_id, path) for path in files]
             pairs.extend(
                 ("submission[file_ids][]", str(item.id)) for item in uploaded if item.id
             )
