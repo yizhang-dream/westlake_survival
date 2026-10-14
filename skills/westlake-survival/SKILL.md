@@ -108,7 +108,7 @@ westlake canvas submit --course 概率论 --assignment 简介 --text "……"   
 westlake canvas submission --course 概率论 --assignment 作业3              # 查提交状态
 ```
 
-`submit` 是写操作：默认先预检并弹确认，`--yes` 跳过确认，`--dry-run` 只预检不提交；课程/作业都接受 id 或名称关键词（关键词唯一命中才执行）。
+`submit` 是写操作：默认先预检并弹确认，`--yes` 跳过确认，`--dry-run` 只预检不提交；课程/作业都接受 id 或名称关键词（子串匹配，唯一命中才执行；匹配不到就先用 `courses`/`assignments` 查全名——如课程叫「物理学实验 Ⅱ」，搜「物理实验」搜不到；命中多个会列出候选）。提交链路已真机验证（2026-10-15 真交 Lab 5 成功：西湖 Canvas 禁学生写课程文件区，包内自动退回本人文件区上传再提交，效果相同）。
 
 ## Python API 直用（需要结构化数据时）
 
@@ -130,6 +130,21 @@ for g in grades():                                      # 不计算 GPA（无官
     print(g.term, g.course_code, g.course_title, g.grade)
 ```
 
+```python
+from westlake_survival.canvas import canvas                       # 需 Canvas 令牌
+from westlake_survival.canvas.models import (SUBMISSION_TYPE_UPLOAD,
+    SUBMISSION_TYPE_TEXT, SUBMISSION_TYPE_URL)
+
+c = canvas()
+kinds = {SUBMISSION_TYPE_UPLOAD, SUBMISSION_TYPE_TEXT, SUBMISSION_TYPE_URL}
+for course in c.list_courses():                                   # 扫描当前可交的作业
+    for a in c.list_assignments(course.id):
+        if kinds.intersection(a.submission_types) and not a.locked_for_user:
+            s = c.get_submission(course.id, a.id)
+            print(course.name, a.name, a.due_at,
+                  s.workflow_state if s.submitted_at else "未交")
+```
+
 ## MCP 备选通道
 
 本包自带零依赖 stdio MCP 服务器，暴露 18 个工具（`sis_schedule` / `sis_grades` / `sis_exams` / `sis_evals_pending` / `calendar_today` / `calendar_week` / `transit_next` / `news_latest` / `events_upcoming` / `research_latest` / `site_search` / `faculty_search` / `campus_dining` / `campus_housing` / `contact_info` / `context_snapshot` / `canvas_deadlines` / `canvas_submit`）。客户端配置：
@@ -142,7 +157,9 @@ for g in grades():                                      # 不计算 GPA（无官
 
 ## Agent 行为守则
 
-- **默认只读，交作业是唯一写操作**：只执行查询/导出命令；`canvas submit`（含 MCP 的 `canvas_submit`）仅凭用户当轮明确给出的课程、作业与文件执行，先预检（`--dry-run`）再提交并回报提交状态；不尝试选课、抢课、删除等其他写操作，不构造未文档化的请求。
+- **默认只读，交作业是唯一写操作**：只执行查询/导出命令；`canvas submit`（含 MCP 的 `canvas_submit`）仅凭用户当轮明确给出的课程、作业与文件执行，不尝试选课、抢课、删除等其他写操作，不构造未文档化的请求。
+- **交作业三步走**：①预检 `--dry-run`（作业未锁定、类型允许、文件可读）；②提交（用户点名文件即视为授权）；③回读 `canvas submission` 核验（状态 submitted、附件文件名、未迟交）确认后才报完成。已评分（graded）的作业技术上可重交但默认不碰，除非用户明确要求改交。
+- **写作业内容先查本地**：动笔前先查 `D:\CanvasMirror` 与 DeepTutor 课程组的本校讲义（与网络通用版有实质差异），实验报告参照本人历史提交物的格式惯例。
 - **绝不打印凭据/令牌**：不 `cat` `~/.westlake_survival/credentials.txt` 或 `canvas_token.txt`，不在输出中回显学号密码或 `WESTLAKE_CANVAS_TOKEN`；只看 `sso creds status` 的「有 / 无」。
 - **个人数据脱敏**：成绩、学籍、住宿、贷款等属个人隐私，输出给第三方前默认做脱敏/摘要提示，并提醒用户自行确认是否适合分享。
 - **失败降级**：`OffCampusError` = 目标系统仅校园网/VPN 可达，提示用户连接 <https://vpn.westlake.edu.cn/>；`AuthError` = 凭据缺失或失效，提示 `westlake sso creds set`；Canvas 报错则提示配置 `WESTLAKE_CANVAS_TOKEN`。命令失败时如实转述错误，不臆造数据。
