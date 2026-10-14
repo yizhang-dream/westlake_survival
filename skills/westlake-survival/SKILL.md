@@ -1,11 +1,11 @@
 ---
 name: westlake-survival
-description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canvas 作业截止、讲座活动、新闻、科研进展、校历周次、班车时刻、食堂公寓、招聘与导师名录、电话地址。用户问及西湖大学（Westlake）课表、成绩、考试、讲座、新闻、校历、班车、教师、食堂等，或需要一键晨报/今日快照时使用。
+description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canvas 作业截止与提交作业、讲座活动、新闻、科研进展、校历周次、班车时刻、食堂公寓、招聘与导师名录、电话地址。用户问及西湖大学（Westlake）课表、成绩、考试、讲座、新闻、校历、班车、教师、食堂等，或要求代交作业/一键晨报/今日快照时使用。
 ---
 
 # 西湖大学生存手册（westlake-survival）
 
-把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：本技能只做查询与导出，不含选课、抢课、提交类写操作。
+把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：本技能只做查询与导出；唯一的写操作是 `canvas submit` 交作业（见下），且仅凭用户当轮明确指令执行，不做选课、抢课等其他写操作。
 
 ## 能力地图：哪类问题用哪条命令
 
@@ -23,6 +23,9 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 住宿 / 请假 / 荣誉 / 志愿 / 实践 / 违纪 | `westlake records dorm` 等（见下） |
 | 贷款 / 勤工助学 / 海外交流 / 社团 | `westlake aid loans` 等（见下） |
 | Canvas 课程 / 作业截止 / 测验考试 | `westlake canvas courses` / `deadlines` / `exams` |
+| 列出某课程的作业（查作业 id/名称） | `westlake canvas assignments --course <id或关键词>` |
+| 交作业（文件/文本/链接，写操作） | `westlake canvas submit --course … --assignment … --file 路径` |
+| 查看某作业已提交状态 | `westlake canvas submission --course … --assignment …` |
 | 讲座 / 学术会议 / 演出预告 | `westlake events` |
 | 西湖新闻 / 科研进展 | `westlake news` / `westlake research` |
 | 官网全站搜索 | `westlake search <关键词>` |
@@ -98,7 +101,14 @@ westlake pms jobs
 westlake canvas courses
 westlake canvas deadlines --limit 10
 westlake canvas exams --days 30
+westlake canvas assignments --course 概率论        # 列作业（课程给 id 或名称关键词均可）
+westlake canvas submit --course 概率论 --assignment 作业3 --file hw3.pdf   # 交作业
+westlake canvas submit --course 概率论 --assignment 作业3 --file hw3.pdf --dry-run  # 只预检
+westlake canvas submit --course 概率论 --assignment 简介 --text "……"      # 文本提交
+westlake canvas submission --course 概率论 --assignment 作业3              # 查提交状态
 ```
+
+`submit` 是写操作：默认先预检并弹确认，`--yes` 跳过确认，`--dry-run` 只预检不提交；课程/作业都接受 id 或名称关键词（关键词唯一命中才执行）。
 
 ## Python API 直用（需要结构化数据时）
 
@@ -122,7 +132,7 @@ for g in grades():                                      # 不计算 GPA（无官
 
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 17 个工具（`sis_schedule` / `sis_grades` / `sis_exams` / `sis_evals_pending` / `calendar_today` / `calendar_week` / `transit_next` / `news_latest` / `events_upcoming` / `research_latest` / `site_search` / `faculty_search` / `campus_dining` / `campus_housing` / `contact_info` / `context_snapshot` / `canvas_deadlines`）。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 18 个工具（`sis_schedule` / `sis_grades` / `sis_exams` / `sis_evals_pending` / `calendar_today` / `calendar_week` / `transit_next` / `news_latest` / `events_upcoming` / `research_latest` / `site_search` / `faculty_search` / `campus_dining` / `campus_housing` / `contact_info` / `context_snapshot` / `canvas_deadlines` / `canvas_submit`）。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}
@@ -132,7 +142,7 @@ for g in grades():                                      # 不计算 GPA（无官
 
 ## Agent 行为守则
 
-- **只读**：只执行查询/导出命令；不尝试选课、提交、删除等写操作，不构造未文档化的请求。
+- **默认只读，交作业是唯一写操作**：只执行查询/导出命令；`canvas submit`（含 MCP 的 `canvas_submit`）仅凭用户当轮明确给出的课程、作业与文件执行，先预检（`--dry-run`）再提交并回报提交状态；不尝试选课、抢课、删除等其他写操作，不构造未文档化的请求。
 - **绝不打印凭据/令牌**：不 `cat` `~/.westlake_survival/credentials.txt` 或 `canvas_token.txt`，不在输出中回显学号密码或 `WESTLAKE_CANVAS_TOKEN`；只看 `sso creds status` 的「有 / 无」。
 - **个人数据脱敏**：成绩、学籍、住宿、贷款等属个人隐私，输出给第三方前默认做脱敏/摘要提示，并提醒用户自行确认是否适合分享。
 - **失败降级**：`OffCampusError` = 目标系统仅校园网/VPN 可达，提示用户连接 <https://vpn.westlake.edu.cn/>；`AuthError` = 凭据缺失或失效，提示 `westlake sso creds set`；Canvas 报错则提示配置 `WESTLAKE_CANVAS_TOKEN`。命令失败时如实转述错误，不臆造数据。

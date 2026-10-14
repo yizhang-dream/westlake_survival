@@ -8,7 +8,7 @@ westlake --help
 westlake calendar today
 ```
 
-[使用技能](skills/westlake-survival/SKILL.md)与 examples/ 提供操作入口；[打印接口](src/westlake_survival/pms/api_notes.md)保留特定限制。Web 功能需 [webui]，钥匙串需 [secure]。服务与数据范围：sso/sis 身份教务，canvas 课程，lib/pms 借阅打印，transit/calendar/ical/context 班车日历和快照。
+[使用技能](skills/westlake-survival/SKILL.md)与 examples/ 提供操作入口；[打印接口](src/westlake_survival/pms/api_notes.md)保留特定限制。Web 功能需 [webui]，钥匙串需 [secure]。服务与数据范围：sso/sis 身份教务，canvas 课程与作业（含提交作业这一写操作），lib/pms 借阅打印，transit/calendar/ical/context 班车日历和快照。
 
 SIS 需本人账号及校园网/VPN，Canvas 需本人令牌；授权与凭据见 [AGENTS](AGENTS.md)。`westlake sso creds status` 只查来源。src/test 的 pytest 默认排除 live；在线状态以实际服务为准。
 

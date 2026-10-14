@@ -581,6 +581,128 @@ def canvas_exams(days: int | None) -> None:
     _print_table(rows, ("时间", "名称", "类型", "链接"))
 
 
+@canvas_cmd.command(name="assignments")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@_handle_canvas_errors
+def canvas_assignments(course: str) -> None:
+    """列出课程作业（查作业 id / 名称关键词）。"""
+    from westlake_survival.canvas import canvas
+
+    found = canvas().find_course(course)
+    items = canvas().list_assignments(found.id)
+    rows = [
+        (
+            str(a.id or "—"),
+            a.name or "—",
+            a.due_at.strftime("%Y-%m-%d %H:%M") if a.due_at else "—",
+            "、".join(a.submission_types) or "—",
+        )
+        for a in items
+    ]
+    _print_table(rows, ("作业ID", "作业", "截止时间", "提交类型"))
+    click.echo(f"课程：{found.course_code or ''} {found.name}（id={found.id}）")
+
+
+def _print_submission(submission) -> None:
+    """统一打印一条提交结果/状态。"""
+    state = submission.workflow_state or "—"
+    when = (
+        submission.submitted_at.strftime("%Y-%m-%d %H:%M") if submission.submitted_at else "—"
+    )
+    late = "是" if submission.late else "否"
+    click.echo(f"状态：{state}（迟交：{late}）")
+    click.echo(f"提交时间：{when}")
+    if submission.score is not None:
+        click.echo(f"得分：{submission.score}")
+    for item in submission.attachments:
+        click.echo(f"附件：{item.display_name}（file_id={item.id}）")
+    if submission.body:
+        click.echo(f"文本：{submission.body[:120]}")
+    if submission.url:
+        click.echo(f"链接：{submission.url}")
+    if submission.preview_url:
+        click.echo(f"查看：{submission.preview_url}")
+
+
+@canvas_cmd.command(name="submit")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--assignment", required=True, help="作业 id 或名称关键词。")
+@click.option(
+    "--file",
+    "files",
+    multiple=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="要上传的文件路径，可重复给多个。",
+)
+@click.option("--text", default=None, help="文本提交（online_text_entry）内容。")
+@click.option("--url", default=None, help="链接提交（online_url）地址。")
+@click.option("--dry-run", "dry_run", is_flag=True, help="只预检并显示提交计划，不实际上传/提交。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="跳过交互确认直接提交。")
+@_handle_canvas_errors
+def canvas_submit(
+    course: str,
+    assignment: str,
+    files: tuple[str, ...],
+    text: str | None,
+    url: str | None,
+    dry_run: bool,
+    skip_confirm: bool,
+) -> None:
+    """提交作业（写操作）：上传文件 / 提交文本 / 提交链接。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    found_course = client.find_course(course)
+    found_assignment = client.find_assignment(found_course.id, assignment)
+
+    plan = client.submit_assignment(
+        found_course.id,
+        found_assignment.id,
+        file_paths=files,
+        text=text,
+        url=url,
+        dry_run=True,
+    )
+    click.echo(f"课程：{found_course.course_code or ''} {found_course.name}（id={found_course.id}）")
+    click.echo(f"作业：{found_assignment.name}（id={found_assignment.id}）")
+    if isinstance(plan, dict):
+        click.echo(f"提交类型：{plan.get('submission_type')}")
+        for name in plan.get("files", []):
+            click.echo(f"文件：{name}")
+        if plan.get("due_at"):
+            click.echo(f"截止时间：{plan['due_at']}")
+    if dry_run:
+        click.secho("预检通过（dry-run，未提交）。", fg="yellow")
+        return
+    if not skip_confirm:
+        click.confirm("确认提交以上内容？", abort=True)
+    submission = client.submit_assignment(
+        found_course.id,
+        found_assignment.id,
+        file_paths=files,
+        text=text,
+        url=url,
+    )
+    click.secho("已提交。", fg="green")
+    _print_submission(submission)
+
+
+@canvas_cmd.command(name="submission")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--assignment", required=True, help="作业 id 或名称关键词。")
+@_handle_canvas_errors
+def canvas_submission(course: str, assignment: str) -> None:
+    """查看本人在某作业上的当前提交状态。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    found_course = client.find_course(course)
+    found_assignment = client.find_assignment(found_course.id, assignment)
+    submission = client.get_submission(found_course.id, found_assignment.id)
+    click.echo(f"作业：{found_assignment.name}（id={found_assignment.id}）")
+    _print_submission(submission)
+
+
 # --------------------------------------------------------------------------- #
 # sis —— 教务课表
 # --------------------------------------------------------------------------- #
