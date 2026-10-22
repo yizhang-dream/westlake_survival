@@ -545,6 +545,82 @@ def _dining_context():
     }
 
 
+def _program_data():
+    """返回培养方案三页数据（overview / curriculum / majors 结果）；模块缺失时 ``None``。
+
+    这是 ``/program`` 页的唯一取数接缝（测试可整体替换）。
+    """
+    module = _import_module("program")
+    if module is None or not hasattr(module, "overview"):
+        return None
+    return {
+        "overview": module.overview(),
+        "curriculum": module.curriculum(),
+        "majors": module.majors(),
+    }
+
+
+def _program_context():
+    """组装培养方案页上下文：培养目标、特色、课程体系栏目、专业列表。
+
+    与 :func:`_dining_context` 同一降级口径：数据源异常时只置 ``error``，
+    不让页面 500。字段全部转成普通 dict，保持模板简单。
+    """
+    data = None
+    error = None
+    try:
+        data = _program_data()
+    except Exception as exc:  # pragma: no cover - 数据源异常时降级
+        error = f"培养方案数据暂时不可用：{exc.__class__.__name__}"
+
+    context: dict = {
+        "error": error,
+        "has_data": False,
+        "goal": "",
+        "features": [],
+        "summary": "",
+        "majors": [],
+        "sections": [],
+        "source_url": "",
+    }
+    if not data:
+        return context
+
+    overview = data.get("overview")
+    curriculum = data.get("curriculum")
+    catalog = data.get("majors")
+    if overview is not None:
+        context["goal"] = getattr(overview.goal, "content_text", "")
+        context["features"] = [
+            {"title": f.title, "text": f.content_text} for f in getattr(overview, "features", [])
+        ]
+        context["source_url"] = getattr(overview, "url", "")
+    if curriculum is not None:
+        context["sections"] = [
+            {
+                "title": s.title,
+                "text": s.content_text,
+                "table": (
+                    {
+                        "name": s.table.name,
+                        "rows": [{"name": r.name, "courses": r.items} for r in s.table.rows],
+                    }
+                    if s.table is not None
+                    else None
+                ),
+            }
+            for s in getattr(curriculum, "sections", [])
+        ]
+    if catalog is not None:
+        context["summary"] = getattr(catalog, "summary", "")
+        context["majors"] = [
+            {"group": m.group, "name": m.name, "intro": m.intro_text}
+            for m in getattr(catalog, "majors", [])
+        ]
+    context["has_data"] = bool(context["goal"] or context["sections"] or context["majors"])
+    return context
+
+
 # --------------------------------------------------------------------------- #
 # 应用工厂
 # --------------------------------------------------------------------------- #
@@ -643,6 +719,12 @@ def create_app() -> Flask:
     def dining_page():
         context = _dining_context()
         return render_template("dining.html", **context)
+
+    # -- 培养方案页 -------------------------------------------------------- #
+    @app.route("/program")
+    def program_page():
+        context = _program_context()
+        return render_template("program.html", **context)
 
     # -- iCalendar 下载 --------------------------------------------------- #
     @app.route("/ical/shuttle")

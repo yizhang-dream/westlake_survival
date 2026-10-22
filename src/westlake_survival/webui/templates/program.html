@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}培养方案 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">本科培养方案（官网公开版）</h1>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+{% if has_data %}
+  <div class="card">
+    <div class="label">培养目标</div>
+    <p>{{ goal or '—' }}</p>
+  </div>
+
+  {% if features %}
+  <h2 class="section">培养特色</h2>
+  <div class="grid cols-2">
+    {% for f in features %}
+    <div class="card">
+      <div class="label">{{ f.title }}</div>
+      <p class="muted" style="font-size:.86rem">{{ f.text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% for s in sections %}
+  <h2 class="section">{{ s.title }}</h2>
+  {% if s.text %}<p>{{ s.text }}</p>{% endif %}
+  {% if s.table %}
+    {% if s.table.name %}<p class="muted" style="font-size:.82rem">{{ s.table.name }}</p>{% endif %}
+    <table class="data">
+      <thead><tr><th>分类</th><th>课程</th></tr></thead>
+      <tbody>
+        {% for row in s.table.rows %}
+        <tr><td>{{ row.name or '—' }}</td><td>{{ row.courses | join('；') }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+  {% endfor %}
+
+  {% if summary %}
+  <h2 class="section">本科专业</h2>
+  <p>{{ summary }}</p>
+  {% endif %}
+  {% if majors %}
+  <div class="grid cols-2">
+    {% for m in majors %}
+    <div class="card">
+      <div class="label">{{ m.name }}<span class="muted"> · {{ m.group }}</span></div>
+      <p class="muted" style="font-size:.86rem">{{ m.intro or '—' }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <p class="muted" style="font-size:.82rem">
+    数据来自本科招生网公开页面（{{ source_url }}）；公开网没有分专业的官方培养
+    方案文档，逐门修读要求以教务发布为准。
+  </p>
+{% elif error %}
+  <div class="empty">培养方案数据暂不可用。</div>
+{% else %}
+  <div class="empty">暂无培养方案数据。</div>
+{% endif %}
+{% endblock %}
