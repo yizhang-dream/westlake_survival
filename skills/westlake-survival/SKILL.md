@@ -28,6 +28,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 查看某作业已提交状态 | `westlake canvas submission --course … --assignment …` |
 | 讲座 / 学术会议 / 演出预告 | `westlake events` |
 | 西湖新闻 / 科研进展 | `westlake news` / `westlake research` |
+| 本科培养方案 / 课程体系 / 专业介绍 | `westlake program overview` / `curriculum` / `majors` |
 | 官网全站搜索 | `westlake search <关键词>` |
 | 招聘岗位 / 导师名录 | `westlake careers` / `westlake faculty` |
 | 食堂咖啡 / 公寓 / 电话地址 | `westlake campus dining` / `housing` / `contact phones` |
@@ -39,7 +40,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
 - **Canvas 类**（`canvas`）：需环境变量 `WESTLAKE_CANVAS_TOKEN`，或写入 `~/.westlake_survival/canvas_token.txt` 首行。
-- **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `research` / `events` / `careers` / `faculty` / `campus` / `contact` / `pms stations` / `probe` / `cache`。
+- **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `contact` / `pms stations` / `probe` / `cache`。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
 
 ## 常用命令速查表
@@ -58,6 +59,11 @@ westlake digest --level normal               # 晨报；terse 只留本地快算
 westlake search 西湖 --limit 10 --page 1
 westlake news --category 学术 --limit 5      # 人物|资讯|学术|校园|招生|媒体|影像
 westlake news detail <URL>
+westlake program overview                    # 培养目标 + 八项培养特色
+westlake program curriculum                  # 课程体系六栏目，含通识课程简表
+westlake program majors                      # 8 个专业总览 + 分专业介绍
+westlake program majors 临床                 # 按专业名子串过滤
+westlake program majors --lang en            # 英文招生网同构（zh 缺省）
 westlake research --limit 10
 westlake research detail <URL>
 westlake events --days 7 --limit 20 --type 名家讲座

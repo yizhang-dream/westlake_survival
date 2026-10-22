@@ -22,6 +22,7 @@
 =======================================================================
 ``sis_schedule`` / ``sis_grades`` / ``sis_exams`` / ``sis_evals_pending`` /
 ``calendar_today`` / ``calendar_week`` / ``transit_next`` / ``news_latest`` /
+``program_overview`` / ``program_curriculum`` / ``program_majors`` /
 ``events_upcoming`` / ``research_latest`` / ``site_search`` / ``faculty_search`` /
 ``campus_dining`` / ``campus_housing`` / ``contact_info`` / ``context_snapshot`` /
 ``canvas_deadlines``；另有写操作工具 ``canvas_submit``（交作业，缺省只预检，
@@ -293,6 +294,73 @@ def _tool_news_latest(args: dict) -> Any:
         }
         for item in latest(limit=limit)
     ]
+
+
+def _section_plain(section: Any) -> dict:
+    """把 :class:`westlake_survival.program.ProgramSection` 压成纯数据。"""
+    out: dict[str, Any] = {
+        "key": section.key,
+        "title": section.title,
+        "content": section.content_text,
+    }
+    if section.table is not None:
+        out["table"] = {
+            "name": section.table.name,
+            "headers": section.table.headers,
+            "rows": [
+                {"name": row.name, "items": row.items} for row in section.table.rows
+            ],
+        }
+    return out
+
+
+def _tool_program_overview(args: dict) -> Any:
+    """本科培养理念：培养目标与培养特色（官网公开版）。"""
+    from westlake_survival.program import overview
+
+    lang = _opt_str(args, "lang") or "zh"
+    data = overview(lang)
+    return {
+        "lang": data.lang,
+        "url": data.url,
+        "goal": data.goal.content_text,
+        "features": [{"title": f.title, "content": f.content_text} for f in data.features],
+    }
+
+
+def _tool_program_curriculum(args: dict) -> Any:
+    """本科课程体系：核心课程 / 通识课程表 / 专业课程等栏目（官网公开版）。"""
+    from westlake_survival.program import curriculum
+
+    lang = _opt_str(args, "lang") or "zh"
+    data = curriculum(lang)
+    return {
+        "lang": data.lang,
+        "url": data.url,
+        "sections": [_section_plain(section) for section in data.sections],
+    }
+
+
+def _tool_program_majors(args: dict) -> Any:
+    """本科专业设置：8 个专业总览与分专业介绍（官网公开版）。"""
+    from westlake_survival.program import majors
+
+    lang = _opt_str(args, "lang") or "zh"
+    data = majors(lang)
+    return {
+        "lang": data.lang,
+        "url": data.url,
+        "summary": data.summary,
+        "majors": [
+            {
+                "group": major.group,
+                "name": major.name,
+                "value": major.value,
+                "sections": [_section_plain(section) for section in major.sections],
+            }
+            for major in data.majors
+        ],
+    }
 
 
 def _tool_events_upcoming(args: dict) -> Any:
@@ -607,6 +675,24 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             {"limit": _int_param("最多返回条数，默认 10。", minimum=1, maximum=50)}
         ),
         "handler": _tool_news_latest,
+    },
+    {
+        "name": "program_overview",
+        "description": "本科培养理念：培养目标与八项培养特色（招生网公开数据，lang=zh/en）。",
+        "inputSchema": _schema({"lang": _str_param("站点语言，默认 zh。", enum=["zh", "en"])}),
+        "handler": _tool_program_overview,
+    },
+    {
+        "name": "program_curriculum",
+        "description": "本科课程体系：核心课程、通识课程简表、专业课程与专业选定规则（招生网公开数据）。",
+        "inputSchema": _schema({"lang": _str_param("站点语言，默认 zh。", enum=["zh", "en"])}),
+        "handler": _tool_program_curriculum,
+    },
+    {
+        "name": "program_majors",
+        "description": "本科专业设置：8 个专业（理学/工学/医学）总览与分专业介绍（招生网公开数据）。",
+        "inputSchema": _schema({"lang": _str_param("站点语言，默认 zh。", enum=["zh", "en"])}),
+        "handler": _tool_program_majors,
     },
     {
         "name": "events_upcoming",
