@@ -41,7 +41,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
 # 前端外观参考 xiuyuliang.cn：暖纸底 + 白色内容卡 + 细边框 + 明暗切换（右上按钮，存 localStorage）` |
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
-| 前端接口有哪些、返回什么 | `westlake webui serve` → `/api`（说明页，含实时样例） |
+| 前端接口有哪些、返回什么 | `/capabilities` 页底部「HTTP 接口」区（含实时样例） |
 | 一步打开全部功能 | `westlake go`（启动 WebUI 并自动开浏览器，用户唯一要记的命令） |
 
 ## 首次使用：用户走网页，终端留给 Agent
@@ -76,6 +76,7 @@ westlake calendar events                     # 本学期校历事件
 westlake transit next --campus 云谷 --limit 3
 westlake transit table --campus 云谷 --day 工作日
 westlake transit ical --days 14 --out bus.ics
+# 网页订阅：校历页有班车/课表 ICS 一键复制（/ical/shuttle、/ical/schedule）
 westlake context --level terse               # terse|normal|verbose
 westlake digest --level normal               # 晨报；terse 只留本地快算
 westlake search 西湖 --limit 10 --page 1

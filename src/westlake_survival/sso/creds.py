@@ -183,7 +183,11 @@ def read_credentials() -> tuple[str, str]:
     if env and env.strip():
         return _parse(env, f"环境变量 {ENV_VAR}")
 
-    keyring_creds = read_credentials_keyring()
+    if os.environ.get("WESTLAKE_NO_KEYRING"):
+        # 测试/自动化隔离：完全无视系统钥匙串（读也不读），保证用例与真实凭据互不可见。
+        keyring_creds = None
+    else:
+        keyring_creds = read_credentials_keyring()
     if keyring_creds is not None:
         return keyring_creds
 

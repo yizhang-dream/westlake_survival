@@ -961,6 +961,10 @@ def create_app() -> Flask:
     @app.route("/calendar")
     def calendar_page():
         context = _calendar_context()
+        context["ics_urls"] = [
+            {"title": "班车时刻", "url": request.host_url.rstrip("/") + "/ical/shuttle?days=30"},
+            {"title": "本学期课表（需教务凭据）", "url": request.host_url.rstrip("/") + "/ical/schedule"},
+        ]
         return render_template("calendar.html", **context)
 
     # -- 讲座活动页 ------------------------------------------------------- #
@@ -1049,7 +1053,12 @@ def create_app() -> Flask:
     # -- 能力总览页 -------------------------------------------------------- #
     @app.route("/capabilities")
     def capabilities_page():
-        return render_template("capabilities.html", **_capabilities_context())
+        context = _capabilities_context()
+        try:
+            context["api_endpoints"] = _api_doc_context()["endpoints"]
+        except Exception:  # 接口样例失败不影响能力页
+            context["api_endpoints"] = []
+        return render_template("capabilities.html", **context)
 
     @app.route("/api/capabilities")
     def capabilities_api():
@@ -1133,10 +1142,7 @@ def create_app() -> Flask:
             )
         return _ical_response(body, "westlake-schedule.ics")
 
-    # -- API 说明页 -------------------------------------------------------- #
-    @app.route("/api")
-    def api_page():
-        return render_template("api.html", **_api_doc_context())
+    # --（API 说明页已并入 /capabilities；裸接口 /api/* 与 /ical/* 保留）-- #
 
     # -- JSON API --------------------------------------------------------- #
     @app.route("/api/context")

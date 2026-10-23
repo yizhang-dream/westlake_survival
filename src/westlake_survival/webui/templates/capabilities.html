@@ -51,6 +51,22 @@
 </section>
 {% endfor %}
 
+{% if api_endpoints %}
+<section class="cap-group">
+  <h2 class="section">HTTP 接口（{{ api_endpoints | length }}）</h2>
+  <p class="muted" style="font-size:.86rem">本机只读接口；日历订阅在校历页有专门入口。样例为当前实时数据，超长已截断。</p>
+  {% for item in api_endpoints %}
+  <div class="card cap-item">
+    <div style="display:flex;justify-content:space-between;gap:.8rem;align-items:baseline">
+      <strong>{{ item.title }}　<code>{{ item.path }}</code></strong>
+      <a href="{{ item.path }}" target="_blank" rel="noopener" style="font-size:.8rem">打开 →</a>
+    </div>
+    <div class="muted" style="font-size:.84rem;margin-top:.2rem">{{ item.note }}</div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
 <p class="muted" style="font-size:.82rem">
   机器可读版本：<a href="/api/capabilities">/api/capabilities</a>。
   CLI 与 MCP 一一对应同一批库函数，数据源都是官网或校内系统。
