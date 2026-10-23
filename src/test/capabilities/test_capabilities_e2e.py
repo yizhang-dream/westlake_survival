@@ -131,3 +131,25 @@ def test_all_pages_share_the_new_shell(server: str) -> None:
         assert 'data-theme="light"' in html, path
         assert "wrap sheet" in html, path
         assert "--bg: #f4f2ed" in html, path
+
+
+def test_api_page_documents_every_endpoint(server: str) -> None:
+    """`/api` 是可读的说明页（以前导航直连裸 JSON），且覆盖全部接口。"""
+    status, html = _get(server + "/api")
+    assert status == 200
+    for path in ("/api/context", "/api/capabilities", "/api/shuttle", "/ical/shuttle", "/ical/schedule"):
+        assert path in html, path
+    # 样例是真实取数：快照键出现在页面上（被转义渲染，不破坏布局）
+    assert "week_number" in html
+    assert "level" in html
+    # 导航指向说明页，而不是裸 JSON
+    assert 'href="/api"' in html
+
+
+def test_json_endpoints_still_valid(server: str) -> None:
+    """说明页旁边，原始 JSON 接口仍返回可解析内容。"""
+    for path in ("/api/context", "/api/capabilities"):
+        status, body = _get(server + path)
+        assert status == 200, path
+        payload = json.loads(body)
+        assert isinstance(payload, dict), path
