@@ -6,8 +6,10 @@
 **任意一位有账号的人成功登录一次**，把接口响应固化下来随包发布；其他用户
 不需要账号。
 
-本脚本打开**有头浏览器**，由你本人在窗口里输入账号密码（脚本不读、不存、
-不打印），登录完成后自动遍历页面并把所有 ``/api/nsc/**`` 响应存成 JSON。
+本脚本使用**持久化浏览器配置**（``~/.westlake_survival/map_browser_profile``）：
+第一次需要你本人在窗口里登录（脚本不读、不存、不打印密码），之后重跑会直接
+复用登录态，不必重复登录。登录完成后遍历页面并把所有 ``/api/**`` 列表响应
+存成 JSON，同时写一份 ``.summary.json`` 接口清单供人工确认。
 
 用法::
 
@@ -33,19 +35,27 @@ from playwright.sync_api import sync_playwright
 
 BASE_URL = "https://map.westlake.edu.cn"
 
-#: 登录成功判据：URL 离开 /login 且出现令牌类存储键。
-LOGIN_TIMEOUT_S = 600
+#: 登录最长等待（秒）。
+LOGIN_TIMEOUT_S = 900
+
+#: 持久化浏览器配置目录（保存登录态，重跑免登录）。
+PROFILE_DIR = Path.home() / ".westlake_survival" / "map_browser_profile"
 
 
-def _wait_for_login(page) -> bool:
-    """等用户在浏览器里完成登录。"""
+def _wait_for_login(page, state: dict) -> bool:
+    """等真正登录完成。
+
+    不能只看「URL 离开 /login」——点「统一身份认证」也会跳走（到 IAM），
+    那时还没登录。可靠判据是**出现带 Authorization 的业务请求**。
+    """
     deadline = time.time() + LOGIN_TIMEOUT_S
-    print("请在弹出的浏览器窗口里登录（账号密码只有你自己看到），等待中…", flush=True)
+    print("请在弹出的浏览器窗口里登录（可用「切换登录方式 → 统一身份认证」）。", flush=True)
+    print("账号密码只有你自己看到；检测到登录成功会自动继续。", flush=True)
     while time.time() < deadline:
-        if "/login" not in page.url:
-            time.sleep(3)  # 让首屏接口先跑
+        if state.get("authorized"):
+            time.sleep(5)  # 让首屏接口跑完
             return True
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
     return False
 
 
@@ -56,8 +66,10 @@ def _walk_ui(page) -> None:
         page.mouse.wheel(0, 1200)
         page.wait_for_timeout(800)
     selectors = [
-        ".el-menu-item", ".menu-item", "li[class*=menu]", "div[class*=tree-node]",
-        "div[class*=list-item]", "span[class*=title]",
+        ".el-menu-item", ".el-tabs__item", ".el-submenu__title", ".menu-item",
+        "li[class*=menu]", "div[class*=tree-node]", "div[class*=list-item]",
+        "div[class*=card]", "span[class*=title]", "div[class*=category]",
+        "button", "a",
     ]
     clicked = 0
     for selector in selectors:
@@ -65,7 +77,7 @@ def _walk_ui(page) -> None:
             items = page.query_selector_all(selector)
         except Exception:
             continue
-        for item in items[:8]:
+        for item in items[:10]:
             try:
                 item.click(timeout=1500)
                 page.wait_for_timeout(1200)
@@ -79,42 +91,78 @@ def capture(out_path: Path) -> int:
     """启动浏览器、等登录、抓响应、写文件。返回进程退出码。"""
     captured: dict[str, list] = {}
     raw_log: list[dict] = []
+    state: dict = {"authorized": False}
+
+    def on_request(request):
+        if "/api/nsc/" in request.url and request.headers.get("authorization"):
+            state["authorized"] = True
+
+    summary: dict[str, dict] = {}
 
     def on_response(response):
         url = response.url
-        if "/api/nsc/" not in url:
+        if "/api/" not in url:
             return
         try:
             payload = response.json()
         except Exception:
             return
-        if not isinstance(payload, dict) or payload.get("code") not in ("10000", 0, "0", 200, "200"):
+        if not isinstance(payload, dict):
             return
-        data = payload.get("data")
         endpoint = url.split("map.westlake.edu.cn", 1)[-1].split("?", 1)[0]
+        data = payload.get("data")
+        entry = summary.setdefault(
+            endpoint,
+            {"code": str(payload.get("code")), "type": type(data).__name__, "count": 0, "keys": []},
+        )
+        if payload.get("code") not in ("10000", 0, "0", 200, "200"):
+            return
         raw_log.append({"endpoint": endpoint, "code": payload.get("code")})
         if isinstance(data, list) and data and isinstance(data[0], dict):
-            bucket = captured.setdefault(endpoint, [])
-            if len(data) > len(bucket):
+            entry["count"] = max(entry["count"], len(data))
+            entry["keys"] = sorted(data[0].keys())[:12]
+            if len(data) > len(captured.get(endpoint, [])):
                 captured[endpoint] = data  # 同一端点多次请求取最长的一份
+        elif isinstance(data, dict):
+            entry["count"] = max(entry["count"], 1)
+            entry["keys"] = sorted(data.keys())[:12]
 
+    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        context = browser.new_context(viewport={"width": 1440, "height": 900})
-        page = context.new_page()
+        context = p.chromium.launch_persistent_context(
+            str(PROFILE_DIR), headless=False, viewport={"width": 1440, "height": 900}
+        )
+        page = context.pages[0] if context.pages else context.new_page()
         page.on("response", on_response)
+        page.on("request", on_request)
         page.goto(BASE_URL, wait_until="domcontentloaded", timeout=60000)
-        if not _wait_for_login(page):
+        page.wait_for_timeout(4000)
+        if not state.get("authorized") and not _wait_for_login(page, state):
             print("等待登录超时，未抓到数据。", file=sys.stderr)
-            browser.close()
+            context.close()
             return 2
         print(f"登录完成，当前页面：{page.url}", flush=True)
-        _walk_ui(page)
-        page.wait_for_timeout(2000)
-        browser.close()
+        page.wait_for_timeout(6000)
+        try:
+            page.goto(BASE_URL + "/home", wait_until="networkidle", timeout=60000)
+        except Exception:
+            pass
+        page.wait_for_timeout(6000)
+        clicked = _walk_ui(page)
+        print(f"已点击 {clicked} 个界面元素以触发接口。", flush=True)
+        page.wait_for_timeout(3000)
+        context.close()
 
+    print("")
+    print("接口清单：")
+    for endpoint, info in sorted(summary.items()):
+        print(f"  {endpoint} | code={info['code']} | {info['type']} | {info['count']} 条 | {info['keys'][:6]}")
+
+    out_path.with_suffix(".summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     if not captured:
-        print("没有抓到任何列表型数据（可能页面结构变化或需要更多点击）。", file=sys.stderr)
+        print("没有抓到列表型数据；接口清单已写入 .summary.json 供判断。", file=sys.stderr)
         return 3
 
     out_path.write_text(
