@@ -37,6 +37,10 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 校区地图 / 校园全景 / 怎么到校 | `westlake map [--campus 云谷]` |
 | 什么事在哪儿办（全校流程应用目录） | `westlake affairs apps [关键词]` |
 | HPC / 预约中心 / 镜像站入口 | `westlake affairs links` |
+| 集群队列与节点配置（公开） | `westlake hpc overview`，网页 `/hpc` |
+| 报销/财务制度/科研经费文档 | `westlake finance sections/articles`，网页 `/finance` |
+| 镜像仓库目录与换源 | `westlake mirrors`，网页 `/mirrors` |
+| 全站服务注册表与在线普查 | 网页 `/services`（盘点快照+扫描按钮） |
 | 服务全景普查（直连子域+办事目录） | `westlake probe scan [--full]`，网页版在 `/capabilities`「运行普查」 |
 | 课表/成绩/考试/待评教（网页） | WebUI `/sis` |
 | Canvas 课程与截止（网页） | WebUI `/canvas` |

@@ -93,3 +93,27 @@ def test_webui_affairs_page_lists_apps() -> None:
             process.wait(timeout=10)
         except subprocess.TimeoutExpired:
             process.kill()
+
+
+def test_live_content_pages_have_real_data() -> None:
+    """三个内容页真数据：HPC 队列表、财务文档、镜像仓库（live：抓真实站点）。"""
+    from westlake_survival.finance import articles
+    from westlake_survival.hpc import overview
+    from westlake_survival.mirrors import repos
+
+    h = overview()
+    assert len(h.queues) >= 10
+    names = " ".join(q.name for q in h.queues)
+    assert "amd-ep2" in names and "A100" in names
+    assert any(q.nodes.isdigit() and int(q.nodes) >= 5 for q in h.queues)
+
+    guides = articles("ywzn1/rcbx1.htm")
+    assert 4 <= len(guides) <= 12
+    assert any("报销" in a.title for a in guides)
+    rules = articles("gzzd1/zmcwzd.htm")
+    assert len(rules) >= 8 and any("管理办法" in a.title for a in rules)
+
+    m = repos()
+    assert len(m) >= 8
+    assert any(r.name.lower() == "pypi" for r in m)
+    assert any(r.help_url for r in m)

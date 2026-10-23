@@ -33,6 +33,9 @@ from westlake_survival.campusmap import cli_group as map_cmd
 from westlake_survival.careers import cli_group as careers_cmd
 from westlake_survival.contact import cli_group as contact_cmd
 from westlake_survival.discovery import cli_group as affairs_cmd
+from westlake_survival.finance import cli_group as finance_cmd
+from westlake_survival.hpc import cli_group as hpc_cmd
+from westlake_survival.mirrors import cli_group as mirrors_cmd
 from westlake_survival.events import cli_group as events_cmd
 from westlake_survival.exceptions import AuthError, OffCampusError, WestlakeError
 from westlake_survival.faculty import cli_group as faculty_cmd
@@ -1363,6 +1366,9 @@ for _group in (
     map_cmd,
     contact_cmd,
     affairs_cmd,
+    hpc_cmd,
+    finance_cmd,
+    mirrors_cmd,
     context_cmd,
     digest_cmd,
     probe_cmd,
