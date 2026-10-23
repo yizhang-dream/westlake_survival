@@ -149,3 +149,16 @@ def test_live_schools_news_all_five() -> None:
         first_titles[key] = items[0].title
     # 五院首条互不相同（防止适配器串台）
     assert len(set(first_titles.values())) == len(first_titles)
+
+
+def test_live_snowball_finds_hidden_hosts() -> None:
+    """滚雪球收割能发现字典漏掉的机构站点（页脚互链）。"""
+    from westlake_survival.discovery import snowball_hosts
+
+    found = snowball_hosts(rounds=1)
+    hosts = set(found)
+    # 2026-10-24 实测靠页脚互链才发现的站点
+    for hidden in ("dq", "wudf", "qiushi", "huxin"):
+        assert hidden in hosts, hidden
+    # 每个发现都应带来源
+    assert found["dq"] and found["dq"][0].startswith("http")

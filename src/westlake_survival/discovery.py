@@ -43,6 +43,7 @@ __all__ = [
     "direct_session",
     "subdomain_census",
     "app_directory",
+    "snowball_hosts",
 ]
 
 logger = logging.getLogger(__name__)
@@ -227,6 +228,69 @@ def _handle_errors(func):
             raise SystemExit(1) from exc
 
     return wrapper
+
+
+#: 滚雪球种子（已知高价值入口；两轮收割实测收敛）。
+SNOWBALL_SEEDS = (
+    "https://www.westlake.edu.cn/",
+    "https://science.westlake.edu.cn/",
+    "https://sls.westlake.edu.cn/About/",
+    "https://engineering.westlake.edu.cn/",
+    "https://medicine.westlake.edu.cn/About/",
+    "https://its.westlake.edu.cn/",
+    "https://my.westlake.edu.cn/",
+    "https://one.westlake.edu.cn/taskcenter/home",
+    "https://hpc.westlake.edu.cn/",
+    "https://finance.westlake.edu.cn/",
+    "https://international.westlake.edu.cn/",
+    "https://alumni.westlake.edu.cn/",
+    "https://security.westlake.edu.cn/",
+    "https://remotework.westlake.edu.cn/portal/",
+    "https://zh-ugadmissions.westlake.edu.cn/",
+    "https://info.westlake.edu.cn/",
+)
+
+
+def snowball_hosts(
+    rounds: int = 2,
+    *,
+    session: requests.Session | None = None,
+    timeout: float = 8.0,
+) -> dict[str, list[str]]:
+    """滚雪球链接收割：从种子页收集 ``*.westlake.edu.cn`` 域名，迭代轮次。
+
+    比子域字典更能发现「按机构组织」的站点（学院、党群、基金会、讲堂等
+    常只在彼此的页脚互链）。返回 ``{域名: [来源页…]}``。
+    """
+    import re as _re
+    from urllib.parse import urlparse
+
+    session = session if session is not None else direct_session()
+    found: dict[str, list[str]] = {}
+    queue = [urlparse(u).geturl() for u in SNOWBALL_SEEDS]
+    visited: set[str] = set()
+    for _round in range(max(1, rounds)):
+        next_queue: list[str] = []
+        for url in queue:
+            if url in visited:
+                continue
+            visited.add(url)
+            try:
+                response = session.get(url, timeout=timeout, verify=False)
+            except requests.RequestException:
+                continue
+            body = response.content[:200000].decode("utf-8", errors="replace")
+            for host in _re.findall(r"https?://([a-z0-9-]+)\.westlake\.edu\.cn", body):
+                found.setdefault(host, [])
+                if url not in found[host]:
+                    found[host].append(url)
+            # 新域名首页作为下一轮种子
+            for host in _re.findall(r"https?://([a-z0-9-]+)\.westlake\.edu\.cn", body):
+                candidate = f"https://{host}.westlake.edu.cn/"
+                if candidate not in visited and host not in ("payment", "isearch"):
+                    next_queue.append(candidate)
+        queue = next_queue[:24]  # 控制规模
+    return found
 
 
 def _cli():
