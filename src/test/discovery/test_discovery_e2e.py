@@ -135,3 +135,17 @@ def test_live_taskcenter_personal_todo() -> None:
 
     items = todo()  # 已登录的持久化 profile；首次会自动登录（统一密码）
     assert isinstance(items, list)
+
+
+def test_live_schools_news_all_five() -> None:
+    """五学院官网适配器全通：每院 ≥3 条、首条有标题。"""
+    from westlake_survival.schools import SCHOOLS, news
+
+    first_titles = {}
+    for key in SCHOOLS:
+        items = news(key, limit=3)
+        assert len(items) >= 3, key
+        assert items[0].title and items[0].url.startswith("http"), key
+        first_titles[key] = items[0].title
+    # 五院首条互不相同（防止适配器串台）
+    assert len(set(first_titles.values())) == len(first_titles)

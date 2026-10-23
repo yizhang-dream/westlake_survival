@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}学院 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">学院官网</h1>
+<p class="muted" style="font-size:.9rem">理学院 / 生命科学 / 工学院 / 医学院 / 理论科学研究院——每院最新 5 条（公开数据）。</p>
+<div class="grid cols-2">
+  {% for c in cards %}
+  <div class="card">
+    <div style="font-weight:600">{{ c.name }}　<a href="{{ c.url }}" target="_blank" rel="noopener" style="font-size:.8rem">官网 →</a></div>
+    {% if c.error %}
+      <div class="dim" style="font-size:.82rem;margin-top:.3rem">暂不可用（{{ c.error }}）</div>
+    {% else %}
+      <ul style="margin:.5rem 0 0;padding-left:1.1rem;font-size:.88rem">
+        {% for i in c.entries %}<li><a href="{{ i.u }}" target="_blank" rel="noopener">{{ i.t }}</a>{% if i.d %} <span class="dim">{{ i.d }}</span>{% endif %}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
