@@ -43,7 +43,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
 - **Canvas 类**（`canvas`）：需环境变量 `WESTLAKE_CANVAS_TOKEN`，或写入 `~/.westlake_survival/canvas_token.txt` 首行。
-- **电子地图类**（`westlake map login/status`，仅楼宇 POI 那部分）：需地图系统独立账号（与教务密码不同源，学号存在但密码需单独确认），`westlake map login` 配置一次即长期复用；不配置时 `westlake map` 仍可用公开的地图图片/全景/交通。登录密码由工具按前端算法加密（AES-128-ECB），需装 `[crypto]`。
+- **电子地图类**：楼宇/设施查询走**随包离线数据集**（`westlake map poi`），普通用户无需账号；数据集由维护者用 `tools/capture_map.py` 一次性抓取后 `tools/build_map_dataset.py` 生成。仅当要自己重新抓取时才需要 `westlake map login`（地图系统独立账号，密码与教务不同源，工具按 AES-128-ECB 加密后提交）。
 - **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
 
@@ -91,6 +91,7 @@ westlake map                                  # 三校区：地址/地图图片/
 westlake map --campus 云谷
 westlake map login                            # 配置电子地图账号（一次，之后自动复用）
 westlake map status                           # 只报凭据/令牌有无
+westlake map poi 图书馆                        # 离线查楼宇/设施（随包数据集，无需登录）
 westlake pms stations
 westlake probe
 westlake cache clear --module events

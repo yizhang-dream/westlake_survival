@@ -312,6 +312,35 @@ def map_login(user: str, password: str) -> None:
     click.echo(f"登录成功，凭据已保存到{where}；令牌已缓存，后续命令自动复用。")
 
 
+@cli_group.command(name="poi")
+@click.argument("keyword", required=False)
+@click.option("--limit", type=int, default=20, show_default=True, help="最多显示条数。")
+@click.option("--endpoint", "endpoint_part", default=None, help="只查某类端点（子串，如 area/building）。")
+def map_poi(keyword: str | None, limit: int, endpoint_part: str | None) -> None:
+    """离线查楼宇/设施/区域（读随包数据集，不需要登录）。
+
+    数据由维护者用一次性抓取脚本固化，见 tools/capture_map.py。
+    """
+    from westlake_survival import mapdata
+
+    if not mapdata.dataset_available():
+        click.echo("地图数据集尚未生成（当前只有公开的地图图片与全景）。")
+        click.echo("生成方式：维护者用有效账号跑一次 tools/capture_map.py，再跑 tools/build_map_dataset.py。")
+        click.echo("自己已配置账号时也可先 `westlake map login`，再联系维护者导出。")
+        return
+    dataset = mapdata.load_dataset()
+    if keyword:
+        hits = dataset.search(keyword, limit=limit)
+    else:
+        hits = dataset.records(endpoint_part)[:limit]
+    click.echo(f"数据集：{len(dataset)} 条记录，生成于 {dataset.generated_at or '未知'}")
+    if not hits:
+        click.echo("没有匹配的记录。")
+        return
+    for hit in hits:
+        click.echo(f"  {hit.brief()}　[{hit.endpoint}]")
+
+
 @cli_group.command(name="status")
 @_handle_errors
 def map_status() -> None:
