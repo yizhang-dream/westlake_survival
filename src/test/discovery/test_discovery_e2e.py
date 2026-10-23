@@ -117,3 +117,21 @@ def test_live_content_pages_have_real_data() -> None:
     assert len(m) >= 8
     assert any(r.name.lower() == "pypi" for r in m)
     assert any(r.help_url for r in m)
+
+
+def test_live_institute_lists_have_articles() -> None:
+    """理论科学研究院（its 域名）新闻与学术活动列表真数据。"""
+    from westlake_survival.institute import articles
+
+    news = articles("xwdt.htm")
+    events = articles("xshd/xshy.htm")
+    assert len(news) >= 5 and len(events) >= 5
+    assert all(a.url.startswith("https://its.westlake.edu.cn/") for a in news[:3])
+
+
+def test_live_taskcenter_personal_todo() -> None:
+    """我的待办（浏览器统一会话）：接口通、结构正确（0 条也是成功）。"""
+    from westlake_survival.taskcenter import todo
+
+    items = todo()  # 已登录的持久化 profile；首次会自动登录（统一密码）
+    assert isinstance(items, list)

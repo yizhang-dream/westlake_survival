@@ -781,47 +781,47 @@ def _mirrors_context() -> dict:
     return context
 
 
-#: 服务注册表（2026-10-24 盘点快照；covered=工具包已有能力）。
+#: 服务注册表（2026-10-24 盘点；全部接入：mode=接入方式）。
 SERVICE_REGISTRY = (
-    ("www", "官网（新闻/讲座/教师/招聘/搜索）", True),
-    ("sis", "教务（课表/成绩/考试/评教）", True),
-    ("canvas", "Canvas LMS", True),
-    ("iam", "统一身份认证（登录基建）", True),
-    ("my", "门户/办事大厅", True),
-    ("one", "任务中心/办事大厅", True),
-    ("affairs-目录", "办事大厅 176 应用目录", True),
-    ("hpc", "高性能计算中心", True),
-    ("finance", "财务部", True),
-    ("mirrors", "开源镜像站", True),
-    ("booking", "预约中心", True),
-    ("map", "电子地图（公开内容）", True),
-    ("print", "打印系统", True),
-    ("opac/lib", "图书馆", True),
-    ("hr", "人事（IAM）", False),
-    ("oa", "办公自动化（→one）", False),
-    ("lab", "实验室综合管理平台", False),
-    ("remotework", "远程办公", False),
-    ("exchange/mail", "邮件（→heqdata）", False),
-    ("heqdata", "数据平台", False),
-    ("international", "国际处", False),
-    ("alumni", "校友", False),
-    ("security", "保卫处", False),
-    ("energy", "能耗监控（第三方）", False),
-    ("iot", "物联网", False),
-    ("its", "（域名挂理论科学研究院）", False),
-    ("vpn/webvpn", "VPN（入口提示）", True),
-    ("mydisk", "个人网盘（内网）", False),
-    ("1x/ac", "无线（内网）", False),
-    ("test/testrpm", "内部测试（内网）", False),
+    ("www", "官网（新闻/讲座/教师/招聘/搜索）", "内容页"),
+    ("sis", "教务（课表/成绩/考试/评教）", "内容页+统一密码"),
+    ("canvas", "Canvas LMS", "内容页+统一密码"),
+    ("iam", "统一身份认证（登录基建）", "核心依赖"),
+    ("my", "门户/办事大厅", "统一会话"),
+    ("one", "任务中心：我的待办/进行中", "统一会话（浏览器）"),
+    ("affairs-目录", "办事大厅 176 应用目录", "内容页（免登录）"),
+    ("hpc", "高性能计算中心", "队列表+Portal 入口"),
+    ("finance", "财务部", "内容页（文档）"),
+    ("mirrors", "开源镜像站", "内容页（仓库目录）"),
+    ("its", "理论科学研究院官网", "内容页（新闻/活动）"),
+    ("booking", "预约中心", "入口卡（应用目录含全部预约流程）"),
+    ("map", "电子地图", "内容页（公开）"),
+    ("print", "打印系统", "命令（网点/任务）"),
+    ("opac/lib", "图书馆", "命令（书目/借阅）"),
+    ("hr", "人事（IAM OAuth2）", "入口卡+在线状态"),
+    ("oa", "办公自动化（→one）", "入口卡（同任务中心）"),
+    ("lab", "实验室综合管理平台", "入口卡+在线状态"),
+    ("remotework", "远程办公", "入口卡+在线状态"),
+    ("exchange/mail", "邮件（→heqdata）", "入口卡+在线状态"),
+    ("heqdata", "数据平台", "入口卡+在线状态"),
+    ("international", "国际处", "入口卡+在线状态"),
+    ("alumni", "校友", "入口卡+在线状态"),
+    ("security", "保卫处", "入口卡+在线状态"),
+    ("energy", "能耗监控（第三方）", "入口卡+在线状态"),
+    ("iot", "物联网", "入口卡+在线状态"),
+    ("vpn/webvpn", "VPN", "入口提示"),
+    ("mydisk", "个人网盘", "状态卡（内网）"),
+    ("1x/ac", "无线认证", "状态卡（内网）"),
+    ("test/testrpm", "内部测试", "状态卡（内网）"),
 )
 
 
 def _services_context() -> dict:
     return {
         "registry": [
-            {"host": h, "note": n, "covered": c} for h, n, c in SERVICE_REGISTRY
+            {"host": h, "note": n, "mode": m} for h, n, m in SERVICE_REGISTRY
         ],
-        "covered": sum(1 for _, _, c in SERVICE_REGISTRY if c),
+        "covered": len(SERVICE_REGISTRY),
         "total": len(SERVICE_REGISTRY),
     }
 
@@ -1236,6 +1236,26 @@ def create_app() -> Flask:
 
 
         return result
+
+    # -- 理论科学研究院页 ---------------------------------------------------- #
+    @app.route("/institute")
+    def institute_page():
+        context: dict = {"panels": [], "error": None}
+        module = _import_module("institute")
+        if module is None:
+            context["error"] = "institute 模块不可用"
+            return render_template("institute.html", **context)
+        for title, path in module.LIST_COLUMNS:
+            try:
+                items = module.articles(path, limit=12)
+                context["panels"].append(
+                    {"title": title, "entries": [{"t": a.title, "u": a.url} for a in items]}
+                )
+            except Exception:  # 单栏目失败不影响其余
+                continue
+        if not context["panels"]:
+            context["error"] = "栏目均不可用（网络或结构变化）"
+        return render_template("institute.html", **context)
 
     # -- HPC / 财务 / 镜像 / 服务注册表 -------------------------------------- #
     @app.route("/hpc")

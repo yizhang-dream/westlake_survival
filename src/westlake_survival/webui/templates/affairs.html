@@ -24,6 +24,15 @@
 </div>
 <p class="muted" id="appCount" style="font-size:.82rem"></p>
 
+{% if todo %}
+<h2 class="section">我的待办（{{ todo | length }}）</h2>
+<ul>{% for t_ in todo %}<li>{{ t_.title }}{% if t_.department %}　[{{ t_.department }}]{% endif %} {% if t_.url %}<a href="{{ t_.url }}" target="_blank" rel="noopener">去处理</a>{% endif %}</li>{% endfor %}</ul>
+{% elif todo_error %}
+<div class="note">我的待办不可用（{{ todo_error }}；需统一密码，首次运行自动登录）</div>
+{% else %}
+<p class="muted">没有待办任务。</p>
+{% endif %}
+
 <h2 class="section">常用入口</h2>
 <table class="data">
   <thead><tr><th>服务</th><th>地址</th><th>说明</th></tr></thead>

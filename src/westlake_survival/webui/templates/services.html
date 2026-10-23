@@ -3,16 +3,16 @@
 {% block content %}
 <h1 class="page">服务全景</h1>
 <p class="muted" style="font-size:.9rem">
-  2026-10-24 全量盘点：{{ total }} 项，其中 {{ covered }} 项已接入本工具。徽标「已接入」= 有对应功能页或命令。
+  2026-10-24 全量盘点：{{ total }} 项全部接入。接入方式：内容页（真实数据）/ 统一会话 / 入口卡（直达+在线状态）/ 状态卡（内网探测）。
 </p>
 <table class="data">
-  <thead><tr><th>主机/服务</th><th>身份</th><th>接入</th></tr></thead>
+  <thead><tr><th>主机/服务</th><th>身份</th><th>接入方式</th></tr></thead>
   <tbody>
     {% for s in registry %}
     <tr>
       <td>{{ s.host }}.westlake.edu.cn{% if not '.' in s.host %}{% endif %}</td>
       <td class="muted">{{ s.note }}</td>
-      <td>{% if s.covered %}<span class="chip">已接入</span>{% else %}<span class="chip warn">未接入</span>{% endif %}</td>
+      <td><span class="chip">{{ s.mode }}</span></td>
     </tr>
     {% endfor %}
   </tbody>
