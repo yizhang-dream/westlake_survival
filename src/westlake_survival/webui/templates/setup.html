@@ -21,7 +21,11 @@
             {% else %}<span class="chip warn">未配置</span>{% endif %}
           </td></tr>
       <tr><td>Canvas（课程/作业/考试）</td>
-          <td>{% if creds.canvas %}<span class="chip">已配置</span>{% else %}<span class="chip warn">未配置</span>{% endif %}</td></tr>
+          <td>
+            {% if creds.canvas %}<span class="chip">令牌已配</span>
+            {% elif creds.canvas_via_sso %}<span class="chip">统一密码可用</span>
+            {% else %}<span class="chip warn">未配置</span>{% endif %}
+          </td></tr>
     </tbody>
   </table>
 </div>

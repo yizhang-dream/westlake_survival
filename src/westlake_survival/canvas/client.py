@@ -128,10 +128,16 @@ class CanvasClient:
         base_url: str | None = None,
     ) -> None:
         resolved = resolve_token(token)
-        if not resolved:
-            raise AuthError(_TOKEN_HELP)
-        self._token = resolved
         self._session = session if session is not None else http_session()
+        if resolved:
+            self._token = resolved
+        else:
+            # 统一认证回退：无 token 时用统一密码登 Canvas（IAM CAS，实测
+            # 会话 Cookie 可直接调 REST API，2026-10-24）。凭据沿用教务的
+            # 四级来源；一次失败按「无凭据」报错，不猜口令。
+            self._token = None
+            self._session = self._iam_canvas_session()
+            self._iam_session = True
         self.base_url = (base_url or resolve_base_url()).rstrip("/")
 
     # ------------------------------------------------------------------
@@ -143,12 +149,34 @@ class CanvasClient:
         return self._token
 
     def _require_token(self) -> None:
-        """公开方法统一入口守卫：token 缺失即抛 ``AuthError``。"""
-        if not self._token:
+        """公开方法统一入口守卫：token 与统一会话都没有时才抛 ``AuthError``。"""
+        if not self._token and not getattr(self, "_iam_session", False):
             raise AuthError(_TOKEN_HELP)
 
     def _auth_headers(self) -> dict[str, str]:
+        if not self._token:
+            # 统一认证会话模式：认证靠 Cookie，不带 Authorization 头。
+            return {"Accept": "application/json"}
         return {"Authorization": f"Bearer {self._token}", "Accept": "application/json"}
+
+    @staticmethod
+    def _iam_canvas_session() -> "requests.Session":
+        """用已存统一凭据登 Canvas（IAM CAS）；失败抛 ``AuthError``。"""
+        try:
+            from westlake_survival.iam import canvas_login
+            from westlake_survival.sso import read_credentials
+
+            user, password = read_credentials()
+        except Exception as exc:
+            raise AuthError(
+                "未找到 Canvas token，也没有可用统一凭据。"
+                "可设 WESTLAKE_CANVAS_TOKEN，或先用 westlake setup 配置统一密码。"
+            ) from exc
+        try:
+            return canvas_login(user, password)
+        except Exception as exc:
+            raise AuthError(f"统一认证登 Canvas 失败：{exc}") from exc
+
 
     def _url(self, path: str) -> str:
         if path.startswith(("http://", "https://")):

@@ -54,14 +54,14 @@ westlake webui serve --port 2018              # 本地前端；/capabilities 是
 
 Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 
-一次输入的真实边界：教务 SIS 走统一身份认证（IAM OAuth2）——填统一（校园门户）
-密码即可，旧 SIS 密码自动兼容；Canvas 只认令牌；打印系统是另一套密码。
-公开功能无需任何账号。地图已全公开（图片 + 720° 全景），无账号。
+一次输入的真实边界：教务 SIS 走统一身份认证（IAM OAuth2），填统一（校园门户）
+密码即可；Canvas 同一套统一密码（无令牌自动回退 IAM CAS 会话）；打印系统是
+另一套密码。公开功能无需任何账号；地图全公开（图片 + 720° 全景）。
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
-- **Canvas 类**（`canvas`）：需环境变量 `WESTLAKE_CANVAS_TOKEN`，或写入 `~/.westlake_survival/canvas_token.txt` 首行。
+- **Canvas 类**（`canvas`）：优先令牌（`WESTLAKE_CANVAS_TOKEN` 或 `~/.westlake_survival/canvas_token.txt` 首行）；**无令牌时自动回退统一认证**（IAM CAS 会话，2026-10-24 实测 REST API 认会话 Cookie）——配好教务统一密码即可用 Canvas，无需任何令牌。
 - **电子地图类**：无账号。`/map` 只放官网公开内容（校区地图图片 + 720° 全景链接 + 交通），按用户裁定 2026-10-24 已移除账号与数据集抓取体系。
 - **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。

@@ -96,3 +96,20 @@ def test_live_sis_auth_accepts_stored_credentials() -> None:
     auth = SISAuth()
     auth.refresh()
     assert auth.session.cookies.get("PS_TOKEN")
+
+
+@pytest.mark.live
+def test_live_canvas_usable_without_token() -> None:
+    """live：无 token 时 CanvasClient 回退统一认证会话，真实拉到课程。"""
+    from westlake_survival.canvas import client as canvas_client
+
+    original = canvas_client.resolve_token
+    canvas_client.resolve_token = lambda token=None: None
+    try:
+        client = canvas_client.CanvasClient()
+        me = client.me()
+        courses = client.list_courses()
+        assert me.name
+        assert isinstance(courses, list) and courses
+    finally:
+        canvas_client.resolve_token = original

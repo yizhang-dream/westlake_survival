@@ -641,7 +641,9 @@ def _creds_summary() -> dict:
         summary["canvas"] = bool(resolve_token())
     except Exception:
         pass
-    summary["all_set"] = summary["sis"] and summary["canvas"]
+    # 统一认证（2026-10-24）：有教务凭据即可用 Canvas，无需令牌。
+    summary["canvas_via_sso"] = summary["canvas"] or summary["sis"]
+    summary["all_set"] = summary["sis"]
     return summary
 
 

@@ -71,7 +71,7 @@ def _probe_canvas(token: str) -> tuple[bool, str]:
     from westlake_survival.canvas.client import CanvasClient
 
     try:
-        user = CanvasClient(token=token).me()
+        user = CanvasClient(token=token).me()  # noqa: token 由参数给出
     except AuthError as exc:
         return False, f"令牌无效：{exc}"
     except WestlakeError as exc:

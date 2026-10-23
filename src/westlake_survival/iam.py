@@ -43,6 +43,7 @@ __all__ = [
     "authorize_url_for_sis",
     "login",
     "exchange_sis_session",
+    "canvas_login",
 ]
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,9 @@ SIS_REDIRECT_URI = (
     "NUI_FRAMEWORK.PT_LANDINGPAGE.GBL"
 )
 SIS_OAUTH_CLIENT_ID = "0c0b89c56b63e302"
+
+#: Canvas 的 CAS 入口（实测 302 → IAM /cas/login?service=…/login/cas）。
+CANVAS_CAS_ENTRY = "https://canvas.westlake.edu.cn/login/cas"
 
 
 def authorize_url_for_sis() -> str:
@@ -86,6 +90,116 @@ def _post_json(session: requests.Session, url: str, payload: dict, *, referer: s
     if not isinstance(data, dict):
         raise WestlakeError(f"IAM 返回结构异常：{url}")
     return data
+
+
+def _auth_chain(session, lck: str, entity_id: str, user: str, password: str) -> str:
+    """在既有 lck 上完成「用户名+密码」认证，返回 loginToken。
+
+    queryAuthMethods → verifyCodeIsNeed → getJsPublicKey → authExecute，
+    失败一次即抛 :class:`AuthError`，不做口令猜测。
+    """
+    referer = f"{IAM_BASE}/ac/"
+    chain = _post_json(
+        session,
+        f"{IAM_BASE}/idp/authn/queryAuthMethods",
+        {"lck": lck, "entityId": entity_id},
+        referer=referer,
+    )
+    chain_code = ""
+    for item in chain.get("data") or []:
+        if isinstance(item, dict) and item.get("moduleCode") == "userAndPwd":
+            chain_code = str(item.get("authChainCode") or "")
+            break
+    if not chain_code:
+        raise WestlakeError("未取得 userAndPwd 认证链——IAM 协议可能已变化")
+
+    _post_json(
+        session,
+        f"{IAM_BASE}/idp/authn/verifyCodeIsNeed",
+        {"lang": "zh_CN", "loginName": user, "chainCode": chain_code, "authModuleCode": "userAndPwd"},
+        referer=referer,
+    )
+    key = _post_json(session, f"{IAM_BASE}/idp/authn/getJsPublicKey", {}, referer=referer)
+    public_b64 = str(key.get("data") or "")
+    if not public_b64:
+        raise WestlakeError("未取得 IAM RSA 公钥")
+    execute = _post_json(
+        session,
+        f"{IAM_BASE}/idp/authn/authExecute",
+        {
+            "authModuleCode": "userAndPwd",
+            "authChainCode": chain_code,
+            "entityId": entity_id,
+            "requestType": "chain_type",
+            "lck": lck,
+            "authPara": {"loginName": user, "password": _rsa_encrypt(password, public_b64), "verifyCode": ""},
+        },
+        referer=referer,
+    )
+    message = str(execute.get("message") or execute.get("msg") or "")
+    if "成功" not in message or "失败" in message:
+        code = str(execute.get("code") or "")
+        raise AuthError(f"IAM 登录失败（{code}）：{message or '用户名或密码错误'}")
+    token = str(execute.get("loginToken") or "")
+    if not token:
+        raise WestlakeError("IAM 认证成功但未返回 loginToken——协议可能已变化")
+    return token
+
+
+def _run_engine(session, login_token: str):
+    """把 loginToken 交给 authnEngine（form 编码），返回引擎响应。"""
+    return session.post(
+        f"{IAM_BASE}/idp/authCenter/authnEngine?locale=zh-CN",
+        data={"loginToken": login_token},
+        headers={"Referer": f"{IAM_BASE}/ac/", "Content-Type": "application/x-www-form-urlencoded"},
+        timeout=DEFAULT_TIMEOUT,
+        allow_redirects=False,
+    )
+
+
+def canvas_login(
+    user: str,
+    password: str,
+    *,
+    session: requests.Session | None = None,
+) -> requests.Session:
+    """用统一身份认证登 Canvas，返回带 Canvas 会话 Cookie 的 Session。
+
+    Canvas 走经典 CAS：``/login/cas`` → IAM ``/cas/login?service=…`` →
+    ``/ac/#/index?lck=context_CAS_…&entityId=https://canvas.westlake.edu.cn``。
+    认证链与 SIS 相同；引擎响应会带回带 ticket 的跳转，落到 Canvas 换会话。
+
+    Raises:
+        AuthError: 账号或密码错误（一次失败即抛）。
+        WestlakeError: 网络或协议异常。
+    """
+    session = session if session is not None else http_session()
+    # 1) 走 Canvas CAS 入口拿 lck
+    first = session.get(CANVAS_CAS_ENTRY, timeout=DEFAULT_TIMEOUT, allow_redirects=False)
+    url = first.headers.get("Location", "")
+    for _ in range(4):
+        if "lck=" in url:
+            break
+        hop = session.get(url, timeout=DEFAULT_TIMEOUT, allow_redirects=False)
+        url = hop.headers.get("Location", "")
+    match = re.search(r"lck=(context_[A-Za-z0-9_]+)&entityId=([^&]+)", url)
+    if not match:
+        raise WestlakeError(f"未从 Canvas CAS 跳转解析到 lck：{url[:120]}")
+    lck, entity_id = match.group(1), match.group(2)
+
+    # 2) 同一套用户名密码认证 + 引擎
+    login_token = _auth_chain(session, lck, entity_id, user, password)
+    engine = _run_engine(session, login_token)
+
+    # 3) 引擎页带 ticket 跳回 Canvas，跟下去换会话 Cookie
+    target = engine.headers.get("Location", "")
+    if not target:
+        found = re.search(r"https://canvas\.westlake\.edu\.cn[^\"'<>\s]+", engine.text)
+        target = found.group(0) if found else ""
+    if not target:
+        raise WestlakeError("authnEngine 未返回 Canvas 跳转——协议可能已变化")
+    session.get(target, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
+    return session
 
 
 def login(
