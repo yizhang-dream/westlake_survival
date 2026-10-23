@@ -68,6 +68,7 @@ WEB_PAGES = (
     ("/hpc", "集群", "HPC 队列配置表（公开）与 Portal 入口", False),
     ("/finance", "财务", "报销/制度/科研经费文档（公开）", False),
     ("/mirrors", "镜像", "开源镜像仓库目录与换源 Help", False),
+    ("/schools", "学院", "五学院官网最新新闻聚合（理/生/工/医/理论院）", False),
     ("/institute", "理论院", "理论科学研究院新闻与学术活动（公开）", False),
     ("/services", "服务", "全站服务注册表（盘点快照+在线普查）", False),
     ("/affairs", "办事", "办事大厅 176 个流程应用目录 + HPC/预约/镜像入口", False),

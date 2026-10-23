@@ -43,6 +43,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 全站服务注册表与在线普查 | 网页 `/services`（30 项全接入：方式徽标+扫描按钮） |
 | 我的待办 / 进行中流程（办事大厅） | `westlake todo list|doing`，网页 `/affairs` 顶部（统一密码自动登录） |
 | 理论科学研究院新闻/学术活动 | `westlake institute news|events`，网页 `/institute` |
+| 五学院官网最新新闻（理/生/工/医/理论院） | `westlake schools news <学院>`，网页 `/schools` |
 | 服务全景普查（直连子域+办事目录） | `westlake probe scan [--full]`，网页版在 `/capabilities`「运行普查」 |
 | 课表/成绩/考试/待评教（网页） | WebUI `/sis` |
 | Canvas 课程与截止（网页） | WebUI `/canvas` |

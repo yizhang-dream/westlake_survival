@@ -794,6 +794,7 @@ SERVICE_REGISTRY = (
     ("finance", "财务部", "内容页（文档）"),
     ("mirrors", "开源镜像站", "内容页（仓库目录）"),
     ("its", "理论科学研究院官网", "内容页（新闻/活动）"),
+    ("science/sls/engineering/medicine", "理学院/生科/工学/医学官网", "内容页（五院新闻聚合 /schools）"),
     ("booking", "预约中心", "入口卡（应用目录含全部预约流程）"),
     ("map", "电子地图", "内容页（公开）"),
     ("print", "打印系统", "命令（网点/任务）"),
@@ -1236,6 +1237,23 @@ def create_app() -> Flask:
 
 
         return result
+
+    # -- 学院官网聚合页 ------------------------------------------------------ #
+    @app.route("/schools")
+    def schools_page():
+        module = _import_module("schools")
+        cards = []
+        if module is not None:
+            for key, (name, base, _kind) in module.SCHOOLS.items():
+                card = {"key": key, "name": name, "url": base, "items": [], "error": None}
+                try:
+                    card["entries"] = [
+                        {"t": art.title, "u": art.url, "d": art.date} for art in module.news(key, limit=5)
+                    ]
+                except Exception as exc:  # 单院失败不拖垮其余
+                    card["error"] = exc.__class__.__name__
+                cards.append(card)
+        return render_template("schools.html", cards=cards)
 
     # -- 理论科学研究院页 ---------------------------------------------------- #
     @app.route("/institute")
