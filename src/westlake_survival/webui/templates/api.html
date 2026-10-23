@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}API · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">API</h1>
+
+<p class="muted" style="font-size:.92rem">
+  本服务只绑定 <code>127.0.0.1</code>，下面的接口都是只读 GET，返回 JSON 或 iCalendar。
+  共 {{ count }} 个接口；每条附真实样例（取自当前运行结果，可能随时间变化）。
+</p>
+
+{% for item in endpoints %}
+<section style="margin-bottom:1.8rem">
+  <h2 class="section" style="display:flex;justify-content:space-between;align-items:baseline;gap:.8rem">
+    <span>{{ item.title }}</span>
+    <a href="{{ item.path }}" target="_blank" rel="noopener"
+       style="font-size:.86rem;font-weight:400">打开 {{ item.path }} →</a>
+  </h2>
+  <p class="muted" style="font-size:.88rem;margin:.2rem 0 .5rem">{{ item.note }}</p>
+  <p style="font-size:.82rem;margin:0 0 .45rem">
+    <code>curl {{ item.path }}</code>
+  </p>
+  {% if item.error %}
+  <div class="note">样例获取失败：{{ item.error }}（接口本身可能仍可用）</div>
+  {% else %}
+  <pre style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+              padding:.8rem 1rem;overflow:auto;font-size:.82rem;line-height:1.5;margin:0;
+              color:var(--ink)">{{ item.sample }}</pre>
+  {% endif %}
+</section>
+{% endfor %}
+
+<hr>
+<p class="muted" style="font-size:.84rem">
+  这些接口与页面共用同一批库函数，所以数据口径一致：页面看到的，接口就返回同一份。
+  MCP 客户端用 <code>westlake-mcp</code> 可拿到其中大部分能力（见
+  <a href="/capabilities">能力总览</a>）。
+</p>
+{% endblock %}

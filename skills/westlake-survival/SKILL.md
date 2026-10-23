@@ -41,6 +41,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
 # 前端外观参考 xiuyuliang.cn：暖纸底 + 白色内容卡 + 细边框 + 明暗切换（右上按钮，存 localStorage）` |
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
+| 前端接口有哪些、返回什么 | `westlake webui serve` → `/api`（说明页，含实时样例） |
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 

@@ -548,6 +548,83 @@ def _dining_context():
     }
 
 
+def _pretty(data: Any, limit: int = 900) -> str:
+    """把数据转成带缩进的 JSON 文本，超长截断（页面只展示样例）。"""
+    try:
+        text = json.dumps(_jsonable(data), ensure_ascii=False, indent=2)
+    except (TypeError, ValueError):
+        return "（该接口无法序列化为 JSON 样例）"
+    if len(text) > limit:
+        return text[:limit] + chr(10) + "…（已截断）"
+    return text
+
+
+def _api_doc_context():
+    """组装 API 说明页上下文：每个接口的路径、用途、真实样例。
+
+    样例来自与接口本身相同的取数函数；任一数据源失败只影响该条样例，
+    不让整页 500。
+    """
+    endpoints: list[dict] = []
+
+    def add(path: str, title: str, note: str, kind: str, producer) -> None:
+        row = {"path": path, "title": title, "note": note, "kind": kind, "sample": "", "error": ""}
+        try:
+            data = producer()
+            row["sample"] = data if isinstance(data, str) else _pretty(data)
+        except Exception as exc:  # pragma: no cover - 数据源异常只影响样例
+            row["error"] = f"{exc.__class__.__name__}: {exc}"
+        endpoints.append(row)
+
+    add(
+        "/api/context",
+        "当前快照",
+        "日期、周次、学期、最近事件、下班车、天气与空气质量。",
+        "json",
+        lambda: _context_data("normal"),
+    )
+    add(
+        "/api/capabilities",
+        "能力清单",
+        "CLI / MCP / WebUI 全部入口及其凭据需求。",
+        "json",
+        lambda: _import_module("capabilities").as_dict(),
+    )
+    add(
+        "/api/shuttle",
+        "班车时刻表",
+        "三校区 × 工作日/周末/节假日的班车时刻分档。",
+        "json",
+        lambda: [
+            {
+                "campus": tbl.campus.value,
+                "campus_name": tbl.campus.name,
+                "day_kind": tbl.day_kind.value,
+                "day_kind_name": tbl.day_kind.name,
+                "morning": list(tbl.morning)[:3],
+                "noon": list(tbl.noon)[:3],
+                "night": list(tbl.night)[:3],
+            }
+            for tbl in (_transit_data().tables if _transit_data() is not None else [])
+        ],
+    )
+    add(
+        "/ical/shuttle",
+        "班车日历（ICS）",
+        "订阅到日历应用；只在请求时生成，不入缓存文件。",
+        "ics",
+        lambda: "（ICS 文本，浏览器直接下载；此处不展示样例）",
+    )
+    add(
+        "/ical/schedule",
+        "课表日历（ICS）",
+        "由 SIS 课表导出，需要教务凭据；无凭据时返回说明而不是 500。",
+        "ics",
+        lambda: "（ICS 文本，浏览器直接下载；此处不展示样例）",
+    )
+    return {"endpoints": endpoints, "count": len(endpoints)}
+
+
 def _capabilities_context():
     """组装能力总览页上下文：CLI / MCP / WebUI 三组，含是否需要凭据。"""
     module = _import_module("capabilities")
@@ -968,6 +1045,11 @@ def create_app() -> Flask:
                 status=503,
             )
         return _ical_response(body, "westlake-schedule.ics")
+
+    # -- API 说明页 -------------------------------------------------------- #
+    @app.route("/api")
+    def api_page():
+        return render_template("api.html", **_api_doc_context())
 
     # -- JSON API --------------------------------------------------------- #
     @app.route("/api/context")
