@@ -43,6 +43,18 @@ westlake webui serve --port 2018              # 本地前端；/capabilities 是
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
 | 前端接口有哪些、返回什么 | `westlake webui serve` → `/api`（说明页，含实时样例） |
 
+## 首次使用：先跑一次向导
+
+新拿到这个 skill 时，先让用户执行 `westlake setup`（交互终端里直接运行 `westlake`
+也会在无凭据时自动进入向导）。只填一次学号 + 密码：
+
+- 教务 SIS（课表/成绩/考试/评教/学籍/记录/资助）立刻接通；
+- 电子地图会用同一密码试一次，失败会说明「密码不同源」；
+- Canvas 需要单独令牌（向导里不阻塞询问，之后 `--canvas-token` 或写文件补）；
+- 打印系统（pms）是另一套密码，需要时单独配。
+
+公开功能（校历/班车/新闻/培养方案/通识课程/地图图片）**无需任何账号**，可直接用。
+
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
