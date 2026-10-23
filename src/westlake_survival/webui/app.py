@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 from datetime import date, datetime, time
 from enum import Enum
 from typing import Any
@@ -49,6 +50,8 @@ _NEWS_CATEGORIES: tuple[str, ...] = ("人物", "资讯", "学术", "校园", "�
 # --------------------------------------------------------------------------- #
 # 惰性导入与数据接缝
 # --------------------------------------------------------------------------- #
+logger = logging.getLogger(__name__)
+
 def _import_module(name: str):
     """导入 ``westlake_survival.<name>``；缺失/不可导入时返回 ``None``。
 
@@ -576,6 +579,23 @@ def _map_context(campus: str = ""):
         for item in items
     ]
     context["has_data"] = bool(context["campuses"])
+    # 离线 POI 数据集（可选）：存在就一起展示，缺失不影响公开地图部分。
+    context["pois"] = []
+    context["poi_total"] = 0
+    context["poi_generated_at"] = ""
+    try:
+        from westlake_survival import mapdata
+
+        if mapdata.dataset_available():
+            dataset = mapdata.load_dataset()
+            context["poi_total"] = len(dataset)
+            context["poi_generated_at"] = dataset.generated_at
+            context["pois"] = [
+                {"name": hit.name, "brief": hit.brief(), "endpoint": hit.endpoint}
+                for hit in dataset.records()[:200]
+            ]
+    except Exception:  # 数据集损坏不应影响整页
+        logger.debug("地图数据集加载失败", exc_info=True)
     return context
 
 

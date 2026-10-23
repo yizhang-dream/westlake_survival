@@ -50,6 +50,21 @@
     {% endif %}
   </section>
   {% endfor %}
+  {% if pois %}
+  <h2 class="section">楼宇与设施（离线数据集）</h2>
+  <p class="muted" style="font-size:.86rem">
+    共 {{ poi_total }} 条记录{% if poi_generated_at %}，生成于 {{ poi_generated_at }}{% endif %}；本页只列前 200 条，完整检索用 <code>westlake map poi &lt;关键词&gt;</code>。
+  </p>
+  <table class="data">
+    <thead><tr><th>名称与位置</th><th>来源接口</th></tr></thead>
+    <tbody>
+      {% for p in pois %}
+      <tr><td>{{ p.brief }}</td><td class="dim">{{ p.endpoint }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
   <p class="muted" style="font-size:.82rem">
     地图为西湖大学官网静态图片，全景为官网链接的 720yun 页面。
     校内电子地图系统 map.westlake.edu.cn 需本人账号登录，本页仅用公开数据。
