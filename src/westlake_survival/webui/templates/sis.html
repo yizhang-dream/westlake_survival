@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}学业 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">学业（SIS）</h1>
+{% set sched = blocks.get('schedule') %}
+{% if sched and not sched.error %}
+<h2 class="section">本学期课表</h2>
+<table class="data">
+  <thead><tr><th>课程</th><th>教师</th><th>星期</th><th>时间</th><th>地点</th></tr></thead>
+  <tbody>{% for c in sched %}<tr><td>{{ c.name }}</td><td>{{ c.teacher }}</td><td>{{ c.weekday }}</td><td class="time">{{ c.time }}</td><td>{{ c.location }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<div class="note">课表不可用：{{ sched.error if sched else '未加载' }}（需教务凭据与校园网/VPN）</div>{% endif %}
+
+{% set gr = blocks.get('grades') %}
+{% if gr and not gr.error and gr %}
+<h2 class="section">成绩（最近）</h2>
+<table class="data">
+  <thead><tr><th>学期</th><th>课程</th><th>等级</th><th>学分</th></tr></thead>
+  <tbody>{% for g in gr %}<tr><td>{{ g.term }}</td><td>{{ g.name }}</td><td>{{ g.grade }}</td><td>{{ g.credits }}</td></tr>{% endfor %}</tbody>
+</table>
+{% elif gr and gr.error %}<div class="note">成绩不可用：{{ gr.error }}</div>{% endif %}
+
+{% set ex = blocks.get('exams') %}
+{% if ex and not ex.error %}
+<h2 class="section">考试安排</h2>
+{% if ex %}<table class="data">
+  <thead><tr><th>课程</th><th>日期</th><th>时间</th><th>类型</th><th>考场</th><th>座位</th></tr></thead>
+  <tbody>{% for e in ex %}<tr><td>{{ e.course }}</td><td>{{ e.date }}</td><td>{{ e.time }}</td><td>{{ e.kind }}</td><td>{{ e.room }}</td><td>{{ e.seat }}</td></tr>{% endfor %}</tbody>
+</table>{% else %}<p class="muted">本学期暂无排期考试。</p>{% endif %}
+{% elif ex and ex.error %}<div class="note">考试安排不可用：{{ ex.error }}</div>{% endif %}
+
+{% set ev = blocks.get('evals') %}
+{% if ev is not none %}
+<h2 class="section">待评教</h2>
+{% if ev and not ev.error and ev %}<ul>{% for e in ev %}<li>{{ e.name }}（{{ e.term }}，{{ e.period }}）</li>{% endfor %}</ul>
+{% elif not (ev and ev.error) %}<p class="muted">暂无待评教任务。</p>{% else %}<div class="note">评教不可用：{{ ev.error }}</div>{% endif %}
+{% endif %}
+{% endblock %}

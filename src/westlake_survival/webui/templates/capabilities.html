@@ -51,6 +51,13 @@
 </section>
 {% endfor %}
 
+<section>
+  <h2 class="section">服务普查</h2>
+  <p class="muted" style="font-size:.86rem">直连探测学校子域（绕系统代理）；点击运行，几秒后出结果。</p>
+  <button type="button" id="scanBtn">运行普查</button>
+  <div id="scanOut" style="margin-top:.8rem"></div>
+</section>
+
 {% if api_endpoints %}
 <section class="cap-group">
   <h2 class="section">HTTP 接口（{{ api_endpoints | length }}）</h2>
@@ -72,6 +79,26 @@
   CLI 与 MCP 一一对应同一批库函数，数据源都是官网或校内系统。
 </p>
 
+<script>
+(function () {
+  var btn = document.getElementById('scanBtn');
+  if (btn) btn.addEventListener('click', async function () {
+    btn.disabled = true; btn.textContent = '探测中…';
+    var out = document.getElementById('scanOut');
+    out.innerHTML = '<p class="muted">直连探测中（约 5-15 秒）…</p>';
+    try {
+      var res = await fetch('/api/services/scan?hosts=www,sis,canvas,hpc,mirrors,one,booking,mydisk');
+      var data = await res.json();
+      var rows = (data.alive || []).map(function (r) {
+        return '<tr><td>' + r.host + '.westlake.edu.cn</td><td>' + r.status + '</td><td>' + (r.title || '') + '</td></tr>';
+      }).join('');
+      out.innerHTML = '<table class="data"><thead><tr><th>主机</th><th>状态</th><th>标题</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<p class="muted" style="font-size:.8rem">共探测 ' + data.total + ' 个，活 ' + (data.alive || []).length + ' 个（通配 502 不计）。完整普查：westlake probe scan --full</p>';
+    } catch (e) { out.innerHTML = '<div class="note">探测失败：' + e + '</div>'; }
+    btn.disabled = false; btn.textContent = '运行普查';
+  });
+})();
+</script>
 <script>
 (function () {
   const input = document.getElementById('capFilter');
