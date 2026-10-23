@@ -35,6 +35,9 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 招聘岗位 / 导师名录 | `westlake careers` / `westlake faculty` |
 | 食堂咖啡 / 公寓 / 电话地址 | `westlake campus dining` / `housing` / `contact phones` |
 | 校区地图 / 校园全景 / 怎么到校 | `westlake map [--campus 云谷]` |
+| 什么事在哪儿办（全校流程应用目录） | `westlake affairs apps [关键词]` |
+| HPC / 预约中心 / 镜像站入口 | `westlake affairs links` |
+| 服务全景普查（直连子域+办事目录） | `westlake probe scan [--full]` |
 | 打印网点 / 我的打印任务 | `westlake pms stations` / `jobs` |
 | 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`（OPAC 服务端当前 404，可能不可用） |
 | 服务是否可达（选课/OPAC/打印/token） | `westlake probe

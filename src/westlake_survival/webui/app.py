@@ -644,6 +644,28 @@ def _setup_context() -> dict:
     return {"creds": _creds_summary(), "error": None}
 
 
+def _affairs_context() -> dict:
+    """办事页上下文：应用目录 + 常用入口；目录失败降级为提示。"""
+    context: dict = {"error": None, "apps": [], "links": [], "source_url": "one.westlake.edu.cn/taskcenter"}
+    module = _import_module("discovery")
+    if module is not None and hasattr(module, "app_directory"):
+        try:
+            context["apps"] = [
+                {"name": a.name, "department": a.department, "description": a.description}
+                for a in module.app_directory()
+            ]
+        except Exception as exc:  # pragma: no cover - 数据源异常时降级
+            context["error"] = f"办事大厅目录暂时不可用：{exc.__class__.__name__}"
+    context["links"] = [
+        {"title": "网上办事大厅", "url": module.TASKCENTER_BASE, "note": "待办/发起流程（统一认证登录）"}
+        if module is not None else {},
+        {"title": "HPC 门户", "url": getattr(module, "HPC_PORTAL", "https://hpc.westlake.edu.cn:9002/login.html"), "note": "集群作业/配额（统一密码）"},
+        {"title": "预约中心", "url": getattr(module, "BOOKING_URL", "https://booking.westlake.edu.cn/yy-sys/"), "note": "场馆/会议室/资源预约"},
+        {"title": "开源镜像站", "url": getattr(module, "MIRRORS_URL", "https://mirrors.westlake.edu.cn/"), "note": "pip/conda 换源"},
+    ]
+    return context
+
+
 def _capabilities_context():
     """组装能力总览页上下文：CLI / MCP / WebUI 三组，含是否需要凭据。"""
     module = _import_module("capabilities")
@@ -1032,6 +1054,11 @@ def create_app() -> Flask:
 
 
         return result
+
+    # -- 办事大厅页 -------------------------------------------------------- #
+    @app.route("/affairs")
+    def affairs_page():
+        return render_template("affairs.html", **_affairs_context())
 
     # -- 能力总览页 -------------------------------------------------------- #
     @app.route("/capabilities")
