@@ -717,6 +717,115 @@ def _careers_context(keyword: str = "", category: str = "") -> dict:
     return context
 
 
+def _hpc_context() -> dict:
+    """HPC 页：队列配置表 + 集群 + 入口（公开数据）。"""
+    context: dict = {"queues": [], "clusters": [], "error": None}
+    module = _import_module("hpc")
+    if module is None or not hasattr(module, "overview"):
+        context["error"] = "hpc 模块不可用"
+        return context
+    try:
+        data = module.overview()
+        context["clusters"] = data.clusters
+        context["queues"] = [
+            {"name": q.name, "nodes": q.nodes,
+             "specs": [{"k": k, "v": v} for k, v in q.specs]}
+            for q in data.queues
+        ]
+        context["portal"] = module.HPC_PORTAL
+        context["main"] = module.HPC_MAIN
+    except Exception as exc:  # pragma: no cover
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    return context
+
+
+def _finance_context() -> dict:
+    """财务页：常用栏目的文档列表（公开）。"""
+    context: dict = {"panels": [], "error": None}
+    module = _import_module("finance")
+    if module is None:
+        context["error"] = "finance 模块不可用"
+        return context
+    try:
+        shared = {a.url for a in module.articles("ywzn1/rcbx1.htm")}
+        for title, path in (
+            ("业务指南（报销操作）", "ywzn1/rcbx1.htm"),
+            ("校内财务制度", "gzzd1/zmcwzd.htm"),
+            ("科研经费管理", "ywzn1/kyjfgl.htm"),
+            ("薪酬税务", "ywzn1/xcsw.htm"),
+        ):
+            items = module.articles(path, limit=20,
+                                    exclude=None if path.endswith("rcbx1.htm") else shared)
+            if items:
+                context["panels"].append(
+                    {"title": title, "entries": [{"t": i.title, "u": i.url} for i in items]}
+                )
+    except Exception as exc:  # pragma: no cover
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    return context
+
+
+def _mirrors_context() -> dict:
+    context: dict = {"repos": [], "error": None, "base": ""}
+    module = _import_module("mirrors")
+    if module is None:
+        context["error"] = "mirrors 模块不可用"
+        return context
+    context["base"] = getattr(module, "MIRRORS_URL", "https://mirrors.westlake.edu.cn/")
+    try:
+        context["repos"] = [
+            {"name": r.name, "url": r.url, "help": r.help_url} for r in module.repos()
+        ]
+    except Exception as exc:  # pragma: no cover
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    return context
+
+
+#: 服务注册表（2026-10-24 盘点快照；covered=工具包已有能力）。
+SERVICE_REGISTRY = (
+    ("www", "官网（新闻/讲座/教师/招聘/搜索）", True),
+    ("sis", "教务（课表/成绩/考试/评教）", True),
+    ("canvas", "Canvas LMS", True),
+    ("iam", "统一身份认证（登录基建）", True),
+    ("my", "门户/办事大厅", True),
+    ("one", "任务中心/办事大厅", True),
+    ("affairs-目录", "办事大厅 176 应用目录", True),
+    ("hpc", "高性能计算中心", True),
+    ("finance", "财务部", True),
+    ("mirrors", "开源镜像站", True),
+    ("booking", "预约中心", True),
+    ("map", "电子地图（公开内容）", True),
+    ("print", "打印系统", True),
+    ("opac/lib", "图书馆", True),
+    ("hr", "人事（IAM）", False),
+    ("oa", "办公自动化（→one）", False),
+    ("lab", "实验室综合管理平台", False),
+    ("remotework", "远程办公", False),
+    ("exchange/mail", "邮件（→heqdata）", False),
+    ("heqdata", "数据平台", False),
+    ("international", "国际处", False),
+    ("alumni", "校友", False),
+    ("security", "保卫处", False),
+    ("energy", "能耗监控（第三方）", False),
+    ("iot", "物联网", False),
+    ("its", "（域名挂理论科学研究院）", False),
+    ("vpn/webvpn", "VPN（入口提示）", True),
+    ("mydisk", "个人网盘（内网）", False),
+    ("1x/ac", "无线（内网）", False),
+    ("test/testrpm", "内部测试（内网）", False),
+)
+
+
+def _services_context() -> dict:
+    return {
+        "registry": [
+            {"host": h, "note": n, "covered": c} for h, n, c in SERVICE_REGISTRY
+        ],
+        "covered": sum(1 for _, _, c in SERVICE_REGISTRY if c),
+        "total": len(SERVICE_REGISTRY),
+    }
+
+
 def _affairs_context() -> dict:
     """办事页上下文：应用目录 + 常用入口；目录失败降级为提示。"""
     context: dict = {"error": None, "apps": [], "links": [], "source_url": "one.westlake.edu.cn/taskcenter"}
@@ -1127,6 +1236,23 @@ def create_app() -> Flask:
 
 
         return result
+
+    # -- HPC / 财务 / 镜像 / 服务注册表 -------------------------------------- #
+    @app.route("/hpc")
+    def hpc_page():
+        return render_template("hpc.html", **_hpc_context())
+
+    @app.route("/finance")
+    def finance_page():
+        return render_template("finance.html", **_finance_context())
+
+    @app.route("/mirrors")
+    def mirrors_page():
+        return render_template("mirrors.html", **_mirrors_context())
+
+    @app.route("/services")
+    def services_page():
+        return render_template("services.html", **_services_context())
 
     # -- 学业页（SIS） ------------------------------------------------------ #
     @app.route("/sis")

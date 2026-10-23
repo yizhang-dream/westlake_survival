@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}镜像站 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">开源镜像站</h1>
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+<div class="grid cols-2">
+  {% for r in repos %}
+  <div class="card">
+    <div style="font-weight:600">{{ r.name }}</div>
+    <div class="muted" style="font-size:.82rem;margin-top:.2rem"><a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.url }}</a></div>
+    {% if r.help %}<div style="font-size:.82rem;margin-top:.3rem"><a href="{{ r.help }}" target="_blank" rel="noopener">换源配置 Help →</a></div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+<p class="muted" style="font-size:.82rem">pip / conda / apt 换源见各 Help 页；镜像仅校园网内速度最佳。</p>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}财务 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">财务部</h1>
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+{% for p in panels %}
+<h2 class="section">{{ p.title }}（{{ p.entries | length }}）</h2>
+<ul>
+  {% for i in p.entries %}<li><a href="{{ i.u }}" target="_blank" rel="noopener">{{ i.t }}</a></li>{% endfor %}
+</ul>
+{% endfor %}
+{% if not panels and not error %}<p class="muted">暂无内容。</p>{% endif %}
+<p class="muted" style="font-size:.82rem">数据来自财务部官网公开栏目。</p>
+{% endblock %}

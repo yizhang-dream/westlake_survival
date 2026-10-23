@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}服务全景 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">服务全景</h1>
+<p class="muted" style="font-size:.9rem">
+  2026-10-24 全量盘点：{{ total }} 项，其中 {{ covered }} 项已接入本工具。徽标「已接入」= 有对应功能页或命令。
+</p>
+<table class="data">
+  <thead><tr><th>主机/服务</th><th>身份</th><th>接入</th></tr></thead>
+  <tbody>
+    {% for s in registry %}
+    <tr>
+      <td>{{ s.host }}.westlake.edu.cn{% if not '.' in s.host %}{% endif %}</td>
+      <td class="muted">{{ s.note }}</td>
+      <td>{% if s.covered %}<span class="chip">已接入</span>{% else %}<span class="chip warn">未接入</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<h2 class="section">在线普查</h2>
+<p class="muted" style="font-size:.86rem">直连探测（绕系统代理），验证上表各主机当前状态。</p>
+<button type="button" id="scanBtn">运行普查</button>
+<div id="scanOut" style="margin-top:.8rem"></div>
+<script>
+(function () {
+  var btn = document.getElementById('scanBtn');
+  btn.addEventListener('click', async function () {
+    btn.disabled = true; btn.textContent = '探测中…';
+    var out = document.getElementById('scanOut');
+    out.innerHTML = '<p class="muted">直连探测中…</p>';
+    try {
+      var res = await fetch('/api/services/scan?hosts=www,sis,canvas,hpc,mirrors,one,booking,finance,lab,mydisk');
+      var data = await res.json();
+      var rows = (data.alive || []).map(function (r) {
+        return '<tr><td>' + r.host + '</td><td>' + r.status + '</td><td>' + (r.title || '') + '</td></tr>';
+      }).join('');
+      out.innerHTML = '<table class="data"><thead><tr><th>主机</th><th>状态</th><th>标题</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<p class="muted" style="font-size:.8rem">活 ' + (data.alive || []).length + ' / ' + data.total + '；完整普查：westlake probe scan --full</p>';
+    } catch (e) { out.innerHTML = '<div class="note">探测失败：' + e + '</div>'; }
+    btn.disabled = false; btn.textContent = '运行普查';
+  });
+})();
+</script>
+{% endblock %}
