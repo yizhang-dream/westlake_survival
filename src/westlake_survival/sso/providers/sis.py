@@ -29,6 +29,7 @@ import re
 
 from westlake_survival._net import AUTH_TIMEOUT
 from westlake_survival.exceptions import (
+    AuthError,
     InvalidCredentials,
     OffCampusError,
     is_offcampus,
@@ -79,6 +80,24 @@ class SISAuth(CASAuthorizer):
 
     def _build_session(self):
         sid, password = read_credentials()
+
+        # 优先走统一身份认证（IAM OAuth2）：统一密码即可登 SIS，不必记 SIS 专用
+        # 密码（2026-10-24 实测打通）。IAM 认证失败再回落 PeopleSoft 本地登录，
+        # 兼容只改了 SIS 密码、没统一的老凭据。
+        try:
+            from westlake_survival import iam
+
+            iam_session = iam.login(sid, password)
+            iam.exchange_sis_session(iam_session)
+            iam_session.headers["Referer"] = SIS_BASE
+            return iam_session
+        except InvalidCredentials:
+            raise
+        except AuthError as exc:
+            ps_error = exc
+        except Exception:
+            ps_error = None
+
         session = self._new_session()
 
         page = session.get(self.LOGIN_URL, timeout=AUTH_TIMEOUT, allow_redirects=True)
@@ -95,7 +114,8 @@ class SISAuth(CASAuthorizer):
             raise OffCampusError(_OFFCAMPUS_HINT)
 
         if not session.cookies.get("PS_TOKEN"):
-            raise InvalidCredentials("用户名或密码错误（未获得 PS_TOKEN）。")
+            detail = f"（IAM：{ps_error}）" if ps_error else ""
+            raise InvalidCredentials(f"用户名或密码错误（未获得 PS_TOKEN）{detail}")
         return session
 
     def _is_stale_response(self, response) -> bool:
