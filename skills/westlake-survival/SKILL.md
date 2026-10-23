@@ -43,6 +43,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
 - **Canvas 类**（`canvas`）：需环境变量 `WESTLAKE_CANVAS_TOKEN`，或写入 `~/.westlake_survival/canvas_token.txt` 首行。
+- **电子地图类**（`westlake map login/status`，仅楼宇 POI 那部分）：需地图系统独立账号（与教务密码不同源），`westlake map login` 配置一次即长期复用；不配置时 `westlake map` 仍可用公开的地图图片/全景/交通。
 - **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
 
@@ -88,6 +89,8 @@ westlake contact --campus 云谷               # 云谷|云栖|铜鉴湖；缺�
 westlake contact phones
 westlake map                                  # 三校区：地址/地图图片/全景/交通
 westlake map --campus 云谷
+westlake map login                            # 配置电子地图账号（一次，之后自动复用）
+westlake map status                           # 只报凭据/令牌有无
 westlake pms stations
 westlake probe
 westlake cache clear --module events
