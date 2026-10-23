@@ -60,8 +60,10 @@
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: Optima, "Segoe UI", system-ui, -apple-system, "PingFang SC",
-      "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    /* 参考页随包分发 Optima 字体（专有，不可复制）。Windows 上用 Candara
+       顶位——系统自带的人文风格无衬线，观感最接近 Optima。 */
+    font-family: Optima, Candara, "Segoe UI", system-ui, -apple-system,
+      "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
     font-size: 16px;
     line-height: 1.62;
   }
@@ -93,6 +95,9 @@
     background: var(--card); border-radius: var(--radius);
     box-shadow: 0 8px 30px var(--shadow);
   }
+  .hero-head { text-align: center; margin: .4rem 0 1.6rem; }
+  .hero-head .title { font-size: 2rem; font-weight: 700; color: var(--heading); letter-spacing: .02em; }
+  .hero-head .sub { color: var(--muted); font-size: .95rem; margin-top: .3rem; }
   h1.page {
     font-size: 1.6rem; margin: .2rem 0 1.2rem; color: var(--heading);
     padding-bottom: 6px; border-bottom: 1px solid var(--line); font-weight: 700;
@@ -187,7 +192,10 @@
     .topbar .wrap { padding: .5rem 1rem; flex-direction: column; align-items: flex-start; gap: .3rem; }
     nav.main { flex-wrap: nowrap; overflow-x: auto; width: 100%; gap: .8rem; padding-bottom: .15rem; }
     nav.main a { white-space: nowrap; }
-    h1.page { font-size: 1.35rem; }
+    .hero-head { text-align: center; margin: .4rem 0 1.6rem; }
+  .hero-head .title { font-size: 2rem; font-weight: 700; color: var(--heading); letter-spacing: .02em; }
+  .hero-head .sub { color: var(--muted); font-size: .95rem; margin-top: .3rem; }
+  h1.page { font-size: 1.35rem; }
   }
 </style>
 </head>
