@@ -52,7 +52,7 @@ AUTH_GROUPS = {
 WEB_PAGES = (
     ("/", "仪表盘", "日期 / 周次 / 天气 / 最近事件 / 下班车 / 作业", False),
     ("/shuttle", "班车", "三校区班车时刻与下一班", False),
-    ("/calendar", "校历", "学期周次与校历事件", False),
+    ("/calendar", "校历", "学期周次与校历事件；班车/课表 ICS 订阅入口", False),
     ("/events", "讲座活动", "讲座 / 会议 / 演出预告", False),
     ("/faculty", "教师", "四源聚合的教师名录与详情", False),
     ("/news", "新闻", "西湖新闻按分类浏览", False),
@@ -62,7 +62,6 @@ WEB_PAGES = (
     ("/dining", "餐饮", "食堂 / 咖啡 / 其他服务点", False),
     ("/search", "搜索", "官网全站搜索", False),
     ("/capabilities", "能力总览", "本页：CLI + MCP + WebUI 全部入口", False),
-    ("/api", "API", "接口说明页：路径、用途与实时样例", False),
     ("/setup", "设置", "网页端账号配置：学号密码一次填入，自动检测各服务", True),
 )
 

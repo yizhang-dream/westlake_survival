@@ -18,6 +18,7 @@ def _run(args: list[str], home: Path, *, timeout: float = 45.0) -> subprocess.Co
     """以临时 home 启动真实 CLI 进程（stdin 关闭，模拟非交互环境）。"""
     env = dict(os.environ)
     env["WESTLAKE_HOME"] = str(home)
+    env["WESTLAKE_NO_KEYRING"] = "1"  # 读也不读钥匙串，保证用例彼此隔离
     env.pop("WESTLAKE_CREDENTIALS", None)
     return subprocess.run(
         [sys.executable, "-m", "westlake_survival", *args],

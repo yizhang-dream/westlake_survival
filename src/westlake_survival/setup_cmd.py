@@ -57,7 +57,8 @@ def _probe_sis(sid: str, password: str) -> tuple[bool, str]:
     except OffCampusError:
         return False, "校外网络不可达（连校园网/VPN 后再试）"
     except AuthError as exc:
-        return False, f"登录失败：{exc}"
+        # 实测高频原因：填的是统一身份认证（校园门户）密码，而教务 SIS 密码不同源。
+        return False, f"登录失败：{exc}（教务密码与校园门户/统一身份认证密码不是同一个）"
     except WestlakeError as exc:
         return False, f"网络或解析失败：{exc}"
     except Exception as exc:  # pragma: no cover - 兜底不让向导崩

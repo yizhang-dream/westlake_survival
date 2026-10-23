@@ -1,10 +1,39 @@
 {% extends "base.html" %}
-{% block title %}校历 · 西湖生存手册{% endblock %}
+{% block title %}校历 · 西湖生存手册<script>
+(function () {
+  document.querySelectorAll('.copy-ics').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var url = btn.dataset.url;
+      var done = function () { btn.textContent = '已复制'; setTimeout(function () { btn.textContent = '复制'; }, 1200); };
+      if (navigator.clipboard) { navigator.clipboard.writeText(url).then(done); }
+      else {
+        var ta = document.createElement('textarea'); ta.value = url;
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}
 
 {% block content %}
 <h1 class="page">本学期校历</h1>
 
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+<div class="card" style="margin-bottom:1.2rem">
+  <div class="label">订阅到日历</div>
+  <p class="muted" style="font-size:.86rem;margin:.3rem 0 .5rem">
+    把下面的地址粘进手机/系统日历的「订阅日历」，内容会自动更新（需本机服务在跑）。
+  </p>
+  {% for ics in ics_urls %}
+  <p style="font-size:.84rem;margin:.25rem 0">
+    {{ ics.title }}：<code class="ics-url">{{ ics.url }}</code>
+    <button type="button" class="copy-ics" data-url="{{ ics.url }}">复制</button>
+  </p>
+  {% endfor %}
+</div>
 
 {% if semester %}
   <div class="card">
@@ -69,4 +98,20 @@
 {% else %}
   <div class="empty">暂无校历事件。</div>
 {% endif %}
+<script>
+(function () {
+  document.querySelectorAll('.copy-ics').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var url = btn.dataset.url;
+      var done = function () { btn.textContent = '已复制'; setTimeout(function () { btn.textContent = '复制'; }, 1200); };
+      if (navigator.clipboard) { navigator.clipboard.writeText(url).then(done); }
+      else {
+        var ta = document.createElement('textarea'); ta.value = url;
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+})();
+</script>
 {% endblock %}

@@ -133,17 +133,22 @@ def test_all_pages_share_the_new_shell(server: str) -> None:
         assert "--bg: #f4f2ed" in html, path
 
 
-def test_api_page_documents_every_endpoint(server: str) -> None:
-    """`/api` 是可读的说明页（以前导航直连裸 JSON），且覆盖全部接口。"""
-    status, html = _get(server + "/api")
+def test_capabilities_page_documents_http_endpoints(server: str) -> None:
+    """HTTP 接口说明并入能力页（瘦身裁定），覆盖全部接口；导航不再有 API 项。"""
+    status, html = _get(server + "/capabilities")
     assert status == 200
+    assert "HTTP 接口" in html
     for path in ("/api/context", "/api/capabilities", "/api/shuttle", "/ical/shuttle", "/ical/schedule"):
         assert path in html, path
-    # 样例是真实取数：快照键出现在页面上（被转义渲染，不破坏布局）
-    assert "week_number" in html
-    assert "level" in html
-    # 导航指向说明页，而不是裸 JSON
-    assert 'href="/api"' in html
+    assert 'href="/api"' not in html.split("</header>")[0]  # 导航无 API 项
+
+
+def test_calendar_page_offers_ics_subscription(server: str) -> None:
+    """校历页承载 ICS 订阅入口（瘦身后 API 页的唯一用户价值搬到这里）。"""
+    status, html = _get(server + "/calendar")
+    assert status == 200
+    assert "订阅到日历" in html
+    assert "/ical/shuttle" in html and "/ical/schedule" in html
 
 
 def test_json_endpoints_still_valid(server: str) -> None:
