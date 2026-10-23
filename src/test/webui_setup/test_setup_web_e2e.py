@@ -117,7 +117,7 @@ def test_save_reports_per_service_without_echoing_password(server) -> None:
     assert status == 200
     rendered = json.dumps(payload, ensure_ascii=False)
     assert "dummy-secret-value" not in rendered
-    assert set(payload) >= {"sis", "canvas", "map", "sid"}
+    assert set(payload) >= {"sis", "canvas", "sid"}
     assert payload["canvas"]["note"].startswith("未填")
 
 

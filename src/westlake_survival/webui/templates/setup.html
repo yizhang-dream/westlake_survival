@@ -22,8 +22,6 @@
           </td></tr>
       <tr><td>Canvas（课程/作业/考试）</td>
           <td>{% if creds.canvas %}<span class="chip">已配置</span>{% else %}<span class="chip warn">未配置</span>{% endif %}</td></tr>
-      <tr><td>电子地图账号</td>
-          <td>{% if creds.map %}<span class="chip">已配置</span>{% else %}<span class="chip warn">未配置</span>{% endif %}</td></tr>
     </tbody>
   </table>
 </div>
@@ -43,9 +41,6 @@
     <summary class="muted" style="cursor:pointer;font-size:.88rem">更多账号（可选）</summary>
     <label style="margin-top:.6rem">Canvas 访问令牌（账户 → 设置 → 新建访问令牌）
       <input name="canvas_token" type="password" autocomplete="off">
-    </label>
-    <label style="margin-top:.6rem">电子地图密码（与教务不同源；留空则用上面的密码试一次）
-      <input name="map_password" type="password" autocomplete="off">
     </label>
   </details>
   <div>
@@ -88,7 +83,6 @@
       verify: form.verify.checked,
     };
     if (form.canvas_token.value.trim()) data.canvas_token = form.canvas_token.value.trim();
-    if (form.map_password.value) data.map_password = form.map_password.value;
     try {
       var res = await fetch('/setup/api/save', {
         method: 'POST',
@@ -100,7 +94,7 @@
         box.innerHTML = '<div class="note">保存失败：' + (payload.error || res.status) + '</div>';
       } else {
         var rows = '';
-        [['教务 SIS', payload.sis], ['Canvas', payload.canvas], ['电子地图', payload.map]].forEach(function (pair) {
+        [['教务 SIS', payload.sis], ['Canvas', payload.canvas]].forEach(function (pair) {
           if (!pair[1]) return;
           var mark = pair[1].ok ? '✓' : '✗';
           var extra = pair[1].saved ? ' 已保存' + (pair[1].stored_in ? '（' + pair[1].stored_in + '）' : '') : '';

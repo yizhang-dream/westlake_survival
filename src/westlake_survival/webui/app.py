@@ -627,7 +627,7 @@ def _api_doc_context():
 
 def _creds_summary() -> dict:
     """凭据状态一览（只报有无，绝不读出密码）。"""
-    summary = {"sis": False, "canvas": False, "map": False}
+    summary = {"sis": False, "canvas": False}
     try:
         from westlake_survival.sso import read_credentials
 
@@ -639,12 +639,6 @@ def _creds_summary() -> dict:
         from westlake_survival.canvas.client import resolve_token
 
         summary["canvas"] = bool(resolve_token())
-    except Exception:
-        pass
-    try:
-        from westlake_survival import mapapi
-
-        summary["map"] = bool(mapapi.load_map_credentials())
     except Exception:
         pass
     summary["all_set"] = summary["sis"] and summary["canvas"]
@@ -1022,13 +1016,12 @@ def create_app() -> Flask:
     @app.route("/setup/api/save", methods=["POST"])
     def setup_save():
         """保存凭据并（可选）验证。请求体含密码，只经 127.0.0.1，不落日志。"""
-        from westlake_survival.setup_cmd import _persist, _persist_canvas, _probe_canvas, _probe_map, _probe_sis
+        from westlake_survival.setup_cmd import _persist, _persist_canvas, _probe_canvas, _probe_sis
 
         payload = request.get_json(silent=True) or {}
         sid = str(payload.get("sid") or "").strip()
         password = str(payload.get("password") or "")
         canvas_token = str(payload.get("canvas_token") or "").strip()
-        map_password = str(payload.get("map_password") or "")
         verify = bool(payload.get("verify", True))
 
         if not sid or not password:
@@ -1044,16 +1037,6 @@ def create_app() -> Flask:
         else:
             result["sis"]["saved"] = False
 
-        # 地图：默认用同一密码试一次；用户另填则用那份
-        map_pwd = map_password or password
-        map_ok, map_note = _probe_map(sid, map_pwd) if verify else (False, "未验证")
-        result["map"] = {"ok": map_ok, "note": map_note, "saved": False}
-        if map_ok:
-            from westlake_survival import mapapi
-
-            stored = mapapi.save_map_credentials(sid, map_pwd)
-            result["map"]["saved"] = True
-            result["map"]["stored_in"] = "系统钥匙串" if stored else str(mapapi.cred_path())
 
         if canvas_token:
             canvas_ok, canvas_note = _probe_canvas(canvas_token)
