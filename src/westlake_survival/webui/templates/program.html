@@ -40,6 +40,38 @@
   {% endif %}
   {% endfor %}
 
+  {% if plans %}
+  <h2 class="section">专业培养方案（学分要求与课程表）</h2>
+  {% for plan in plans %}
+  <h3 class="section">{{ plan.name }}</h3>
+  <p class="muted" style="font-size:.86rem">
+    {% if plan.total_credits %}学分合计 {{ plan.total_credits | round(1) }}　{% else %}学分见分项（含区间）　{% endif %}
+    课程 {{ plan.course_count }} 门
+  </p>
+  <table class="data">
+    <thead><tr><th>学分块</th><th>学分</th><th>课程</th></tr></thead>
+    <tbody>
+      {% for req in plan.requirements %}
+      <tr>
+        <td>{{ req.title }}</td>
+        <td>{{ req.credits or '—' }}</td>
+        <td>
+          {% if req.courses %}
+            {% for c in req.courses %}
+            <div>{{ c.name }} <span class="muted">{{ c.credits }}</span>
+              {% if c.prerequisite %}<div class="dim" style="font-size:.78rem">先修：{{ c.prerequisite }}</div>{% endif %}
+            </div>
+            {% endfor %}
+          {% else %}<span class="dim">{{ req.note or '—' }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if plan.warn_text %}<p class="dim" style="font-size:.8rem">{{ plan.warn_text }}</p>{% endif %}
+  {% endfor %}
+  {% endif %}
+
   {% if summary %}
   <h2 class="section">本科专业</h2>
   <p>{{ summary }}</p>

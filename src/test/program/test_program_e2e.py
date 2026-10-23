@@ -14,7 +14,9 @@ import pytest
 from westlake_survival.program import (
     CURRICULUM_SECTION_KEYS,
     EDUCATION_FEATURE_KEYS,
+    MAJOR_SLUGS,
     curriculum,
+    major_plans,
     majors,
     overview,
 )
@@ -74,3 +76,48 @@ def test_live_majors_en_site() -> None:
     assert data.lang == "en"
     assert len(data.majors) == 8
     assert data.url.startswith("https://ugadmissions.westlake.edu.cn/")
+
+
+@pytest.mark.live
+def test_live_plan_all_eight_majors_have_credit_blocks() -> None:
+    """培养方案：任一专业页含全部 8 个专业，各专业的学分块齐全。"""
+    catalog = major_plans("人工智能")
+
+    assert len(catalog.majors) == 8
+    assert {m.name for m in catalog.majors} == set(MAJOR_SLUGS)
+    for plan in catalog.majors:
+        # 通识四个学分块每个专业都有；临床医学另有 4 个空专业课程表（官网现状）。
+        assert sum(1 for req in plan.requirements if req.credits) >= 4, plan.name
+        assert all(course.name for req in plan.requirements for course in req.courses), plan.name
+        assert plan.intro and plan.intro[0].content_text, plan.name
+
+
+@pytest.mark.live
+def test_live_plan_ai_matches_published_figures() -> None:
+    """人工智能专业逐项核对官网公布的学分块与专业必修课程。"""
+    plan = major_plans("人工智能").find("人工智能")
+
+    assert plan is not None
+    by_title = {req.title: req for req in plan.requirements}
+    assert by_title["专业必修课程"].credits == "24"
+    assert by_title["专业选修课程"].credits == "18"
+    assert by_title["理工基础类"].credits == "34"
+    assert by_title["人文社科艺术类"].credits == "20-28"
+
+    required = [course.name for course in by_title["专业必修课程"].courses]
+    assert len(required) == 8
+    assert "机器学习" in required and "深度学习" in required and "自然语言处理" in required
+    nlp = next(c for c in by_title["专业必修课程"].courses if c.name == "自然语言处理")
+    assert "机器学习" in nlp.prerequisite
+    assert plan.course_count == 25
+    assert plan.total_credits is None  # 含 20-28 区间，不硬凑合计
+
+
+@pytest.mark.live
+def test_live_plan_clinical_medicine_has_no_course_tables() -> None:
+    """临床医学的专业课程表官网为空——如实暴露而非当成解析失败。"""
+    plan = major_plans("临床医学").find("临床医学")
+
+    assert plan is not None
+    assert plan.course_count == 0
+    assert plan.requirements

@@ -553,11 +553,18 @@ def _program_data():
     module = _import_module("program")
     if module is None or not hasattr(module, "overview"):
         return None
-    return {
+    data = {
         "overview": module.overview(),
         "curriculum": module.curriculum(),
         "majors": module.majors(),
+        "plans": None,
     }
+    if hasattr(module, "major_plans"):
+        try:
+            data["plans"] = module.major_plans()
+        except Exception:  # 培养方案页失败不应拖垮整页
+            data["plans"] = None
+    return data
 
 
 def _program_context():
@@ -580,6 +587,7 @@ def _program_context():
         "features": [],
         "summary": "",
         "majors": [],
+        "plans": [],
         "sections": [],
         "source_url": "",
     }
@@ -616,6 +624,34 @@ def _program_context():
         context["majors"] = [
             {"group": m.group, "name": m.name, "intro": m.intro_text}
             for m in getattr(catalog, "majors", [])
+        ]
+    plans = data.get("plans")
+    if plans is not None:
+        context["plans"] = [
+            {
+                "name": plan.name,
+                "total_credits": plan.total_credits,
+                "course_count": plan.course_count,
+                "requirements": [
+                    {
+                        "title": req.title,
+                        "credits": req.credits,
+                        "note": req.note,
+                        "courses": [
+                            {
+                                "name": course.name,
+                                "credits": course.credits,
+                                "group": course.group,
+                                "prerequisite": course.prerequisite,
+                            }
+                            for course in req.courses
+                        ],
+                    }
+                    for req in plan.requirements
+                ],
+                "warn_text": plan.warn_text,
+            }
+            for plan in getattr(plans, "majors", [])
         ]
     context["has_data"] = bool(context["goal"] or context["sections"] or context["majors"])
     return context
