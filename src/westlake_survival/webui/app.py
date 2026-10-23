@@ -548,6 +548,27 @@ def _dining_context():
     }
 
 
+def _capabilities_context():
+    """组装能力总览页上下文：CLI / MCP / WebUI 三组，含是否需要凭据。"""
+    module = _import_module("capabilities")
+    context: dict = {"error": None, "groups": [], "counts": {}, "items": []}
+    if module is None or not hasattr(module, "as_dict"):
+        context["error"] = "capabilities 模块不可用。"
+        return context
+    try:
+        data = module.as_dict()
+    except Exception as exc:  # pragma: no cover - 自省失败时降级
+        context["error"] = f"能力清单生成失败：{exc.__class__.__name__}"
+        return context
+    items = data["items"]
+    context["counts"] = data["counts"]
+    context["items"] = items
+    for kind, title in (("cli", "命令行（CLI）"), ("mcp", "MCP 工具"), ("web", "网页（WebUI）")):
+        rows = [row for row in items if row["kind"] == kind]
+        context["groups"].append({"title": title, "kind": kind, "rows": rows})
+    return context
+
+
 def _map_context(campus: str = ""):
     """组装地图页上下文：各校区地址/地图图片/全景/交通，失败降级为 ``error``。"""
     module = _import_module("campusmap")
@@ -860,6 +881,18 @@ def create_app() -> Flask:
     def dining_page():
         context = _dining_context()
         return render_template("dining.html", **context)
+
+    # -- 能力总览页 -------------------------------------------------------- #
+    @app.route("/capabilities")
+    def capabilities_page():
+        return render_template("capabilities.html", **_capabilities_context())
+
+    @app.route("/api/capabilities")
+    def capabilities_api():
+        module = _import_module("capabilities")
+        if module is None:
+            return {"error": "capabilities 模块不可用"}, 503
+        return module.as_dict()
 
     # -- 校园地图页 -------------------------------------------------------- #
     @app.route("/map")

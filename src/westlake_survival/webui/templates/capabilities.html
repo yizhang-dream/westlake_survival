@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}能力总览 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">能力总览</h1>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+{% if counts %}
+<p class="muted" style="font-size:.9rem">
+  共 {{ counts.total }} 项能力：命令行 {{ counts.cli }} · MCP 工具 {{ counts.mcp }} · 网页 {{ counts.web }}；
+  其中 {{ counts.needs_auth }} 项需要凭据，其余为官网公开数据。
+</p>
+
+<input type="search" id="capFilter" placeholder="搜索能力（名称 / 说明 / 子命令）"
+       style="width:100%;max-width:26rem;padding:.45rem .6rem;margin:.4rem 0 1.2rem;
+              border:1px solid var(--line);border-radius:8px">
+
+{% for group in groups %}
+<section class="cap-group" data-kind="{{ group.kind }}">
+  <h2 class="section">{{ group.title }}（{{ group.rows | length }}）</h2>
+  {% for row in group.rows %}
+  <div class="card cap-item" style="margin-bottom:.6rem">
+    <div style="display:flex;justify-content:space-between;gap:.8rem;align-items:baseline">
+      <strong>{{ row.name }}</strong>
+      {% if row.needs_auth %}
+      <span class="muted" style="font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:.1rem .5rem">需凭据</span>
+      {% else %}
+      <span class="muted" style="font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:.1rem .5rem">公开</span>
+      {% endif %}
+    </div>
+    <div class="muted" style="font-size:.86rem;margin-top:.25rem">{{ row.summary }}</div>
+    {% if row.auth_hint %}
+    <div class="dim" style="font-size:.78rem;margin-top:.2rem">凭据：{{ row.auth_hint }}</div>
+    {% endif %}
+    {% if row.commands %}
+    <div class="muted" style="font-size:.8rem;margin-top:.35rem">
+      子命令：{% for c in row.commands %}<code>{{ c.name }}</code>{% if not loop.last %} · {% endif %}{% endfor %}
+    </div>
+    {% endif %}
+    {% if row.params %}
+    <div class="dim" style="font-size:.78rem;margin-top:.3rem">参数：{{ row.params | join('、') }}</div>
+    {% endif %}
+    {% if row.kind == 'web' %}
+    <div style="margin-top:.35rem;font-size:.82rem">
+      <a href="{{ row.name.split(':', 1)[1] }}">打开页面 →</a>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endfor %}
+
+<p class="muted" style="font-size:.82rem">
+  机器可读版本：<a href="/api/capabilities">/api/capabilities</a>。
+  CLI 与 MCP 一一对应同一批库函数，数据源都是官网或校内系统。
+</p>
+
+<script>
+(function () {
+  const input = document.getElementById('capFilter');
+  const items = Array.from(document.querySelectorAll('.cap-item'));
+  const groups = Array.from(document.querySelectorAll('.cap-group'));
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    items.forEach((el) => {
+      el.style.display = !q || el.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
+    groups.forEach((group) => {
+      const visible = Array.from(group.querySelectorAll('.cap-item')).some((el) => el.style.display !== 'none');
+      group.style.display = visible ? '' : 'none';
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}
