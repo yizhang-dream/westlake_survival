@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}招聘 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">招聘岗位</h1>
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+<form method="get" action="/careers" class="filter">
+  <label>关键词<input name="q" value="{{ keyword }}" placeholder="如 博士后 / 物理"></label>
+  <div><button type="submit">筛选</button></div>
+</form>
+<table class="data">
+  <thead><tr><th>岗位</th><th>部门</th><th>类型</th><th>链接</th></tr></thead>
+  <tbody>
+    {% for r in rows %}<tr><td>{{ r.title }}</td><td>{{ r.department }}</td><td>{{ r.type }}</td><td><a href="{{ r.url }}" target="_blank" rel="noopener">详情</a></td></tr>
+    {% else %}<tr><td colspan="4" class="dim">没有匹配岗位。</td></tr>{% endfor %}
+  </tbody>
+</table>
+<p class="muted" style="font-size:.82rem">数据来自官网招聘页（公开）。</p>
+{% endblock %}

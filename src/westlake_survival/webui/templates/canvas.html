@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Canvas · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">Canvas</h1>
+{% if error %}<div class="note">Canvas 数据不可用：{{ error }}（令牌或统一凭据，及校园网）</div>{% endif %}
+{% if courses %}
+<h2 class="section">在修课程（{{ courses | length }}）</h2>
+<div class="grid cols-2">
+  {% for c in courses %}<div class="card"><div style="font-weight:600">{{ c.name }}</div><div class="muted" style="font-size:.8rem">{{ c.code }}</div></div>{% endfor %}
+</div>
+{% endif %}
+{% if deadlines %}
+<h2 class="section">未来截止（15）</h2>
+<table class="data">
+  <thead><tr><th>作业</th><th>截止</th><th>链接</th></tr></thead>
+  <tbody>{% for d in deadlines %}<tr><td>{{ d.title }}</td><td class="time">{{ d.due }}</td><td><a href="{{ d.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
+</table>
+{% elif not error %}<p class="muted">暂无未来截止。</p>{% endif %}
+{% endblock %}

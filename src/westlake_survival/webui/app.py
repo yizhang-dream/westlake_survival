@@ -644,6 +644,79 @@ def _setup_context() -> dict:
     return {"creds": _creds_summary(), "error": None}
 
 
+def _sis_context() -> dict:
+    """学业页：课表 / 成绩 / 考试 / 待评教（需教务凭据与校园网，失败逐块降级）。"""
+    context: dict = {"blocks": {}}
+
+    def _guard(key: str, loader) -> None:
+        try:
+            context["blocks"][key] = loader()
+        except Exception as exc:  # 每块独立降级
+            context["blocks"][key] = {"error": f"{exc.__class__.__name__}: {exc}"[:120]}
+
+    _guard("schedule", lambda: [
+        {"name": c.title, "teacher": c.teacher, "weekday": c.weekday,
+         "time": f"{c.start_time}-{c.end_time}", "location": c.room}
+        for c in __import__("westlake_survival.sis", fromlist=["client"]).client.get_schedule()
+    ])
+    _guard("grades", lambda: [
+        {"term": g.term, "name": g.course_title, "grade": g.grade, "credits": g.credits}
+        for g in __import__("westlake_survival.sis", fromlist=["grades"]).grades.grades()
+    ][-60:])
+    _guard("exams", lambda: [
+        {"course": e.course_title, "date": e.date, "time": e.time, "kind": e.exam_type,
+         "room": e.venue, "seat": e.seat}
+        for e in __import__("westlake_survival.sis", fromlist=["exams"]).exams.exam_schedule()
+    ])
+    _guard("evals", lambda: [
+        {"name": e.course_title, "term": e.term, "period": e.period_raw}
+        for e in __import__("westlake_survival.sis", fromlist=["evals"]).evals.pending_evaluations()
+    ])
+    return context
+
+
+def _canvas_context() -> dict:
+    """Canvas 页：在修课程 + 未来截止（令牌或统一会话，失败降级）。"""
+    context: dict = {"courses": [], "deadlines": [], "error": None}
+    try:
+        from westlake_survival.canvas.client import CanvasClient
+
+        client = CanvasClient()
+        context["courses"] = [
+            {"name": c.name, "code": getattr(c, "code", ""), "id": c.id} for c in client.list_courses()
+        ]
+        context["deadlines"] = [
+            {
+                "title": a.name,
+                "course": str(a.course_id),
+                "due": a.due_at.isoformat() if a.due_at else "",
+                "url": a.html_url,
+            }
+            for a in client.upcoming_deadlines(limit=15)
+        ]
+    except Exception as exc:  # pragma: no cover - 降级
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    return context
+
+
+def _careers_context(keyword: str = "", category: str = "") -> dict:
+    """招聘页：岗位列表（公开数据）。"""
+    context: dict = {"rows": [], "error": None, "keyword": keyword, "category": category}
+    module = _import_module("careers")
+    if module is None or not hasattr(module, "positions"):
+        context["error"] = "careers 模块不可用"
+        return context
+    try:
+        items = module.positions(category=category or None, keyword=keyword or None, limit=60)
+        context["rows"] = [
+            {"title": p.title, "department": p.department, "type": p.job_type, "url": p.url}
+            for p in items
+        ]
+    except Exception as exc:  # pragma: no cover
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+    return context
+
+
 def _affairs_context() -> dict:
     """办事页上下文：应用目录 + 常用入口；目录失败降级为提示。"""
     context: dict = {"error": None, "apps": [], "links": [], "source_url": "one.westlake.edu.cn/taskcenter"}
@@ -1054,6 +1127,45 @@ def create_app() -> Flask:
 
 
         return result
+
+    # -- 学业页（SIS） ------------------------------------------------------ #
+    @app.route("/sis")
+    def sis_page():
+        return render_template("sis.html", **_sis_context())
+
+    # -- Canvas 页 ---------------------------------------------------------- #
+    @app.route("/canvas")
+    def canvas_page():
+        return render_template("canvas.html", **_canvas_context())
+
+    # -- 招聘页 -------------------------------------------------------------- #
+    @app.route("/careers")
+    def careers_page():
+        return render_template(
+            "careers.html",
+            **_careers_context(
+                keyword=request.args.get("q", ""),
+                category=request.args.get("category", ""),
+            ),
+        )
+
+    # -- 服务普查 API（按钮触发，避免拖慢页面）-------------------------------- #
+    @app.route("/api/services/scan")
+    def services_scan_api():
+        module = _import_module("discovery")
+        if module is None:
+            return {"error": "discovery 模块不可用"}, 503
+        hosts = request.args.get("hosts", "")
+        host_list = [h.strip() for h in hosts.split(",") if h.strip()] or None
+        results = module.subdomain_census(host_list, timeout=4.0)
+        return {
+            "alive": [
+                {"host": r.host, "status": r.status, "title": r.title}
+                for r in results
+                if r.alive
+            ],
+            "total": len(results),
+        }
 
     # -- 办事大厅页 -------------------------------------------------------- #
     @app.route("/affairs")

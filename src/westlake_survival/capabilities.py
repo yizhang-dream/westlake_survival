@@ -62,6 +62,9 @@ WEB_PAGES = (
     ("/dining", "餐饮", "食堂 / 咖啡 / 其他服务点", False),
     ("/search", "搜索", "官网全站搜索", False),
     ("/capabilities", "能力总览", "本页：CLI + MCP + WebUI 全部入口", False),
+    ("/sis", "学业", "课表/成绩/考试/待评教（教务凭据）", True),
+    ("/canvas", "Canvas", "在修课程与未来截止（令牌或统一密码）", True),
+    ("/careers", "招聘", "官网招聘岗位（公开）", False),
     ("/affairs", "办事", "办事大厅 176 个流程应用目录 + HPC/预约/镜像入口", False),
     ("/setup", "设置", "网页端账号配置：学号密码一次填入，自动检测各服务", True),
 )

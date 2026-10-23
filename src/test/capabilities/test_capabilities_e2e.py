@@ -123,7 +123,7 @@ def test_all_pages_share_the_new_shell(server: str) -> None:
 
     真 HTTP 逐页取，核对的是最终产物（渲染后的 HTML），不是模板源码。
     """
-    pages = ["/", "/program", "/capabilities", "/map", "/courses", "/news", "/faculty"]
+    pages = ["/", "/program", "/capabilities", "/map", "/courses", "/news", "/faculty", "/sis", "/canvas", "/careers", "/affairs"]
     for path in pages:
         status, html = _get(server + path)
         assert status == 200, path
@@ -158,3 +158,27 @@ def test_json_endpoints_still_valid(server: str) -> None:
         assert status == 200, path
         payload = json.loads(body)
         assert isinstance(payload, dict), path
+
+
+def test_all_frontend_pages_render(server: str) -> None:
+    """前端覆盖扩展后：学业/Canvas/招聘页真渲染（SIS/Canvas 需凭据，允许降级提示）。"""
+    for path, markers in (
+        ("/sis", ("学业（SIS）", "本学期课表")),
+        ("/canvas", ("Canvas",)),
+        ("/careers", ("招聘岗位",)),
+        ("/affairs", ("网上办事大厅",)),
+    ):
+        status, html = _get(server + path)
+        assert status == 200, path
+        for marker in markers:
+            assert marker in html, (path, marker)
+
+
+def test_services_scan_api(server: str) -> None:
+    """/api/services/scan 按钮后端：小集合直连普查返回活服务。"""
+    status, body = _get(server + "/api/services/scan?hosts=www,mydisk")
+    payload = json.loads(body)
+    assert status == 200
+    assert payload["total"] == 2
+    hosts = [r["host"] for r in payload["alive"]]
+    assert "www" in hosts and "mydisk" not in hosts
