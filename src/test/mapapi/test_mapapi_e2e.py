@@ -61,3 +61,17 @@ def test_cli_map_status_runs() -> None:
     assert "电子地图" in result.output
     if "可用凭据：无" in result.output:
         assert "westlake map login" in result.output
+
+
+def test_encrypt_password_matches_captured_frontend_vector() -> None:
+    """密码加密与前端一致：明文 ``abcdefghij`` 的密文取自 2026-10-23 实测抓包。"""
+    from westlake_survival.mapapi import encrypt_password
+
+    assert encrypt_password("abcdefghij") == "zFhDoqs9KQKChPammNV89A=="
+
+
+def test_encrypt_password_is_deterministic_ecb() -> None:
+    """ECB 无随机 IV：同一明文两次加密结果相同（前端行为一致）。"""
+    from westlake_survival.mapapi import encrypt_password
+
+    assert encrypt_password("Zyz071126") == encrypt_password("Zyz071126")

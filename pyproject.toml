@@ -35,6 +35,7 @@ dependencies = [
 webui = ["flask>=3.0"]
 test = ["pytest>=8.0"]
 secure = ["keyring>=25"]
+crypto = ["cryptography>=42"]
 
 [project.scripts]
 westlake = "westlake_survival.cli:cli"
