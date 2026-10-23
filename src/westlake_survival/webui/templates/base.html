@@ -1,129 +1,194 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}西湖生存手册{% endblock %}</title>
+<script>
+  // 首帧前定主题，避免闪白。参考页同样在 <head> 内联设置。
+  (function () {
+    try {
+      var saved = localStorage.getItem('wl-theme');
+      var dark = saved ? saved === 'dark'
+        : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    } catch (e) { /* 隐私模式下忽略 */ }
+  })();
+</script>
 <style>
+  /* 设计参考：xiuyuliang.cn 的学术主页——暖纸底、白色内容卡、细边框、
+     衬线感标题、蓝色链接、克制阴影。变量名沿用模板既有约定（--card 等）。 */
   :root {
-    --bg: #f5f7f9;
+    color-scheme: light;
+    --bg: #f4f2ed;
     --card: #ffffff;
-    --ink: #1f2933;
-    --muted: #6b7684;
-    --line: #e3e8ee;
-    --accent: #0b6e4f;
-    --accent-soft: #e6f2ee;
-    --warn: #b45309;
-    --warn-soft: #fdf3e3;
-    --radius: 12px;
+    --surface-2: #f4f5f7;
+    --ink: #2b2f33;
+    --heading: #17191c;
+    --muted: #5b5b5b;
+    --line: rgba(40, 40, 40, 0.14);
+    --link: #1465a8;
+    --accent: #a52a2a;
+    --accent-soft: #dde8fc;
+    --warn: #8a6417;
+    --warn-soft: #faf3cf;
+    --shadow: rgba(45, 42, 38, 0.16);
+    --navbar-bg: #8f969c;
+    --navbar-text: #ffffff;
+    --radius: 15px;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #101214;
+    --card: #1b1e23;
+    --surface-2: #24272d;
+    --ink: #d8d5cf;
+    --heading: #edeae4;
+    --muted: #a09b93;
+    --line: rgba(255, 255, 255, 0.14);
+    --link: #7db5e8;
+    --accent: #de9572;
+    --accent-soft: #2c3850;
+    --warn: #e2b13c;
+    --warn-soft: #423a1d;
+    --shadow: rgba(0, 0, 0, 0.5);
+    --navbar-bg: #22262b;
+    --navbar-text: #e8e6e1;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    font-family: Optima, "Segoe UI", system-ui, -apple-system, "PingFang SC",
       "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
-    line-height: 1.55;
-    font-size: 15px;
+    font-size: 16px;
+    line-height: 1.62;
   }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  header.topbar {
-    background: var(--card);
-    border-bottom: 1px solid var(--line);
-  }
-  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 1.25rem; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* 顶部导航：窄灰带，白字，与参考页一致 */
+  header.topbar { background: var(--navbar-bg); color: var(--navbar-text); }
   .topbar .wrap {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
-    height: 60px;
+    max-width: 1050px; margin: 0 auto; padding: .55rem 1.6rem;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .9rem;
   }
-  .brand { font-weight: 700; font-size: 1.05rem; letter-spacing: .01em; }
-  .brand .dot { color: var(--accent); }
-  nav.main { display: flex; gap: 1.1rem; }
-  nav.main a { color: var(--muted); font-size: .92rem; }
-  nav.main a.active { color: var(--accent); font-weight: 600; }
-  main { padding: 1.75rem 0 3rem; }
-  h1.page { font-size: 1.35rem; margin: 0 0 1.1rem; }
+  .brand { font-weight: 700; letter-spacing: .01em; color: var(--navbar-text); }
+  .brand .dot { opacity: .6; padding: 0 .15rem; }
+  nav.main { display: flex; flex-wrap: wrap; gap: .95rem; flex: 1; }
+  nav.main a { color: var(--navbar-text); opacity: .82; font-size: .9rem; }
+  nav.main a:hover { opacity: 1; text-decoration: none; border-bottom: 1px solid currentColor; }
+  nav.main a.active { opacity: 1; font-weight: 600; border-bottom: 2px solid currentColor; }
+  #themeToggle {
+    font: inherit; font-size: .8rem; cursor: pointer; color: var(--navbar-text);
+    background: transparent; border: 1px solid rgba(255, 255, 255, .45);
+    border-radius: 999px; padding: .1rem .6rem;
+  }
+
+  /* 内容卡：暖纸底上的一张白纸 */
+  main { padding: 20px 0 0; }
+  .wrap.sheet {
+    max-width: 1050px; margin: 20px auto; padding: 25px 50px 35px;
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: 0 8px 30px var(--shadow);
+  }
+  h1.page {
+    font-size: 1.6rem; margin: .2rem 0 1.2rem; color: var(--heading);
+    padding-bottom: 6px; border-bottom: 1px solid var(--line); font-weight: 700;
+  }
   h2.section {
-    font-size: 1rem; margin: 1.75rem 0 .75rem; color: var(--muted);
-    font-weight: 600; letter-spacing: .02em;
+    font-size: 1.18rem; margin: 1.9rem 0 .8rem; color: var(--heading);
+    font-weight: 700;
   }
+  h3.section { font-size: 1.02rem; margin: 1.3rem 0 .5rem; color: var(--heading); }
+  p { color: var(--muted); }
   .grid { display: grid; gap: .9rem; }
   .grid.cols-4 { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
   .grid.cols-2 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
   .card {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: 1rem 1.1rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 1rem 1.1rem;
   }
-  .card .label {
-    font-size: .78rem; color: var(--muted); text-transform: none;
-    letter-spacing: .03em;
-  }
-  .card .value { font-size: 1.35rem; font-weight: 650; margin-top: .25rem; }
+  .card .label { font-size: .78rem; color: var(--muted); letter-spacing: .02em; }
+  .card .value { font-size: 1.35rem; font-weight: 650; margin-top: .25rem; color: var(--heading); }
   .card .value.small { font-size: 1rem; font-weight: 500; }
   .card.hero .value { font-size: 2.1rem; }
   .muted { color: var(--muted); }
-  .dim { color: #a7b0ba; }
+  .dim { color: var(--muted); opacity: .72; }
+
+  /* 表格：细横线，去掉外框感 */
   table.data {
-    width: 100%; border-collapse: collapse; background: var(--card);
-    border: 1px solid var(--line); border-radius: var(--radius);
-    overflow: hidden; font-size: .9rem;
+    width: 100%; border-collapse: collapse; background: transparent;
+    font-size: .92rem; margin: .3rem 0 .6rem;
   }
   table.data th, table.data td {
-    text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--line);
+    text-align: left; padding: .55rem .6rem; border-bottom: 1px solid var(--line);
     vertical-align: top;
   }
-  table.data th { color: var(--muted); font-weight: 600; background: #fafbfc; }
+  table.data th {
+    color: var(--muted); font-weight: 600; font-size: .82rem;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
   table.data tr:last-child td { border-bottom: none; }
+  table.data tbody tr:hover { background: var(--surface-2); }
   table.data td.time { font-variant-numeric: tabular-nums; white-space: nowrap; }
   table.data td.time.hl { color: var(--accent); font-weight: 650; }
+
   .chip {
-    display: inline-block; padding: .12rem .55rem; border-radius: 999px;
-    background: var(--accent-soft); color: var(--accent); font-size: .78rem;
+    display: inline-block; padding: .1rem .55rem; border-radius: 999px;
+    background: var(--accent-soft); color: var(--link); font-size: .78rem;
     font-weight: 600;
   }
   .chip.warn { background: var(--warn-soft); color: var(--warn); }
   .note {
-    background: var(--warn-soft); color: var(--warn); border: 1px solid #f4dfbc;
-    border-radius: var(--radius); padding: .7rem .9rem; font-size: .88rem;
-    margin-bottom: 1rem;
+    background: var(--warn-soft); color: var(--warn); border: 1px solid var(--line);
+    border-radius: 12px; padding: .75rem 1rem; font-size: .9rem; margin-bottom: 1.1rem;
   }
-  .progress {
-    background: #e9edf1; border-radius: 999px; height: 10px; overflow: hidden;
-    margin-top: .5rem;
-  }
-  .progress > span {
-    display: block; height: 100%; background: var(--accent); border-radius: 999px;
-  }
+  .progress { background: var(--surface-2); border-radius: 999px; height: 10px; overflow: hidden; margin-top: .5rem; }
+  .progress > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
   .kv { display: flex; flex-wrap: wrap; gap: 1.5rem; }
   .kv > div { min-width: 8rem; }
-  .empty { color: var(--muted); font-size: .9rem; padding: .5rem 0; }
+  .empty { color: var(--muted); font-size: .92rem; padding: .6rem 0; }
+
   form.filter {
     display: flex; flex-wrap: wrap; align-items: flex-end; gap: .8rem;
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: .8rem 1rem; margin-bottom: 1.1rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: .8rem 1rem; margin-bottom: 1.2rem;
   }
-  form.filter label {
-    display: flex; flex-direction: column; gap: .25rem;
-    font-size: .78rem; color: var(--muted);
+  form.filter label { display: flex; flex-direction: column; gap: .25rem; font-size: .78rem; color: var(--muted); }
+  form.filter select, form.filter input, input[type="search"] {
+    font: inherit; font-size: .92rem; color: var(--ink); background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px; padding: .4rem .6rem; min-width: 12rem;
   }
-  form.filter select, form.filter input {
-    font: inherit; font-size: .9rem; color: var(--ink); background: #fff;
-    border: 1px solid var(--line); border-radius: 8px; padding: .35rem .55rem;
-    min-width: 12rem;
-  }
-  form.filter button {
+  form.filter button, button {
     font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer;
-    color: #fff; background: var(--accent); border: 1px solid var(--accent);
+    color: var(--ink); background: var(--surface-2); border: 1px solid var(--line);
     border-radius: 8px; padding: .42rem 1rem;
   }
-  form.filter button:hover { background: #0a5e44; }
-  footer {
-    color: var(--muted); font-size: .8rem; padding: 1.5rem 0;
-    border-top: 1px solid var(--line); margin-top: 2rem;
+  form.filter button:hover, button:hover { background: var(--accent-soft); border-color: var(--link); }
+  /* 长列表项：学术主页式的细线分隔，而不是一叠灰卡片 */
+  .cap-item {
+    background: transparent; border: none; border-bottom: 1px solid var(--line);
+    border-radius: 0; padding: .75rem .2rem;
   }
-  code { background: #eef1f4; padding: .08rem .35rem; border-radius: 4px; }
+  .cap-item:last-child { border-bottom: none; }
+  footer {
+    max-width: 1050px; margin: 0 auto; padding: 0 1.6rem 2.4rem;
+    color: var(--muted); font-size: .82rem; text-align: center;
+  }
+  code {
+    background: var(--surface-2); padding: .08rem .38rem; border-radius: 5px;
+    font-size: .9em;
+  }
+  hr { border: none; border-top: 2px dashed var(--line); margin: 1.6rem 0; }
+  @media (max-width: 720px) {
+    .wrap.sheet { padding: 20px 20px 28px; margin: 10px; }
+    .topbar .wrap { padding: .5rem 1rem; flex-direction: column; align-items: flex-start; gap: .3rem; }
+    nav.main { flex-wrap: nowrap; overflow-x: auto; width: 100%; gap: .8rem; padding-bottom: .15rem; }
+    nav.main a { white-space: nowrap; }
+    h1.page { font-size: 1.35rem; }
+  }
 </style>
 </head>
 <body>
@@ -146,18 +211,34 @@
       <a href="/search" class="{{ 'active' if here.startswith('/search') else '' }}">搜索</a>
       <a href="/api/context">API</a>
     </nav>
+    <button id="themeToggle" type="button" aria-label="切换明暗主题">☾ 暗色</button>
   </div>
 </header>
 <main>
-  <div class="wrap">
+  <div class="wrap sheet">
     {% block content %}{% endblock %}
   </div>
 </main>
 <footer>
-  <div class="wrap">
-    本地工具，仅绑定 <code>127.0.0.1</code>，无登录 / 鉴权。
-    数据来自公开页面，可能有延迟；以学校官方通知为准。
-  </div>
+  本地工具，仅绑定 <code>127.0.0.1</code>，无登录 / 鉴权。
+  数据来自公开页面，可能有延迟；以学校官方通知为准。
 </footer>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var button = document.getElementById('themeToggle');
+    function paint() {
+      var dark = root.dataset.theme === 'dark';
+      button.textContent = dark ? '☀ 亮色' : '☾ 暗色';
+    }
+    button.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      try { localStorage.setItem('wl-theme', next); } catch (e) {}
+      paint();
+    });
+    paint();
+  })();
+</script>
 </body>
 </html>

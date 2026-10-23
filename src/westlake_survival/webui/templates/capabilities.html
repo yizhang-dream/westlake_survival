@@ -20,7 +20,7 @@
 <section class="cap-group" data-kind="{{ group.kind }}">
   <h2 class="section">{{ group.title }}（{{ group.rows | length }}）</h2>
   {% for row in group.rows %}
-  <div class="card cap-item" style="margin-bottom:.6rem">
+  <div class="card cap-item">
     <div style="display:flex;justify-content:space-between;gap:.8rem;align-items:baseline">
       <strong>{{ row.name }}</strong>
       {% if row.needs_auth %}

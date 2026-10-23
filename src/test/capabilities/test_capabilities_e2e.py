@@ -116,3 +116,18 @@ def test_cli_subcommands_exposed(server: str) -> None:
     assert {"overview", "curriculum", "majors", "plan", "courses", "course"} <= set(names)
     for name in names:
         assert f">{name}<" in html or f"<code>{name}</code>" in html
+
+
+def test_all_pages_share_the_new_shell(server: str) -> None:
+    """所有主要页面共用新外壳：暖纸底令牌、主题切换、内容卡片。
+
+    真 HTTP 逐页取，核对的是最终产物（渲染后的 HTML），不是模板源码。
+    """
+    pages = ["/", "/program", "/capabilities", "/map", "/courses", "/news", "/faculty"]
+    for path in pages:
+        status, html = _get(server + path)
+        assert status == 200, path
+        assert 'id="themeToggle"' in html, path
+        assert 'data-theme="light"' in html, path
+        assert "wrap sheet" in html, path
+        assert "--bg: #f4f2ed" in html, path

@@ -38,7 +38,8 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 打印网点 / 我的打印任务 | `westlake pms stations` / `jobs` |
 | 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`（OPAC 服务端当前 404，可能不可用） |
 | 服务是否可达（选课/OPAC/打印/token） | `westlake probe
-westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览` |
+westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
+# 前端外观参考 xiuyuliang.cn：暖纸底 + 白色内容卡 + 细边框 + 明暗切换（右上按钮，存 localStorage）` |
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
@@ -98,6 +99,7 @@ westlake map poi 图书馆                        # 离线查楼宇/设施（随
 westlake pms stations
 westlake probe
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
+# 前端外观参考 xiuyuliang.cn：暖纸底 + 白色内容卡 + 细边框 + 明暗切换（右上按钮，存 localStorage）
 westlake cache clear --module events
 ```
 
