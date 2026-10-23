@@ -1213,6 +1213,45 @@ def webui_serve(host: str, port: int) -> None:
         raise SystemExit(1) from exc
 
 
+@click.command(name="go", help="一步启动：起 WebUI 并自动打开浏览器（用户入口）。")
+@click.option("--port", default=2018, show_default=True, help="本地端口。")
+@click.option("--no-browser", is_flag=True, help="只启动服务，不打开浏览器（Agent/无桌面环境用）。")
+def go_cmd(port: int, no_browser: bool) -> None:
+    """``westlake go``：启动 WebUI 并自动打开浏览器。
+
+    用户日常只需要这一条命令；浏览器打开后所有操作（含首次账号配置）都在
+    网页里完成。终端侧的 ``westlake setup`` 等命令留给 Agent。
+    """
+    import threading
+    import webbrowser
+
+    url = f"http://127.0.0.1:{port}/"
+    if not no_browser:
+        # 服务就绪后再开浏览器：最多等 15 秒，避免直接命中连接失败页。
+        def _open_when_ready() -> None:
+            import time
+
+            deadline = time.time() + 15
+            while time.time() < deadline:
+                try:
+                    import urllib.request
+
+                    with urllib.request.urlopen(url, timeout=1):
+                        pass
+                    break
+                except Exception:
+                    time.sleep(0.4)
+            webbrowser.open(url)
+
+        threading.Thread(target=_open_when_ready, daemon=True).start()
+    click.echo(f"西湖生存手册 · Web 界面：{url}")
+    if not no_browser:
+        click.echo("浏览器将自动打开；若没有弹出，手动访问上面的地址。")
+    click.echo("Ctrl+C 停止。")
+    # webui_serve 是 click 命令对象；直接调它的回调，避免再走一次 CLI 解析。
+    webui_serve.callback("127.0.0.1", port)
+
+
 # --------------------------------------------------------------------------- #
 # 顶层 group
 # --------------------------------------------------------------------------- #
@@ -1250,6 +1289,7 @@ def _first_run_configured() -> bool:
 
 
 for _group in (
+    go_cmd,
     setup_cmd,
     sso_cmd,
     calendar_cmd,
