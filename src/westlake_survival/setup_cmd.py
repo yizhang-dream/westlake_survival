@@ -9,7 +9,9 @@
 「一个账号通吃」的真实边界
 ==========================
 如实探测、不假装：
-* **教务 SIS**（课表/成绩/考试/评教/学籍/学生记录/资助）：学号 + 密码即可；
+* **教务 SIS**（课表/成绩/考试/评教/学籍/学生记录/资助）：优先走统一身份认证
+  （IAM OAuth2，2026-10-24 实测打通）——填**统一（校园门户）密码**即可；
+  旧 SIS 专用密码也兼容（自动回落 PeopleSoft 本地登录）；
 * **Canvas**：REST 只认访问令牌，密码换不来令牌，所以向导单独问一次令牌
   （可跳过，之后随时补）；
 * **打印系统**：独立密码域，本向导不试（无凭据时也只用公开网点列表）。
@@ -54,8 +56,7 @@ def _probe_sis(sid: str, password: str) -> tuple[bool, str]:
     except OffCampusError:
         return False, "校外网络不可达（连校园网/VPN 后再试）"
     except AuthError as exc:
-        # 实测高频原因：填的是统一身份认证（校园门户）密码，而教务 SIS 密码不同源。
-        return False, f"登录失败：{exc}（教务密码与校园门户/统一身份认证密码不是同一个）"
+        return False, f"登录失败：{exc}"
     except WestlakeError as exc:
         return False, f"网络或解析失败：{exc}"
     except Exception as exc:  # pragma: no cover - 兜底不让向导崩

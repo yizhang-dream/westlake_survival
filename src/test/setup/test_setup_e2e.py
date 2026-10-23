@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+
+import pytest
 from pathlib import Path
 
 
@@ -84,3 +86,13 @@ def test_cli_creds_show_reveals_stored_password(tmp_path) -> None:
     assert result.returncode == 0
     assert "20259999" in result.stdout
     assert "dummy-pass" in result.stdout
+
+
+@pytest.mark.live
+def test_live_sis_auth_accepts_stored_credentials() -> None:
+    """live：用本机已存凭据真登一次 SIS（IAM 主路径 + PS 回落，两条都算通过）。"""
+    from westlake_survival.sso import SISAuth
+
+    auth = SISAuth()
+    auth.refresh()
+    assert auth.session.cookies.get("PS_TOKEN")
