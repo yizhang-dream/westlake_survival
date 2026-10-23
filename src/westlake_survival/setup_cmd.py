@@ -12,9 +12,8 @@
 * **教务 SIS**（课表/成绩/考试/评教/学籍/学生记录/资助）：学号 + 密码即可；
 * **Canvas**：REST 只认访问令牌，密码换不来令牌，所以向导单独问一次令牌
   （可跳过，之后随时补）；
-* **电子地图**：独立账号体系，学号在系统里存在但密码与教务不同源，
-  向导会用同一密码试一次并如实报告结果；
-* **打印系统**：同样独立密码域，本向导不试（无凭据时也只用公开网点列表）。
+* **打印系统**：独立密码域，本向导不试（无凭据时也只用公开网点列表）。
+  电子地图已按用户裁定完全走公开内容（图片 + 720° 全景链接），无账号。
 
 凭据落盘沿用既有四级机制：优先系统钥匙串，退配置文件，写时尽力 0600。
 向导**不回显、不写日志**任何密码；``--password`` 参数仅为自动化保留，
@@ -41,8 +40,6 @@ class SetupReport:
     sis_note: str = ""
     canvas_ok: bool = False
     canvas_note: str = ""
-    map_ok: bool = False
-    map_note: str = ""
     stored_in: str = ""
     extra: list[str] = field(default_factory=list)
 
@@ -66,28 +63,6 @@ def _probe_sis(sid: str, password: str) -> tuple[bool, str]:
     finally:
         cred_clear()
     return True, "登录成功"
-
-
-def _probe_map(sid: str, password: str) -> tuple[bool, str]:
-    """用同一密码试一次电子地图（独立账号体系，失败是常态）。"""
-    from westlake_survival import mapapi
-
-    try:
-        mapapi.login(sid, password)
-    except AuthError as exc:
-        message = str(exc)
-        if "10051" in message or "频繁" in message:
-            return False, "频率限制，稍后再试"
-        if "20002" in message:
-            return False, "该学号在地图系统里不存在（需向学校开通）"
-        if "20001" in message:
-            return False, "密码与教务不同源（需单独密码）"
-        return False, message[:80]
-    except WestlakeError as exc:
-        return False, f"网络失败：{exc}"
-    except Exception as exc:  # pragma: no cover
-        return False, f"{exc.__class__.__name__}: {exc}"
-    return True, "同一密码可用"
 
 
 def _probe_canvas(token: str) -> tuple[bool, str]:
@@ -146,7 +121,6 @@ def _print_report(report: SetupReport) -> None:
     mark = lambda ok: click.style("✓", fg="green") if ok else click.style("✗", fg="yellow")
     click.echo(f"  {mark(report.sis_ok)} 教务 SIS（课表/成绩/考试/评教/学籍/记录/资助）  {report.sis_note}")
     click.echo(f"  {mark(report.canvas_ok)} Canvas（课程/作业/考试）                      {report.canvas_note}")
-    click.echo(f"  {mark(report.map_ok)} 电子地图账号                              {report.map_note}")
     click.echo("  —  打印系统（pms）                        独立密码域，需要时 `westlake pms login`")
     click.echo("  ✓  公开功能（校历/班车/新闻/培养方案/通识课程/地图图片）  始终可用，无需账号")
     if report.stored_in:
@@ -189,18 +163,13 @@ def run_setup(
     report.sid = sid
 
     if verify:
-        click.echo("[1/3] 验教务（SIS）…", nl=False)
+        click.echo("[1/2] 验教务（SIS）…", nl=False)
         ok, note = _probe_sis(sid, password)
         click.echo((" 成功" if ok else f" 未通过（{note}）"))
         report.sis_ok, report.sis_note = ok, note
 
-        click.echo("[2/3] 试电子地图（同一密码）…", nl=False)
-        ok_map, note_map = _probe_map(sid, password)
-        click.echo((" 可用" if ok_map else f" 不可用（{note_map}）"))
-        report.map_ok, report.map_note = ok_map, note_map
     else:
         report.sis_ok, report.sis_note = False, "已跳过验证（--no-verify）"
-        report.map_ok, report.map_note = False, "已跳过验证"
 
     # 可选块不做阻塞式提问：Canvas 令牌随时可补，向导只提示一次。
     canvas_token = canvas_token or ""
@@ -220,11 +189,6 @@ def run_setup(
             report.extra.append("教务凭据未验证通过，但按 --force-save 已保存。")
         elif verify:
             report.extra.append("教务凭据未通过验证，未保存（可加 --force-save 强制保存）。")
-        from westlake_survival import mapapi
-
-        if report.map_ok:
-            stored = mapapi.save_map_credentials(sid, password)
-            report.extra.append("地图凭据已保存到：" + ("系统钥匙串" if stored else str(mapapi.cred_path())))
 
     _print_report(report)
     return report

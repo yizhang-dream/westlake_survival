@@ -281,7 +281,7 @@ def _handle_errors(func):
     return wrapper
 
 
-@click.group(name="map", help="校园地图辅助：地址、地图图片、校园全景与到校交通。", invoke_without_command=True)
+@click.group(name="map", help="校园地图（全公开）：地址、官方地图图片、720° 全景与到校交通。", invoke_without_command=True)
 @click.option("--campus", default=None, help="校区：云谷 / 云栖 / 铜鉴湖（可只写片段）。")
 @click.option("--refresh", is_flag=True, help="忽略本地缓存，强制重新抓取。")
 @click.pass_context
@@ -290,83 +290,6 @@ def cli_group(ctx: click.Context, campus: str | None, refresh: bool) -> None:
     if ctx.invoked_subcommand is not None:
         return
     _run_map(campus=campus, refresh=refresh)
-
-
-@cli_group.command(name="login")
-@click.option("--user", prompt="地图系统账号", help="电子地图账号（与教务 SIS 不同源）。")
-@click.option(
-    "--password",
-    prompt=True,
-    hide_input=True,
-    confirmation_prompt=False,
-    help="电子地图密码；交互输入不回显。",
-)
-@_handle_errors
-def map_login(user: str, password: str) -> None:
-    """配置电子地图账号：验证一次，之后自动复用（令牌缓存 + 自动重登）。"""
-    from westlake_survival import mapapi
-
-    token = mapapi.login(user, password)
-    stored_in_keyring = mapapi.save_map_credentials(user, password)
-    mapapi._save_token(token)  # noqa: SLF001 - 同包内部写在登录成功后落盘
-    where = "系统钥匙串" if stored_in_keyring else str(mapapi.cred_path())
-    click.echo(f"登录成功，凭据已保存到{where}；令牌已缓存，后续命令自动复用。")
-
-
-@cli_group.command(name="poi")
-@click.argument("keyword", required=False)
-@click.option("--limit", type=int, default=20, show_default=True, help="最多显示条数。")
-@click.option("--endpoint", "endpoint_part", default=None, help="只查某类端点（子串，如 area/building）。")
-def map_poi(keyword: str | None, limit: int, endpoint_part: str | None) -> None:
-    """离线查楼宇/设施/区域（读随包数据集，不需要登录）。
-
-    数据由维护者用一次性抓取脚本固化，见 tools/capture_map.py。
-    """
-    from westlake_survival import mapdata
-
-    if not mapdata.dataset_available():
-        click.echo("地图数据集尚未生成（当前只有公开的地图图片与全景）。")
-        click.echo("生成方式：维护者用有效账号跑一次 tools/capture_map.py，再跑 tools/build_map_dataset.py。")
-        click.echo("自己已配置账号时也可先 `westlake map login`，再联系维护者导出。")
-        return
-    dataset = mapdata.load_dataset()
-    if keyword:
-        hits = dataset.search(keyword, limit=limit)
-    else:
-        hits = dataset.records(endpoint_part)[:limit]
-    click.echo(f"数据集：{len(dataset)} 条记录，生成于 {dataset.generated_at or '未知'}")
-    if not hits:
-        click.echo("没有匹配的记录。")
-        return
-    for hit in hits:
-        click.echo(f"  {hit.brief()}　[{hit.endpoint}]")
-
-
-@cli_group.command(name="status")
-@_handle_errors
-def map_status() -> None:
-    """查看电子地图账号与令牌状态（只报有无，不回显凭据）。"""
-    from westlake_survival import mapapi
-
-    status = mapapi.map_cred_status()
-    click.echo("电子地图（map.westlake.edu.cn）状态：")
-    for name, has in status["sources"].items():
-        click.echo(f"  - {name}：{'有' if has else '无'}")
-    click.echo(f"  - 可用凭据：{'有' if status['has_credentials'] else '无'}")
-    click.echo(f"  - 令牌有效：{'是' if status['token_valid'] else '否'}")
-    if status["token_expires_at"]:
-        click.echo(f"  - 令牌到期：{status['token_expires_at']}")
-    if not status["has_credentials"]:
-        click.echo("提示：执行一次 `westlake map login` 即可长期使用（与教务密码不同源）。")
-
-
-@cli_group.command(name="logout")
-def map_logout() -> None:
-    """删除已保存的电子地图凭据与令牌缓存。"""
-    from westlake_survival import mapapi
-
-    mapapi.delete_map_credentials()
-    click.echo("已删除电子地图凭据与令牌缓存。")
 
 
 @_handle_errors
