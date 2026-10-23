@@ -25,7 +25,7 @@
 ``program_overview`` / ``program_curriculum`` / ``program_majors`` /
 ``program_plan`` / ``program_courses`` / ``program_course_search`` /
 ``events_upcoming`` / ``research_latest`` / ``site_search`` / ``faculty_search`` /
-``campus_dining`` / ``campus_housing`` / ``contact_info`` / ``context_snapshot`` /
+``campus_dining`` / ``campus_housing`` / ``campus_map`` / ``contact_info`` / ``context_snapshot`` /
 ``canvas_deadlines``；另有写操作工具 ``canvas_submit``（交作业，缺省只预检，
 ``confirm=true`` 才真正提交）。
 
@@ -567,6 +567,28 @@ def _tool_campus_housing(args: dict) -> Any:
     return _to_plain(housing(campus=campus))
 
 
+def _tool_campus_map(args: dict) -> Any:
+    """校园地图辅助：地址、地图图片、720yun 全景与到校交通。"""
+    from westlake_survival.campusmap import campus_map
+
+    campus = _opt_str(args, "campus")
+    items = campus_map(campus)
+    return [
+        {
+            "campus": item.name,
+            "address": item.address,
+            "postcode": item.postcode,
+            "map_url": item.map_url,
+            "panoramas": [
+                {"title": p.title, "url": p.url, "img_url": p.img_url}
+                for p in item.panoramas
+            ],
+            "traffic": item.traffic,
+        }
+        for item in items
+    ]
+
+
 def _tool_contact_info(args: dict) -> Any:
     """三校区地址交通 + 常用联系电话/邮箱。"""
     from westlake_survival.contact import GENERAL_CONTACTS, campuses, contacts
@@ -888,6 +910,14 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "校内公寓信息（地址、配套服务、联系电话）。",
         "inputSchema": _schema({"campus": _CAMPUS_SCHEMA}),
         "handler": _tool_campus_housing,
+    },
+    {
+        "name": "campus_map",
+        "description": "校园地图辅助：三校区地址、官方地图图片、720yun 校园全景与到校交通（含地铁公交首末班）。",
+        "inputSchema": _schema(
+            {"campus": _str_param("校区片段：云谷 / 云栖 / 铜鉴湖；缺省返回全部。")}
+        ),
+        "handler": _tool_campus_map,
     },
     {
         "name": "contact_info",

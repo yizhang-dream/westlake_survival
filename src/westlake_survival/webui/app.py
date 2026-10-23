@@ -545,6 +545,40 @@ def _dining_context():
     }
 
 
+def _map_context(campus: str = ""):
+    """组装地图页上下文：各校区地址/地图图片/全景/交通，失败降级为 ``error``。"""
+    module = _import_module("campusmap")
+    context: dict = {
+        "error": None,
+        "has_data": False,
+        "campuses": [],
+        "campus": campus,
+    }
+    if module is None or not hasattr(module, "campus_map"):
+        context["error"] = "campusmap 模块不可用。"
+        return context
+    try:
+        items = module.campus_map(campus or None)
+    except Exception as exc:  # pragma: no cover - 数据源异常时降级
+        context["error"] = f"校园地图数据暂时不可用：{exc.__class__.__name__}"
+        return context
+    context["campuses"] = [
+        {
+            "name": item.name,
+            "address": item.address,
+            "postcode": item.postcode,
+            "map_url": item.map_url,
+            "panoramas": [
+                {"title": panorama.title, "url": panorama.url} for panorama in item.panoramas
+            ],
+            "traffic": item.traffic,
+        }
+        for item in items
+    ]
+    context["has_data"] = bool(context["campuses"])
+    return context
+
+
 def _program_data():
     """返回培养方案三页数据（overview / curriculum / majors 结果）；模块缺失时 ``None``。
 
@@ -806,6 +840,12 @@ def create_app() -> Flask:
     def dining_page():
         context = _dining_context()
         return render_template("dining.html", **context)
+
+    # -- 校园地图页 -------------------------------------------------------- #
+    @app.route("/map")
+    def map_page():
+        context = _map_context(campus=request.args.get("campus", ""))
+        return render_template("map.html", **context)
 
     # -- 通识课程页 -------------------------------------------------------- #
     @app.route("/courses")

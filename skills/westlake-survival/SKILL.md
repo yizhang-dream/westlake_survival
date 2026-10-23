@@ -34,6 +34,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 官网全站搜索 | `westlake search <关键词>` |
 | 招聘岗位 / 导师名录 | `westlake careers` / `westlake faculty` |
 | 食堂咖啡 / 公寓 / 电话地址 | `westlake campus dining` / `housing` / `contact phones` |
+| 校区地图 / 校园全景 / 怎么到校 | `westlake map [--campus 云谷]` |
 | 打印网点 / 我的打印任务 | `westlake pms stations` / `jobs` |
 | 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`（OPAC 服务端当前 404，可能不可用） |
 | 服务是否可达（选课/OPAC/打印/token） | `westlake probe` |
@@ -42,7 +43,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
 - **Canvas 类**（`canvas`）：需环境变量 `WESTLAKE_CANVAS_TOKEN`，或写入 `~/.westlake_survival/canvas_token.txt` 首行。
-- **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `contact` / `pms stations` / `probe` / `cache`。
+- **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
 
 ## 常用命令速查表
@@ -85,6 +86,8 @@ westlake campus dining --campus 云谷 --kind 食堂
 westlake campus housing --campus 云谷
 westlake contact --campus 云谷               # 云谷|云栖|铜鉴湖；缺省三校区
 westlake contact phones
+westlake map                                  # 三校区：地址/地图图片/全景/交通
+westlake map --campus 云谷
 westlake pms stations
 westlake probe
 westlake cache clear --module events
