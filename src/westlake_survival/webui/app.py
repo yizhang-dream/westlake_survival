@@ -625,6 +625,37 @@ def _api_doc_context():
     return {"endpoints": endpoints, "count": len(endpoints)}
 
 
+def _creds_summary() -> dict:
+    """凭据状态一览（只报有无，绝不读出密码）。"""
+    summary = {"sis": False, "canvas": False, "map": False}
+    try:
+        from westlake_survival.sso import read_credentials
+
+        read_credentials()
+        summary["sis"] = True
+    except Exception:
+        pass
+    try:
+        from westlake_survival.canvas.client import resolve_token
+
+        summary["canvas"] = bool(resolve_token())
+    except Exception:
+        pass
+    try:
+        from westlake_survival import mapapi
+
+        summary["map"] = bool(mapapi.load_map_credentials())
+    except Exception:
+        pass
+    summary["all_set"] = summary["sis"] and summary["canvas"]
+    return summary
+
+
+def _setup_context() -> dict:
+    """设置页上下文：当前凭据状态 + 向导说明。"""
+    return {"creds": _creds_summary(), "error": None}
+
+
 def _capabilities_context():
     """组装能力总览页上下文：CLI / MCP / WebUI 三组，含是否需要凭据。"""
     module = _import_module("capabilities")
@@ -874,6 +905,12 @@ def create_app() -> Flask:
     app.jinja_env.filters["fmt_date"] = fmt_date
     app.jinja_env.filters["days_until"] = days_until
 
+    # 全站注入凭据状态：未配置时顶栏出引导横幅（用户主战场在网页，不在终端）。
+    @app.context_processor
+    def _inject_creds_status():
+        creds = _creds_summary()
+        return {"creds": creds, "needs_setup": not creds["sis"]}
+
     # -- 首页：context 快照仪表盘 ---------------------------------------- #
     @app.route("/")
     def index():
@@ -958,6 +995,56 @@ def create_app() -> Flask:
     def dining_page():
         context = _dining_context()
         return render_template("dining.html", **context)
+
+    # -- 设置页（网页端账号配置）--------------------------------------------- #
+    @app.route("/setup")
+    def setup_page():
+        return render_template("setup.html", **_setup_context())
+
+    @app.route("/setup/api/save", methods=["POST"])
+    def setup_save():
+        """保存凭据并（可选）验证。请求体含密码，只经 127.0.0.1，不落日志。"""
+        from westlake_survival.setup_cmd import _persist, _persist_canvas, _probe_canvas, _probe_map, _probe_sis
+
+        payload = request.get_json(silent=True) or {}
+        sid = str(payload.get("sid") or "").strip()
+        password = str(payload.get("password") or "")
+        canvas_token = str(payload.get("canvas_token") or "").strip()
+        map_password = str(payload.get("map_password") or "")
+        verify = bool(payload.get("verify", True))
+
+        if not sid or not password:
+            return {"error": "学号与密码不能为空"}, 400
+
+        result: dict = {"sid": sid}
+
+        sis_ok, sis_note = _probe_sis(sid, password) if verify else (False, "未验证（直接保存）")
+        result["sis"] = {"ok": sis_ok, "note": sis_note}
+        if sis_ok or not verify:
+            result["stored_in"] = _persist(sid, password)
+            result["sis"]["saved"] = True
+        else:
+            result["sis"]["saved"] = False
+
+        # 地图：默认用同一密码试一次；用户另填则用那份
+        map_pwd = map_password or password
+        map_ok, map_note = _probe_map(sid, map_pwd) if verify else (False, "未验证")
+        result["map"] = {"ok": map_ok, "note": map_note, "saved": False}
+        if map_ok:
+            from westlake_survival import mapapi
+
+            stored = mapapi.save_map_credentials(sid, map_pwd)
+            result["map"]["saved"] = True
+            result["map"]["stored_in"] = "系统钥匙串" if stored else str(mapapi.cred_path())
+
+        if canvas_token:
+            canvas_ok, canvas_note = _probe_canvas(canvas_token)
+            result["canvas"] = {"ok": canvas_ok, "note": canvas_note}
+            if canvas_ok:
+                result["canvas"]["stored_in"] = _persist_canvas(canvas_token)
+        else:
+            result["canvas"] = {"ok": False, "note": "未填（可稍后补）"}
+        return result
 
     # -- 能力总览页 -------------------------------------------------------- #
     @app.route("/capabilities")

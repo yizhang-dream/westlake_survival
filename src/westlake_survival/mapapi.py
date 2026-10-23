@@ -137,14 +137,20 @@ def save_map_credentials(user: str, password: str) -> bool:
     Returns:
         ``True`` 表示写进钥匙串，``False`` 表示写到文件。
     """
-    try:
-        import keyring
+    if os.environ.get("WESTLAKE_NO_KEYRING"):
+        # 测试/自动化隔离：绝不碰真实钥匙串（曾因此把测试账号写进凭据管理器）。
+        use_keyring = False
+    else:
+        use_keyring = True
+    if use_keyring:
+        try:
+            import keyring
 
-        keyring.set_password(KEYRING_SERVICE, user, password)
-        keyring.set_password(KEYRING_SERVICE, "__user__", user)
-        return True
-    except Exception:
-        logger.debug("钥匙串不可用，回退配置文件", exc_info=True)
+            keyring.set_password(KEYRING_SERVICE, user, password)
+            keyring.set_password(KEYRING_SERVICE, "__user__", user)
+            return True
+        except Exception:
+            logger.debug("钥匙串不可用，回退配置文件", exc_info=True)
     path = cred_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"{user}:{password}", encoding="utf-8")

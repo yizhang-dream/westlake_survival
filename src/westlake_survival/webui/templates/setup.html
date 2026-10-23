@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}账号配置 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">账号配置</h1>
+
+<p class="muted" style="font-size:.92rem">
+  公开功能（校历 / 班车 / 新闻 / 培养方案 / 通识课程 / 地图图片）不需要任何账号。
+  要用课表、成绩、作业这些，就在下面填一次学号与密码——网页里完成，不用开终端。
+</p>
+
+<div id="status" style="margin-bottom:1.2rem">
+  <table class="data">
+    <thead><tr><th>服务</th><th>状态</th></tr></thead>
+    <tbody>
+      <tr><td>教务 SIS（课表/成绩/考试/评教/学籍）</td>
+          <td>{% if creds.sis %}<span class="chip">已配置</span>{% else %}<span class="chip warn">未配置</span>{% endif %}</td></tr>
+      <tr><td>Canvas（课程/作业/考试）</td>
+          <td>{% if creds.canvas %}<span class="chip">已配置</span>{% else %}<span class="chip warn">未配置</span>{% endif %}</td></tr>
+      <tr><td>电子地图账号</td>
+          <td>{% if creds.map %}<span class="chip">已配置</span>{% else %}<span class="chip warn">未配置</span>{% endif %}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<form id="setupForm" class="filter" style="flex-direction:column;align-items:stretch">
+  <label>学号
+    <input name="sid" autocomplete="username" required placeholder="如 20253111009">
+  </label>
+  <label>密码（教务；不会回显到任何结果里）
+    <input name="password" type="password" autocomplete="current-password" required>
+  </label>
+  <label style="display:flex;flex-direction:row;align-items:center;gap:.45rem">
+    <input type="checkbox" name="verify" checked style="min-width:auto">
+    现在就登录验证（校内网络；校外请先连 VPN，或取消勾选先保存）
+  </label>
+  <details style="margin:.4rem 0">
+    <summary class="muted" style="cursor:pointer;font-size:.88rem">更多账号（可选）</summary>
+    <label style="margin-top:.6rem">Canvas 访问令牌（账户 → 设置 → 新建访问令牌）
+      <input name="canvas_token" type="password" autocomplete="off">
+    </label>
+    <label style="margin-top:.6rem">电子地图密码（与教务不同源；留空则用上面的密码试一次）
+      <input name="map_password" type="password" autocomplete="off">
+    </label>
+  </details>
+  <div>
+    <button type="submit" id="submitBtn">保存并检测</button>
+  </div>
+</form>
+
+<div id="result" style="display:none;margin-top:1.4rem"></div>
+
+<script>
+(function () {
+  var form = document.getElementById('setupForm');
+  var box = document.getElementById('result');
+  var btn = document.getElementById('submitBtn');
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    btn.disabled = true;
+    btn.textContent = '正在检测…';
+    box.style.display = 'block';
+    box.innerHTML = '<p class="muted">正在验证并保存…（验证要连学校网络，可能需要几秒）</p>';
+    var data = {
+      sid: form.sid.value.trim(),
+      password: form.password.value,
+      verify: form.verify.checked,
+    };
+    if (form.canvas_token.value.trim()) data.canvas_token = form.canvas_token.value.trim();
+    if (form.map_password.value) data.map_password = form.map_password.value;
+    try {
+      var res = await fetch('/setup/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      var payload = await res.json();
+      if (!res.ok) {
+        box.innerHTML = '<div class="note">保存失败：' + (payload.error || res.status) + '</div>';
+      } else {
+        var rows = '';
+        [['教务 SIS', payload.sis], ['Canvas', payload.canvas], ['电子地图', payload.map]].forEach(function (pair) {
+          if (!pair[1]) return;
+          var mark = pair[1].ok ? '✓' : '✗';
+          var extra = pair[1].saved ? ' 已保存' + (pair[1].stored_in ? '（' + pair[1].stored_in + '）' : '') : '';
+          rows += '<tr><td>' + pair[0] + '</td><td>' + mark + ' ' + (pair[1].note || '') + extra + '</td></tr>';
+        });
+        box.innerHTML =
+          '<table class="data"><thead><tr><th>服务</th><th>结果</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+          '<p class="muted" style="font-size:.84rem">打印系统（pms）是另一套密码，需要时再单独配置；公开功能始终可用。</p>' +
+          '<p><a href="/">回到仪表盘 →</a></p>';
+      }
+    } catch (err) {
+      box.innerHTML = '<div class="note">请求失败：' + err + '</div>';
+    }
+    btn.disabled = false;
+    btn.textContent = '保存并检测';
+  });
+})();
+</script>
+{% endblock %}
