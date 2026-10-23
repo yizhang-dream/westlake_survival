@@ -42,12 +42,13 @@ westlake webui serve --port 2018              # 本地前端；/capabilities 是
 # 前端外观参考 xiuyuliang.cn：暖纸底 + 白色内容卡 + 细边框 + 明暗切换（右上按钮，存 localStorage）` |
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
 | 前端接口有哪些、返回什么 | `westlake webui serve` → `/api`（说明页，含实时样例） |
+| 一步打开全部功能 | `westlake go`（启动 WebUI 并自动开浏览器，用户唯一要记的命令） |
 
 ## 首次使用：用户走网页，终端留给 Agent
 
 用户侧（2026-10-23 裁定：基本不用终端）：
 
-1. 运行一次 `westlake webui serve`，浏览器打开 `http://127.0.0.1:2018`；
+1. 运行一次 `westlake go`（自动启动并打开浏览器；等价 `westlake webui serve` + 手动开页）；
 2. 首页横幅或导航「设置」进入 `/setup`，填一次学号 + 密码（可选：Canvas 令牌、地图密码）；
 3. 页面当场显示各服务接通情况；保存后横幅自动消失。
 

@@ -4,7 +4,7 @@
 
 ```bash
 pip install -e '.[test]'
-westlake webui serve      # 打开 http://127.0.0.1:2018 →「设置」页填一次学号密码
+westlake go               # 一步启动并自动开浏览器 →「设置」页填一次学号密码
 westlake --help
 westlake calendar today   # 公开功能无需账号
 ```
