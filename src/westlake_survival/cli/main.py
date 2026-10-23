@@ -36,6 +36,8 @@ from westlake_survival.discovery import cli_group as affairs_cmd
 from westlake_survival.finance import cli_group as finance_cmd
 from westlake_survival.hpc import cli_group as hpc_cmd
 from westlake_survival.mirrors import cli_group as mirrors_cmd
+from westlake_survival.institute import cli_group as institute_cmd
+from westlake_survival.taskcenter import cli_group as todo_cmd
 from westlake_survival.events import cli_group as events_cmd
 from westlake_survival.exceptions import AuthError, OffCampusError, WestlakeError
 from westlake_survival.faculty import cli_group as faculty_cmd
@@ -1369,6 +1371,8 @@ for _group in (
     hpc_cmd,
     finance_cmd,
     mirrors_cmd,
+    institute_cmd,
+    todo_cmd,
     context_cmd,
     digest_cmd,
     probe_cmd,
