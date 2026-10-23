@@ -577,10 +577,7 @@ def _map_context(campus: str = ""):
         "has_data": False,
         "campuses": [],
         "campus": campus,
-        "map_system_url": "https://map.westlake.edu.cn/",
     }
-    if module is not None and hasattr(module, "MAP_SYSTEM_URL"):
-        context["map_system_url"] = module.MAP_SYSTEM_URL
     if module is None or not hasattr(module, "campus_map"):
         context["error"] = "campusmap 模块不可用。"
         return context

@@ -46,7 +46,6 @@ __all__ = [
     "VISIT_URL",
     "VISIT_COMPONENT",
     "CACHE_NAME",
-    "MAP_SYSTEM_URL",
     "Panorama",
     "MapCampus",
     "parse_panoramas",
@@ -65,8 +64,6 @@ VISIT_COMPONENT = "visitWestlake"
 #: 本地缓存文件名。
 CACHE_NAME = "map/visit_westlake.html"
 
-#: 学校电子地图系统的入口（SPA 外壳匿名可取；页面内的会话状态由浏览器自己管理）。
-MAP_SYSTEM_URL = "https://map.westlake.edu.cn/"
 
 
 # --------------------------------------------------------------------------- #
@@ -397,5 +394,4 @@ def _run_map(campus: str | None, refresh: bool) -> None:
         else:
             click.echo("交通：—")
     click.echo("")
-    click.echo(f"电子地图：{MAP_SYSTEM_URL}（浏览器会保留自己的会话；首次可能需要登录一次）")
     click.echo("说明：本命令输出的是官网静态地图图片与全景链接，不读取任何账号。")

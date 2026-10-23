@@ -16,18 +16,6 @@
   <button type="submit">筛选</button>
 </form>
 
-<section class="card" style="margin-bottom:1.4rem">
-  <h2 class="section">学校电子地图（内嵌，直接用浏览器自己的会话）</h2>
-  <p class="muted" style="font-size:.86rem">
-    下面直接嵌的是 <a href="{{ map_system_url }}" target="_blank" rel="noopener">{{ map_system_url }}</a>。
-    它在你的浏览器里怎么显示，这里就怎么显示——已登录就直接出地图；没登录会显示一次登录页。
-    点上面的链接可开新窗口。
-  </p>
-  <iframe src="{{ map_system_url }}" title="西湖大学电子地图"
-          style="width:100%;height:620px;border:1px solid var(--line);border-radius:10px"
-          referrerpolicy="no-referrer-when-downgrade" loading="lazy"></iframe>
-</section>
-
 {% if has_data %}
   {% for c in campuses %}
   <section class="card" style="margin-bottom:1.4rem">
@@ -78,8 +66,7 @@
   {% endif %}
 
   <p class="muted" style="font-size:.82rem">
-    地图为西湖大学官网静态图片，全景为官网链接的 720yun 页面。
-    校内电子地图系统 map.westlake.edu.cn 需本人账号登录，本页仅用公开数据。
+    地图为西湖大学官网静态图片，全景为官网链接的 720yun 页面；均来自公开页面。
   </p>
 {% elif error %}
   <div class="empty">校园地图数据暂不可用。</div>
