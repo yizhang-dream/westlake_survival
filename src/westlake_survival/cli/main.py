@@ -282,6 +282,25 @@ def sso_creds_set(
         click.echo("提示：明文配置文件安全性低于 keyring，可用 --keyring 尝试写入钥匙串。")
 
 
+@sso_creds.command(name="show")
+def sso_creds_show() -> None:
+    """在终端显示已保存的教务学号与密码（密码管理器的「显示密码」）。
+
+    只应在你自己的机器上使用：输出走 stdout，不写日志。凭据是你本机存的，
+    忘记 SIS 密码时用它找回；网页端等价入口在「设置」页。
+    """
+    from westlake_survival.sso import read_credentials
+
+    try:
+        sid, password = read_credentials()
+    except Exception as exc:
+        click.secho(f"未找到已保存的凭据：{exc}", fg="yellow", err=True)
+        raise SystemExit(1) from exc
+    click.echo(f"学号：{sid}")
+    click.echo(f"密码：{password}")
+    click.echo("（此输出仅在你的终端；SIS 密码与校园门户密码不同源）")
+
+
 @sso_creds.command(name="status")
 def sso_creds_status() -> None:
     """检测当前凭据来源（内存 / 环境变量 / keyring / 配置文件 / 无）。

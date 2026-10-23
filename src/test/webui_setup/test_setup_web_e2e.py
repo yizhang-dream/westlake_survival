@@ -130,3 +130,18 @@ def test_empty_submission_rejected(server) -> None:
     assert "error" in payload
     after = (home / "credentials.txt").read_text(encoding="utf-8") if (home / "credentials.txt").exists() else ""
     assert before == after
+
+
+def test_stored_endpoint_returns_saved_credentials(server) -> None:
+    """「查看密码」接口：保存后能取回学号与密码（本机密码管理器语义）。"""
+    base, _ = server
+    status, payload = _post(
+        base + "/setup/api/save",
+        {"sid": "20259999", "password": "dummy-pass", "verify": False},
+    )
+    assert status == 200
+    with urllib.request.urlopen(base + "/setup/api/stored", timeout=10) as response:
+        stored = json.loads(response.read().decode("utf-8"))
+    assert stored["configured"] is True
+    assert stored["sid"] == "20259999"
+    assert stored["password"] == "dummy-pass"
