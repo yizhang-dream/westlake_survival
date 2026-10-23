@@ -29,6 +29,8 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 讲座 / 学术会议 / 演出预告 | `westlake events` |
 | 西湖新闻 / 科研进展 | `westlake news` / `westlake research` |
 | 本科培养方案 / 课程体系 / 专业介绍 | `westlake program plan [专业]` / `curriculum` / `majors` / `overview` |
+| 某门课几学分、哪个专业有、先修是什么 | `westlake program course <关键词>` |
+| 通识课程清单（学分/开课学期/教师） | `westlake program courses [--category 理工\|人文\|素质]` |
 | 官网全站搜索 | `westlake search <关键词>` |
 | 招聘岗位 / 导师名录 | `westlake careers` / `westlake faculty` |
 | 食堂咖啡 / 公寓 / 电话地址 | `westlake campus dining` / `housing` / `contact phones` |
@@ -67,6 +69,9 @@ westlake program majors --lang en            # 英文招生网同构（zh 缺省
 westlake program plan                        # 8 专业培养方案：学分块 + 课程表
 westlake program plan 人工智能               # 单专业；含先修课程
 westlake program plan 人工智能 --detail      # 附每门课的课程简介
+westlake program courses                     # 通识课程 99 门（三类）
+westlake program courses --category 素质 -k 网球 --detail
+westlake program course 机器学习             # 跨源：通识 + 8 专业培养方案
 westlake research --limit 10
 westlake research detail <URL>
 westlake events --days 7 --limit 20 --type 名家讲座

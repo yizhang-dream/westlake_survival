@@ -567,6 +567,57 @@ def _program_data():
     return data
 
 
+def _courses_context(category: str = "", keyword: str = ""):
+    """组装通识课程页上下文：按类别分组的课程表、提示与错误。
+
+    与 :func:`_program_context` 同口径降级：取数失败只置 ``error``。
+    """
+    module = _import_module("program")
+    context: dict = {
+        "error": None,
+        "has_courses": False,
+        "groups": [],
+        "notices": {},
+        "count": 0,
+        "category": category,
+        "keyword": keyword,
+        "source_url": "",
+    }
+    if module is None or not hasattr(module, "common_courses"):
+        context["error"] = "program 模块不可用（缺少 common_courses）。"
+        return context
+    try:
+        catalog = module.common_courses(
+            category=category or None, keyword=keyword or None
+        )
+    except Exception as exc:  # pragma: no cover - 数据源异常时降级
+        context["error"] = f"通识课程数据暂时不可用：{exc.__class__.__name__}"
+        return context
+    order: list[str] = []
+    buckets: dict[str, list[dict]] = {}
+    for course in catalog.courses:
+        name = course.category or "其它"
+        if name not in buckets:
+            buckets[name] = []
+            order.append(name)
+        buckets[name].append(
+            {
+                "title": course.title,
+                "subject": course.subject,
+                "credits": course.credits,
+                "semester": course.semester,
+                "prerequisite": course.prerequisite,
+                "teachers": [teacher.name for teacher in course.teachers],
+            }
+        )
+    context["groups"] = [(name, buckets[name]) for name in order]
+    context["has_courses"] = bool(order)
+    context["notices"] = catalog.notices
+    context["count"] = len(catalog.courses)
+    context["source_url"] = catalog.url
+    return context
+
+
 def _program_context():
     """组装培养方案页上下文：培养目标、特色、课程体系栏目、专业列表。
 
@@ -755,6 +806,15 @@ def create_app() -> Flask:
     def dining_page():
         context = _dining_context()
         return render_template("dining.html", **context)
+
+    # -- 通识课程页 -------------------------------------------------------- #
+    @app.route("/courses")
+    def courses_page():
+        context = _courses_context(
+            category=request.args.get("category", ""),
+            keyword=request.args.get("q", ""),
+        )
+        return render_template("courses.html", **context)
 
     # -- 培养方案页 -------------------------------------------------------- #
     @app.route("/program")
