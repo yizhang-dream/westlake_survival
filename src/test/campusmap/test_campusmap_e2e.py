@@ -69,3 +69,14 @@ def test_live_map_images_reachable() -> None:
             assert head[:4] == bytes([0x89, 0x50, 0x4E, 0x47]), item.name
         finally:
             response.close()
+
+
+@pytest.mark.live
+def test_live_map_system_url_reachable() -> None:
+    """电子地图入口本身可直接访问（壳体 200），供 WebUI 内嵌与外链使用。"""
+    from westlake_survival.campusmap import MAP_SYSTEM_URL
+
+    assert MAP_SYSTEM_URL.startswith("https://")
+    response = requests.get(MAP_SYSTEM_URL, timeout=30)
+    assert response.status_code == 200
+    assert "<html" in response.text.lower()
