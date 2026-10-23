@@ -117,8 +117,7 @@ def test_save_reports_per_service_without_echoing_password(server) -> None:
     assert status == 200
     rendered = json.dumps(payload, ensure_ascii=False)
     assert "dummy-secret-value" not in rendered
-    assert set(payload) >= {"sis", "canvas", "sid"}
-    assert payload["canvas"]["note"].startswith("未填")
+    assert "sis" in payload and "sid" in payload and "canvas" not in payload
 
 
 def test_empty_submission_rejected(server) -> None:

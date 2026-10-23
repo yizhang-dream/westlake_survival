@@ -50,7 +50,8 @@ westlake webui serve --port 2018              # 本地前端；/capabilities 是
 
 1. 运行一次 `westlake go`（自动启动并打开浏览器；等价 `westlake webui serve` + 手动开页）；
 2. 首页横幅或导航「设置」进入 `/setup`，填一次学号 + 密码（可选：Canvas 令牌、地图密码）；
-3. 页面当场显示各服务接通情况；保存后横幅自动消失。
+3. 页面当场显示账号是否接通；保存后横幅自动消失。设置页只有一组「学号 + 统一密码」，
+   没有任何其它账号输入。
 
 Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 

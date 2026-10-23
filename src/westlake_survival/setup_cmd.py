@@ -40,8 +40,6 @@ class SetupReport:
     sid: str = ""
     sis_ok: bool = False
     sis_note: str = ""
-    canvas_ok: bool = False
-    canvas_note: str = ""
     stored_in: str = ""
     extra: list[str] = field(default_factory=list)
 
@@ -64,22 +62,6 @@ def _probe_sis(sid: str, password: str) -> tuple[bool, str]:
     finally:
         cred_clear()
     return True, "登录成功"
-
-
-def _probe_canvas(token: str) -> tuple[bool, str]:
-    """用给定令牌调一次 /users/self 验证。"""
-    from westlake_survival.canvas.client import CanvasClient
-
-    try:
-        user = CanvasClient(token=token).me()  # noqa: token 由参数给出
-    except AuthError as exc:
-        return False, f"令牌无效：{exc}"
-    except WestlakeError as exc:
-        return False, f"请求失败：{exc}"
-    except Exception as exc:  # pragma: no cover
-        return False, f"{exc.__class__.__name__}: {exc}"
-    name = getattr(user, "name", "") or ""
-    return True, f"令牌有效{f'（{name}）' if name else ''}"
 
 
 def _persist(sid: str, password: str, *, use_keyring: bool = True) -> str:
@@ -120,10 +102,8 @@ def _print_report(report: SetupReport) -> None:
     click.echo("")
     click.echo("结果：")
     mark = lambda ok: click.style("✓", fg="green") if ok else click.style("✗", fg="yellow")
-    click.echo(f"  {mark(report.sis_ok)} 教务 SIS（课表/成绩/考试/评教/学籍/记录/资助）  {report.sis_note}")
-    click.echo(f"  {mark(report.canvas_ok)} Canvas（课程/作业/考试）                      {report.canvas_note}")
-    click.echo("  —  打印系统（pms）                        独立密码域，需要时 `westlake pms login`")
-    click.echo("  ✓  公开功能（校历/班车/新闻/培养方案/通识课程/地图图片）  始终可用，无需账号")
+    click.echo(f"  {mark(report.sis_ok)} 校园账号（教务课表/成绩/考试 + Canvas 课程作业）  {report.sis_note}")
+    click.echo("  ✓  公开功能（校历/班车/新闻/培养方案/通识课程/地图）  始终可用，无需账号")
     if report.stored_in:
         click.echo(f"\n教务凭据已保存到：{report.stored_in}")
     for line in report.extra:
@@ -174,13 +154,6 @@ def run_setup(
 
     # 可选块不做阻塞式提问：Canvas 令牌随时可补，向导只提示一次。
     canvas_token = canvas_token or ""
-    if canvas_token:
-        ok_canvas, note_canvas = _probe_canvas(canvas_token)
-        report.canvas_ok, report.canvas_note = ok_canvas, note_canvas
-        if ok_canvas and save:
-            report.extra.append(f"Canvas 令牌已保存到：{_persist_canvas(canvas_token)}")
-    else:
-        report.canvas_note = "未配置（生成令牌后：westlake canvas --help / 加 --canvas-token 重跑）"
 
     if save:
         if report.sis_ok:

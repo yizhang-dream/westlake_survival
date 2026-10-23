@@ -627,7 +627,7 @@ def _api_doc_context():
 
 def _creds_summary() -> dict:
     """凭据状态一览（只报有无，绝不读出密码）。"""
-    summary = {"sis": False, "canvas": False}
+    summary = {"sis": False}
     try:
         from westlake_survival.sso import read_credentials
 
@@ -635,14 +635,6 @@ def _creds_summary() -> dict:
         summary["sis"] = True
     except Exception:
         pass
-    try:
-        from westlake_survival.canvas.client import resolve_token
-
-        summary["canvas"] = bool(resolve_token())
-    except Exception:
-        pass
-    # 统一认证（2026-10-24）：有教务凭据即可用 Canvas，无需令牌。
-    summary["canvas_via_sso"] = summary["canvas"] or summary["sis"]
     summary["all_set"] = summary["sis"]
     return summary
 
@@ -1018,12 +1010,11 @@ def create_app() -> Flask:
     @app.route("/setup/api/save", methods=["POST"])
     def setup_save():
         """保存凭据并（可选）验证。请求体含密码，只经 127.0.0.1，不落日志。"""
-        from westlake_survival.setup_cmd import _persist, _persist_canvas, _probe_canvas, _probe_sis
+        from westlake_survival.setup_cmd import _persist, _probe_sis
 
         payload = request.get_json(silent=True) or {}
         sid = str(payload.get("sid") or "").strip()
         password = str(payload.get("password") or "")
-        canvas_token = str(payload.get("canvas_token") or "").strip()
         verify = bool(payload.get("verify", True))
 
         if not sid or not password:
@@ -1040,13 +1031,6 @@ def create_app() -> Flask:
             result["sis"]["saved"] = False
 
 
-        if canvas_token:
-            canvas_ok, canvas_note = _probe_canvas(canvas_token)
-            result["canvas"] = {"ok": canvas_ok, "note": canvas_note}
-            if canvas_ok:
-                result["canvas"]["stored_in"] = _persist_canvas(canvas_token)
-        else:
-            result["canvas"] = {"ok": False, "note": "未填（可稍后补）"}
         return result
 
     # -- 能力总览页 -------------------------------------------------------- #
