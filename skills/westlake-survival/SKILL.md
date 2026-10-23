@@ -45,7 +45,7 @@ westlake webui serve --port 2018              # 本地前端；/capabilities 是
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
 - **Canvas 类**（`canvas`）：需环境变量 `WESTLAKE_CANVAS_TOKEN`，或写入 `~/.westlake_survival/canvas_token.txt` 首行。
-- **电子地图类**：楼宇/设施查询走**随包离线数据集**（`westlake map poi`），普通用户无需账号；数据集由维护者用 `tools/capture_map.py` 一次性抓取后 `tools/build_map_dataset.py` 生成。仅当要自己重新抓取时才需要 `westlake map login`（地图系统独立账号，密码与教务不同源，工具按 AES-128-ECB 加密后提交）。
+- **电子地图类**：`/map` 页内嵌 `map.westlake.edu.cn`（用浏览器自己的会话，已登录则直接出地图）；楼宇/设施离线查询走**随包数据集**（`westlake map poi`），普通用户无需账号；数据集由维护者用 `tools/capture_map.py` 一次性抓取后 `tools/build_map_dataset.py` 生成。仅当要自己重新抓取时才需要 `westlake map login`（地图系统独立账号，密码与教务不同源，工具按 AES-128-ECB 加密后提交）。
 - **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
 
@@ -91,6 +91,7 @@ westlake contact --campus 云谷               # 云谷|云栖|铜鉴湖；缺�
 westlake contact phones
 westlake map                                  # 三校区：地址/地图图片/全景/交通
 westlake map --campus 云谷
+westlake map --campus 云谷                # 末尾给出电子地图入口（浏览器会话由浏览器自己管）
 westlake map login                            # 配置电子地图账号（一次，之后自动复用）
 westlake map status                           # 只报凭据/令牌有无
 westlake map poi 图书馆                        # 离线查楼宇/设施（随包数据集，无需登录）
