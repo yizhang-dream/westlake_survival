@@ -23,7 +23,7 @@
 ``sis_schedule`` / ``sis_grades`` / ``sis_exams`` / ``sis_evals_pending`` /
 ``calendar_today`` / ``calendar_week`` / ``transit_next`` / ``news_latest`` /
 ``program_overview`` / ``program_curriculum`` / ``program_majors`` /
-``program_plan`` /
+``program_plan`` / ``program_courses`` / ``program_course_search`` /
 ``events_upcoming`` / ``research_latest`` / ``site_search`` / ``faculty_search`` /
 ``campus_dining`` / ``campus_housing`` / ``contact_info`` / ``context_snapshot`` /
 ``canvas_deadlines``；另有写操作工具 ``canvas_submit``（交作业，缺省只预检，
@@ -360,6 +360,62 @@ def _tool_program_majors(args: dict) -> Any:
                 "sections": [_section_plain(section) for section in major.sections],
             }
             for major in data.majors
+        ],
+    }
+
+
+def _tool_program_courses(args: dict) -> Any:
+    """通识课程目录（三类，含学分/开课学期/先修/教师/可选简介）。"""
+    from westlake_survival.program import common_courses
+
+    category = _opt_str(args, "category")
+    keyword = _opt_str(args, "keyword")
+    detail = bool(args.get("detail"))
+    catalog = common_courses(category=category, keyword=keyword)
+    courses = []
+    for course in catalog.courses:
+        item: dict[str, Any] = {
+            "title": course.title,
+            "category": course.category,
+            "subject": course.subject,
+            "credits": course.credits,
+            "semester": course.semester,
+        }
+        if course.prerequisite:
+            item["prerequisite"] = course.prerequisite
+        if course.teachers:
+            item["teachers"] = [teacher.name for teacher in course.teachers]
+        if detail:
+            item["description"] = course.description_text
+        courses.append(item)
+    return {
+        "url": catalog.url,
+        "count": len(courses),
+        "notices": catalog.notices,
+        "courses": courses,
+    }
+
+
+def _tool_program_course_search(args: dict) -> Any:
+    """跨源课程搜索：通识目录 + 8 个专业培养方案的课程表。"""
+    from westlake_survival.program import course_search
+
+    keyword = _opt_str(args, "keyword") or ""
+    include_plans = not bool(args.get("common_only"))
+    hits = course_search(keyword, include_major_plans=include_plans)
+    detail = bool(args.get("detail"))
+    return {
+        "keyword": keyword,
+        "count": len(hits),
+        "hits": [
+            {
+                "title": hit.title,
+                "credits": hit.credits,
+                "source": hit.source,
+                "prerequisite": hit.prerequisite,
+                **({"description": hit.description_text} if detail else {}),
+            }
+            for hit in hits
         ],
     }
 
@@ -745,6 +801,31 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "本科专业设置：8 个专业（理学/工学/医学）总览与分专业介绍（招生网公开数据）。",
         "inputSchema": _schema({"lang": _str_param("站点语言，默认 zh。", enum=["zh", "en"])}),
         "handler": _tool_program_majors,
+    },
+    {
+        "name": "program_courses",
+        "description": "通识课程目录：理工基础/人文社科艺术/基础素质三类，含学分、开课学期、先修与授课教师。",
+        "inputSchema": _schema(
+            {
+                "category": _str_param("类别片段，如「理工」「人文」「素质」。"),
+                "keyword": _str_param("课程名/学科/简介关键词。"),
+                "detail": {"type": "boolean", "description": "是否包含课程简介。"},
+            }
+        ),
+        "handler": _tool_program_courses,
+    },
+    {
+        "name": "program_course_search",
+        "description": "跨源课程搜索：查某门课在通识目录与各专业培养方案里的归属、学分与先修。",
+        "inputSchema": _schema(
+            {
+                "keyword": _str_param("课程名子串，如「机器学习」。"),
+                "common_only": {"type": "boolean", "description": "只搜通识目录。"},
+                "detail": {"type": "boolean", "description": "是否包含课程简介。"},
+            },
+            required=["keyword"],
+        ),
+        "handler": _tool_program_course_search,
     },
     {
         "name": "program_plan",

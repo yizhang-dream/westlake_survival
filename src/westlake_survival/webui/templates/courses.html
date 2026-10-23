@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}通识课程 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">通识课程目录</h1>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+<form method="get" action="/courses" style="margin:.6rem 0 1.2rem">
+  <input type="search" name="q" value="{{ keyword }}" placeholder="课程名 / 学科 / 关键词" style="padding:.35rem .5rem">
+  <select name="category" style="padding:.35rem .5rem">
+    <option value="">全部类别</option>
+    {% for name in ['理工基础类', '人文社科艺术类', '基础素质类'] %}
+    <option value="{{ name }}" {{ 'selected' if category == name else '' }}>{{ name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">筛选</button>
+</form>
+
+{% if has_courses %}
+  <p class="muted" style="font-size:.86rem">共 {{ count }} 门</p>
+  {% for name, rows in groups %}
+  <h2 class="section">{{ name }}（{{ rows | length }} 门）</h2>
+  <table class="data">
+    <thead>
+      <tr><th>学科</th><th>课程</th><th>学分</th><th>开课学期</th><th>先修</th><th>教师</th></tr>
+    </thead>
+    <tbody>
+      {% for c in rows %}
+      <tr>
+        <td>{{ c.subject or '—' }}</td>
+        <td>{{ c.title }}</td>
+        <td>{{ c.credits or '—' }}</td>
+        <td>{{ c.semester or '—' }}</td>
+        <td>{% if c.prerequisite %}{{ c.prerequisite }}{% else %}<span class="dim">—</span>{% endif %}</td>
+        <td>{% if c.teachers %}{{ c.teachers | join('、') }}{% else %}<span class="dim">—</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if notices.get(name) %}<p class="dim" style="font-size:.8rem">{{ notices[name] }}</p>{% endif %}
+  {% endfor %}
+  <p class="muted" style="font-size:.82rem">
+    数据来自主站通识课程页（{{ source_url }}）；思想政治理论类该页不发布。
+  </p>
+{% elif error %}
+  <div class="empty">通识课程数据暂不可用。</div>
+{% else %}
+  <div class="empty">没有符合条件的课程。</div>
+{% endif %}
+{% endblock %}

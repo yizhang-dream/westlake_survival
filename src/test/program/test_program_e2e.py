@@ -15,6 +15,8 @@ from westlake_survival.program import (
     CURRICULUM_SECTION_KEYS,
     EDUCATION_FEATURE_KEYS,
     MAJOR_SLUGS,
+    common_courses,
+    course_search,
     curriculum,
     major_plans,
     majors,
@@ -121,3 +123,50 @@ def test_live_plan_clinical_medicine_has_no_course_tables() -> None:
     assert plan is not None
     assert plan.course_count == 0
     assert plan.requirements
+
+
+@pytest.mark.live
+def test_live_common_courses_catalog() -> None:
+    """通识课程目录：三类共 99 门，学分/学期/教师/先修齐全。"""
+    catalog = common_courses()
+
+    assert len(catalog.courses) == 99
+    assert catalog.categories() == ["理工基础类", "人文社科艺术类", "基础素质类"]
+    assert catalog.notices  # 人文类有标星说明
+
+    by_title = {course.title: course for course in catalog.courses}
+    algebra = by_title["代数与分析基础（上）"]
+    assert algebra.credits == "7" and algebra.subject == "数学"
+    tennis = by_title["网球（初级）"]
+    assert tennis.credits == "1" and tennis.semester == "秋季"
+    assert tennis.teachers and tennis.teachers[0].name
+
+
+@pytest.mark.live
+def test_live_common_courses_filters() -> None:
+    """类别片段与关键词过滤都在本地生效。"""
+    pe = common_courses(category="素质")
+    assert len(pe.courses) == 24
+    assert all(course.category == "基础素质类" for course in pe.courses)
+
+    writing = common_courses(keyword="写作")
+    assert writing.courses
+    assert all("写作" in (course.title + course.subject + course.description_text) for course in writing.courses)
+
+
+@pytest.mark.live
+def test_live_course_search_across_sources() -> None:
+    """跨源搜索：同一门课在通识与各专业培养方案里的归属与学分差异。"""
+    hits = course_search("机器学习")
+
+    sources = {hit.source for hit in hits}
+    assert "人工智能·专业必修课程" in sources
+    assert "电子信息工程·专业必修课程" in sources
+    ai_hit = next(hit for hit in hits if hit.source == "人工智能·专业必修课程")
+    assert ai_hit.credits == "4"
+    math_hit = next(hit for hit in hits if hit.source == "数学与应用数学·专业选修课程")
+    assert math_hit.credits == "3"
+
+    # 只在通识里有的课，--no-plans 口径也应有命中
+    only_common = course_search("写作与沟通", include_major_plans=False)
+    assert any(hit.source.startswith("通识·") for hit in only_common)

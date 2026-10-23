@@ -94,6 +94,13 @@ __all__ = [
     "MAJOR_PLAN_COMPONENT",
     "MAJOR_SLUGS",
     "CourseEntry",
+    "CommonCourse",
+    "CourseTeacher",
+    "COMMON_COURSES_PATH",
+    "COMMON_COURSE_KEYS",
+    "parse_common_courses",
+    "common_courses",
+    "course_search",
     "CreditRequirement",
     "MajorPlan",
     "PlansCatalog",
@@ -163,6 +170,19 @@ MAJOR_PLAN_PATH = "/academics/undergraduate_studies/{slug}/"
 
 #: 专业培养方案页组件名。
 MAJOR_PLAN_COMPONENT = "undergraduateStudiesDetails"
+
+#: 通识课程目录页（主站，含全部通识课程与授课教师链接）。
+COMMON_COURSES_PATH = "/academics/undergraduate_studies/common_courses/"
+
+#: 通识课程页组件名。
+COMMON_COURSES_COMPONENT = "commonSources"
+
+#: 通识课程页的三个课程块键 → 官方类别名（思政类该页不发布）。
+COMMON_COURSE_KEYS = {
+    "STEMCoursesObj": "理工基础类",
+    "HASSCoursesObj": "人文社科艺术类",
+    "PECoursesObj": "基础素质类",
+}
 
 #: 8 个本科专业的中文名 → 官网 URL slug（2026-10-23 实测，与招生网专业设置页同集合）。
 MAJOR_SLUGS = {
@@ -385,6 +405,75 @@ class PlansCatalog:
     def match(self, keyword: str) -> list[MajorPlan]:
         """按子串匹配（用于 CLI 模糊查询）。"""
         return [major for major in self.majors if keyword in major.name]
+
+
+@dataclass
+class CourseTeacher:
+    """通识课程条目里的授课教师（官网带个人主页链接，可能为空）。"""
+
+    name: str
+    url: str = ""
+
+
+@dataclass
+class CommonCourse:
+    """通识课程目录里的一门课。
+
+    :attr:`category` 是三大类之一（见 :data:`COMMON_COURSE_KEYS`），
+    :attr:`subject` 是学科（数学/物理/体育/艺术……）。学分与开课学期保留
+    官网原文字符串（如 ``"7"`` / ``"春、秋季"``），不做数值化。
+    """
+
+    title: str
+    category: str = ""
+    subject: str = ""
+    credits: str = ""
+    semester: str = ""
+    prerequisite: str = ""
+    teachers: list[CourseTeacher] = field(default_factory=list)
+    description_html: str = ""
+
+    @property
+    def description_text(self) -> str:
+        """课程简介纯文本。"""
+        return _html_to_text(self.description_html)
+
+
+@dataclass
+class CommonCourses:
+    """通识课程目录（三类合计，2026-10-23 实测 99 门）。"""
+
+    courses: list[CommonCourse] = field(default_factory=list)
+    notices: dict[str, str] = field(default_factory=dict)
+    url: str = ""
+
+    def categories(self) -> list[str]:
+        """出现过的类别（保持官网顺序）。"""
+        seen: list[str] = []
+        for course in self.courses:
+            if course.category and course.category not in seen:
+                seen.append(course.category)
+        return seen
+
+
+@dataclass
+class CourseHit:
+    """跨源课程搜索的一条结果。
+
+    :attr:`source` 形如 ``通识·数学`` 或 ``人工智能·专业必修课程``，
+    用来区分同一门课在不同处的归属。
+    """
+
+    title: str
+    credits: str = ""
+    source: str = ""
+    prerequisite: str = ""
+    description_html: str = ""
+
+    @property
+    def description_text(self) -> str:
+        """课程简介纯文本。"""
+        return _html_to_text(self.description_html)
 
 
 # --------------------------------------------------------------------------- #
@@ -646,6 +735,81 @@ def parse_major_plans(html: str, *, url: str = "") -> PlansCatalog:
     return PlansCatalog(majors=majors, url=url)
 
 
+def _parse_teachers(raw: object) -> list[CourseTeacher]:
+    """解析 ``detailInfo`` 里的 ``授课教师`` 值（``[{val, url}]``）。"""
+    teachers: list[CourseTeacher] = []
+    for entry in raw or []:
+        if isinstance(entry, dict):
+            name = str(entry.get("val") or "").strip()
+            if name:
+                teachers.append(CourseTeacher(name=name, url=str(entry.get("url") or "")))
+        elif isinstance(entry, str) and entry.strip():
+            teachers.append(CourseTeacher(name=entry.strip()))
+    return teachers
+
+
+def parse_common_courses(html: str, *, url: str = "") -> CommonCourses:
+    """解析通识课程目录页 HTML。
+
+    Raises:
+        ParseError: 找不到组件，或三个课程块一个都不在。
+    """
+    block = _require_component(html, COMMON_COURSES_COMPONENT, url)
+    courses: list[CommonCourse] = []
+    notices: dict[str, str] = {}
+    found = False
+    for key, category in COMMON_COURSE_KEYS.items():
+        match = re.search(r"\b" + key + r"\s*:\s*\{", block)
+        if not match:
+            continue
+        raw = js_literal(balanced(block, match.end() - 1))
+        if not isinstance(raw, dict):
+            continue
+        found = True
+        official = str(raw.get("title") or category)
+        notice = str(raw.get("notice") or "").strip()
+        if notice:
+            notices[official] = notice
+        tables = raw.get("tableDatas") or {}
+        groups = tables.get("lists") if isinstance(tables, dict) else None
+        for group in groups or []:
+            if not isinstance(group, dict):
+                continue
+            subject = str(group.get("subject") or "")
+            for item in group.get("items") or []:
+                if not isinstance(item, dict):
+                    continue
+                prerequisite = ""
+                teachers: list[CourseTeacher] = []
+                description = ""
+                for detail in item.get("detailInfo") or []:
+                    if not isinstance(detail, dict):
+                        continue
+                    label = str(detail.get("label") or "")
+                    if label == "先修课程":
+                        raw_pre = str(detail.get("val") or "").strip()
+                        prerequisite = "" if raw_pre == "/" else raw_pre
+                    elif label == "授课教师":
+                        teachers = _parse_teachers(detail.get("vals"))
+                    elif label == "课程简介":
+                        description = str(detail.get("val") or "")
+                courses.append(
+                    CommonCourse(
+                        title=str(item.get("courseTitle") or ""),
+                        category=official,
+                        subject=subject,
+                        credits=str(item.get("credit") or ""),
+                        semester=str(item.get("recommendedSemester") or ""),
+                        prerequisite=prerequisite,
+                        teachers=teachers,
+                        description_html=description,
+                    )
+                )
+    if not found or not courses:
+        raise ParseError(f"通识课程页未解析出任何课程：{url}")
+    return CommonCourses(courses=courses, notices=notices, url=url)
+
+
 # --------------------------------------------------------------------------- #
 # 网络层
 # --------------------------------------------------------------------------- #
@@ -831,6 +995,137 @@ def major_plans(
     return parse_major_plans(_repair_mojibake(body), url=url)
 
 
+def common_courses(
+    category: str | None = None,
+    keyword: str | None = None,
+    *,
+    session: requests.Session | None = None,
+    refresh: bool = False,
+    timeout: float | None = None,
+) -> CommonCourses:
+    """抓取并解析通识课程目录（三类合计，含学分、开课学期、先修、教师、简介）。
+
+    Args:
+        category: 类别名或其中任意片段（如 ``"理工"`` / ``"人文"`` / ``"素质"``）。
+        keyword: 课程名/学科/简介里的子串过滤（大小写不敏感）。
+        session: 可注入的 :class:`requests.Session`（测试用）。
+        refresh: 为 ``True`` 时先清掉本地缓存再请求。
+        timeout: 请求超时（秒）。
+
+    Raises:
+        WestlakeError: 网络层失败。
+        ParseError: HTTP 4xx/5xx，或页面结构变化导致解析失败。
+        OffCampusError: 被校外访问网关拦截。
+    """
+    url = MAIN_SITE + COMMON_COURSES_PATH
+    cache_name = "program/common_courses.html"
+    if refresh:
+        _drop_etag_cache(cache_name)
+    session = session if session is not None else http_session()
+    try:
+        body, _etag = http_get_with_etag(
+            url,
+            cache_name=cache_name,
+            session=session,
+            timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
+        )
+    except requests.HTTPError as exc:
+        response = exc.response
+        if response is not None and getattr(response, "status_code", 0) == 403 and is_offcampus(response):
+            raise OffCampusError(f"通识课程页拒绝访问（403）：{url}") from exc
+        status = getattr(response, "status_code", "?")
+        raise ParseError(f"通识课程页返回 HTTP {status}：{url}") from exc
+    except requests.Timeout as exc:
+        raise WestlakeError(
+            f"通识课程页请求超时（{timeout if timeout is not None else DEFAULT_TIMEOUT}s）：{url}"
+        ) from exc
+    except requests.RequestException as exc:
+        raise WestlakeError(f"通识课程页请求失败：{exc}") from exc
+    catalog = parse_common_courses(_repair_mojibake(body), url=url)
+    courses = catalog.courses
+    if category:
+        courses = [course for course in courses if category in course.category]
+    if keyword:
+        needle = keyword.casefold()
+        courses = [
+            course
+            for course in courses
+            if needle in course.title.casefold()
+            or needle in course.subject.casefold()
+            or needle in course.description_text.casefold()
+        ]
+    return CommonCourses(courses=courses, notices=catalog.notices, url=catalog.url)
+
+
+def course_search(
+    keyword: str,
+    *,
+    include_major_plans: bool = True,
+    session: requests.Session | None = None,
+    refresh: bool = False,
+) -> list[CourseHit]:
+    """跨源课程搜索：通识目录 + 8 个专业的培养方案课程表。
+
+    通识课与专业课重名（如「机器学习」只在专业必修里）时两条都会命中，
+    :attr:`CourseHit.source` 说明归属。网络异常按源降级：任一源失败不影响
+    另一源的结果。
+
+    Args:
+        keyword: 课程名子串（大小写不敏感）。
+        include_major_plans: 是否并入专业培养方案的课程表。
+        session: 可注入的 :class:`requests.Session`（测试用）。
+        refresh: 为 ``True`` 时先清掉本地缓存。
+
+    Raises:
+        ValueError: ``keyword`` 为空。
+        WestlakeError: 两个源都失败时抛最后一个异常。
+    """
+    needle = (keyword or "").strip().casefold()
+    if not needle:
+        raise ValueError("keyword 不能为空")
+    hits: list[CourseHit] = []
+    errors: list[Exception] = []
+    try:
+        catalog = common_courses(session=session, refresh=refresh)
+    except WestlakeError as exc:
+        errors.append(exc)
+    else:
+        for course in catalog.courses:
+            if needle in course.title.casefold():
+                hits.append(
+                    CourseHit(
+                        title=course.title,
+                        credits=course.credits,
+                        source=f"通识·{course.subject or course.category}",
+                        prerequisite=course.prerequisite,
+                        description_html=course.description_html,
+                    )
+                )
+    if include_major_plans:
+        try:
+            plans = major_plans(session=session, refresh=refresh)
+        except WestlakeError as exc:
+            errors.append(exc)
+        else:
+            for plan in plans.majors:
+                for requirement in plan.requirements:
+                    for course in requirement.courses:
+                        if needle in course.name.casefold():
+                            hits.append(
+                                CourseHit(
+                                    title=course.name,
+                                    credits=_fmt_credits(course.credits),
+                                    source=f"{plan.name}·{requirement.title}",
+                                    prerequisite=course.prerequisite,
+                                    description_html=course.description_html,
+                                )
+                            )
+    if not hits and errors:
+        raise errors[-1]
+    hits.sort(key=lambda hit: (hit.title, hit.source))
+    return hits
+
+
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
@@ -1002,6 +1297,64 @@ def plan_cmd(ctx: click.Context, name: str | None, refresh: bool, detail: bool) 
         if plan.warn_text:
             click.echo(f"\n{plan.warn_text}")
     click.echo(f"\n来源：{catalog.url}（主站公开页，中文）")
+
+
+@cli_group.command(name="courses")
+@click.option("--category", default=None, help="类别片段：理工 / 人文 / 素质。")
+@click.option("-k", "--keyword", default=None, help="课程名、学科或简介里的关键词。")
+@click.option("--detail", is_flag=True, help="打印课程简介与授课教师。")
+@_refresh_option
+@_handle_errors
+@click.pass_context
+def courses_cmd(ctx: click.Context, category: str | None, keyword: str | None, detail: bool, refresh: bool) -> None:
+    """通识课程目录：三类通识课的名称、学分、开课学期、先修与教师。"""
+    _, effective_refresh = _effective(ctx, None, refresh)
+    catalog = common_courses(category=category, keyword=keyword, refresh=effective_refresh)
+    if not catalog.courses:
+        click.echo("未找到符合条件的通识课程。")
+        return
+    grouped: dict[str, list[CommonCourse]] = {}
+    for course in catalog.courses:
+        grouped.setdefault(course.category, []).append(course)
+    for name, rows in grouped.items():
+        click.echo(f"== {name}（{len(rows)} 门）==")
+        for course in rows:
+            line = f"  [{course.subject or '—'}] {course.title}　{course.credits or '—'} 学分　{course.semester or '—'}"
+            if course.prerequisite:
+                line += f"　先修：{course.prerequisite}"
+            click.echo(line)
+            if detail:
+                if course.teachers:
+                    click.echo("      教师：" + "、".join(teacher.name for teacher in course.teachers))
+                text = course.description_text
+                if text:
+                    click.echo(f"      {text}")
+        notice = catalog.notices.get(name)
+        if notice:
+            click.echo(f"  注：{notice}")
+        click.echo("")
+    click.echo(f"合计 {len(catalog.courses)} 门；来源：{catalog.url}")
+
+
+@cli_group.command(name="course")
+@click.argument("keyword")
+@click.option("--no-plans", is_flag=True, help="只搜通识目录，不并入专业培养方案课程表。")
+@_refresh_option
+@_handle_errors
+@click.pass_context
+def course_cmd(ctx: click.Context, keyword: str, no_plans: bool, refresh: bool) -> None:
+    """跨源课程搜索：同一门课在通识目录与各专业培养方案里的归属。"""
+    _, effective_refresh = _effective(ctx, None, refresh)
+    hits = course_search(keyword, include_major_plans=not no_plans, refresh=effective_refresh)
+    if not hits:
+        click.echo(f"未找到名称含 {keyword!r} 的课程。")
+        return
+    click.echo(f"命中 {len(hits)} 条（{keyword}）：")
+    for hit in hits:
+        line = f"  {hit.title}　{hit.credits or '—'} 学分　[{hit.source}]"
+        if hit.prerequisite:
+            line += f"　先修：{hit.prerequisite}"
+        click.echo(line)
 
 
 @cli_group.command(name="majors")
