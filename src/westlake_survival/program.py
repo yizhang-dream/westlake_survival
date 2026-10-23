@@ -22,9 +22,9 @@
   [{name: 专业名, value: 标识, content: [{title: '介绍', content: html}]}]}]``，
   每个专业带富文本介绍。该子树无 ``function`` 回调，可整块解析。
 
-局限（如实声明）：公开网**没有**分专业的官方培养方案文档（修读学分、课程
-清单等逐项要求），SIS 学生端 2026-09-23 全量摸底也未见该页；本模块交付的
-是公开可得的培养理念、课程体系与专业介绍，逐门修读要求仍以教务发布为准。
+更正（2026-10-23 二次侦察）：本模块首版误判「公开网没有分专业培养方案」。
+培养方案确实公开——在主站专业详情页，见下文「真正的培养方案」一节。
+招生网那三页只是培养理念、通识课程体系与专业简介，不含学分要求。
 
 编码坑位：与官网主站同款——响应头 ``Content-Type`` 无 charset，禁止直接读
 ``response.text``；一律取 ``response.content`` 手动 UTF-8 解码，并复用
@@ -35,6 +35,28 @@
 :func:`~westlake_survival._trs.js_literal`；统一先用
 :func:`~westlake_survival._trs.component_script` 截块，再按目标键
 :func:`~westlake_survival._trs.object_of` 单独解析。
+
+真正的**培养方案（学分要求 + 课程表）在主站**，不在招生网
+==========================================================
+主站 ``https://www.westlake.edu.cn/academics/undergraduate_studies/<专业>/``
+（组件 ``undergraduateStudiesDetails``，2026-10-23 实测）才是培养方案本体：
+组件里的 ``navList`` 是**全部 8 个专业**的数组，每项含
+``{text, imgUrl, briefIntroduction, requirements, warnText}``：
+
+* ``briefIntroduction``：``[{subTitle, content}]``，通常是「<专业名>」总述 +
+  「专业核心课程」两句；
+* ``requirements``：按学分块列出，``{title, content, url, tab, credits,
+  headerInfo, tableData}``——四个通识块给 ``credits``（如 ``34`` / ``20-28``）
+  并指向通识课程页；专业块给 ``tableData`` 课程表；
+* ``tableData`` 有两种形态：扁平 ``{name, value(学分), detailInfo}`` 与分组
+  ``{field(方向名), course:[...]}``；``detailInfo`` 是 ``[{label, val}]`` 或
+  ``[{label, vals:[]}]``，承载「先修课程 / 授课教师 / 课程简介」。
+
+**要点**：任一专业页都含全部 8 个专业的数据，因此一次抓取即可覆盖全体；
+但为语义忠实，取某专业时仍抓该专业自己的 URL。**临床医学的专业课程表
+是空的**（只有四个通识学分块有数据），这是官网现状，不是解析失败——模块
+用 ``has_courses`` 如实暴露。英文主站该路径 500（2026-10-23 实测），
+培养方案只有中文版。
 """
 
 from __future__ import annotations
@@ -49,7 +71,7 @@ import requests
 
 from westlake_survival._cache import http_get_with_etag
 from westlake_survival._net import DEFAULT_TIMEOUT, http_session
-from westlake_survival._trs import component_script, object_of
+from westlake_survival._trs import balanced, component_script, js_literal, object_of
 from westlake_survival.exceptions import OffCampusError, ParseError, WestlakeError, is_offcampus
 
 __all__ = [
@@ -67,12 +89,22 @@ __all__ = [
     "Major",
     "MajorsCatalog",
     "ProgramOverview",
+    "MAIN_SITE",
+    "MAJOR_PLAN_PATH",
+    "MAJOR_PLAN_COMPONENT",
+    "MAJOR_SLUGS",
+    "CourseEntry",
+    "CreditRequirement",
+    "MajorPlan",
+    "PlansCatalog",
+    "parse_major_plans",
     "parse_overview",
     "parse_curriculum",
     "parse_majors",
     "overview",
     "curriculum",
     "majors",
+    "major_plans",
     "cli_group",
 ]
 
@@ -122,6 +154,27 @@ CURRICULUM_SECTION_KEYS = (
     "studyAbroad",  # 专业课程（含专业选定时间规则）
     "research",     # 海外学习
 )
+
+#: 主站（培养方案本体所在，仅中文站）。
+MAIN_SITE = "https://www.westlake.edu.cn"
+
+#: 专业培养方案页路径模板（``{slug}`` 由 :data:`MAJOR_SLUGS` 给出）。
+MAJOR_PLAN_PATH = "/academics/undergraduate_studies/{slug}/"
+
+#: 专业培养方案页组件名。
+MAJOR_PLAN_COMPONENT = "undergraduateStudiesDetails"
+
+#: 8 个本科专业的中文名 → 官网 URL slug（2026-10-23 实测，与招生网专业设置页同集合）。
+MAJOR_SLUGS = {
+    "数学与应用数学": "mathematics_and_applied_mathematics",
+    "物理学": "physics",
+    "化学": "chemistry",
+    "材料科学与工程": "materials_science_and_engineering",
+    "电子信息工程": "electronic_and_information_engineering",
+    "人工智能": "artificial_intelligence",
+    "生物科学": "biological_sciences",
+    "临床医学": "clinical_medicine",
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -241,6 +294,97 @@ class MajorsCatalog:
     majors: list[Major] = field(default_factory=list)
     url: str = ""
     lang: str = "zh"
+
+
+@dataclass
+class CourseEntry:
+    """培养方案课程表里的一门课。
+
+    :attr:`credits` 是官网 ``value`` 字段（可能是 ``3`` 或 ``31.5``）；
+    :attr:`group` 来自分组形态的 ``field``（方向名，如「物理进阶」）。
+    """
+
+    name: str
+    credits: float | None = None
+    group: str = ""
+    prerequisite: str = ""
+    description_html: str = ""
+    teachers: list[str] = field(default_factory=list)
+
+    @property
+    def description_text(self) -> str:
+        """课程简介纯文本。"""
+        return _html_to_text(self.description_html)
+
+
+@dataclass
+class CreditRequirement:
+    """一个学分块（如「专业必修课程 24 学分」）。
+
+    ``credits`` 保留官网原样字符串（``"24"`` / ``"20-28"`` / ``"31.5"``），
+    因为通识块是区间而非单值，强行转数字会丢信息。
+    """
+
+    title: str
+    credits: str = ""
+    note: str = ""
+    url: str = ""
+    courses: list[CourseEntry] = field(default_factory=list)
+
+    @property
+    def has_courses(self) -> bool:
+        """该块是否带课程表（通识块与临床医学专业块为空）。"""
+        return bool(self.courses)
+
+
+@dataclass
+class MajorPlan:
+    """一个本科专业的培养方案。"""
+
+    name: str
+    image_url: str = ""
+    intro: list[ProgramSection] = field(default_factory=list)
+    requirements: list[CreditRequirement] = field(default_factory=list)
+    warn_text: str = ""
+    url: str = ""
+
+    @property
+    def total_credits(self) -> float | None:
+        """学分合计；含区间（如 ``20-28``）或非常规值时返回 ``None``。"""
+        total = 0.0
+        for requirement in self.requirements:
+            raw = (requirement.credits or "").strip()
+            if not raw:
+                continue
+            try:
+                total += float(raw)
+            except ValueError:
+                return None
+        return total if self.requirements else None
+
+    @property
+    def course_count(self) -> int:
+        """全部课程表条目数（不区分必修/选修）。"""
+        return sum(len(requirement.courses) for requirement in self.requirements)
+
+
+@dataclass
+class PlansCatalog:
+    """培养方案集合（任一专业页都含全部 8 个专业）。"""
+
+    majors: list[MajorPlan] = field(default_factory=list)
+    url: str = ""
+
+    def find(self, name: str) -> MajorPlan | None:
+        """按中文名精确查找；找不到返回 ``None``。"""
+        for major in self.majors:
+            if major.name == name:
+                return major
+        return None
+
+    def match(self, keyword: str) -> list[MajorPlan]:
+        """按子串匹配（用于 CLI 模糊查询）。"""
+        return [major for major in self.majors if keyword in major.name]
 
 
 # --------------------------------------------------------------------------- #
@@ -399,6 +543,109 @@ def parse_majors(html: str, *, url: str = "", lang: str = "zh") -> MajorsCatalog
     return MajorsCatalog(summary=_section_text(summary_raw), majors=majors, url=url, lang=lang)
 
 
+def _credits_value(raw: object) -> float | None:
+    """把课程 ``value`` 转学分；非数字（如分组占位）返回 ``None``。"""
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    try:
+        return float(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_course(raw: dict, group: str = "") -> CourseEntry:
+    """解析课程表的一行（扁平或分组内条目）。"""
+    prerequisite = ""
+    description = ""
+    teachers: list[str] = []
+    for detail in raw.get("detailInfo") or []:
+        if not isinstance(detail, dict):
+            continue
+        label = str(detail.get("label") or "")
+        if label == "先修课程":
+            prerequisite = str(detail.get("val") or "").strip()
+        elif label == "课程简介":
+            description = str(detail.get("val") or "")
+        elif label == "授课教师":
+            values = detail.get("vals")
+            if isinstance(values, list):
+                teachers = [str(value) for value in values if str(value).strip()]
+    return CourseEntry(
+        name=str(raw.get("name") or ""),
+        credits=_credits_value(raw.get("value")),
+        group=group,
+        prerequisite=prerequisite,
+        description_html=description,
+        teachers=teachers,
+    )
+
+
+def _parse_requirement(raw: dict) -> CreditRequirement:
+    """解析一个学分块，兼容扁平与分组两种课程表形态。"""
+    courses: list[CourseEntry] = []
+    for item in raw.get("tableData") or []:
+        if not isinstance(item, dict):
+            continue
+        nested = item.get("course")
+        if isinstance(nested, list):  # 分组形态 {field, course:[...]}
+            group = str(item.get("field") or "")
+            for child in nested:
+                if isinstance(child, dict):
+                    courses.append(_parse_course(child, group=group))
+        elif item.get("name"):
+            courses.append(_parse_course(item))
+    return CreditRequirement(
+        title=str(raw.get("title") or "专业课程"),
+        credits=str(raw.get("credits") if raw.get("credits") is not None else ""),
+        note=str(raw.get("content") or ""),
+        url=str(raw.get("url") or ""),
+        courses=courses,
+    )
+
+
+def _parse_major_plan(raw: dict, url: str = "") -> MajorPlan:
+    """解析 ``navList`` 的一项（一个专业）。"""
+    intro = [
+        ProgramSection(key="", title=str(entry.get("subTitle") or ""), content_html=str(entry.get("content") or ""))
+        for entry in raw.get("briefIntroduction") or []
+        if isinstance(entry, dict)
+    ]
+    requirements = [
+        _parse_requirement(entry) for entry in raw.get("requirements") or [] if isinstance(entry, dict)
+    ]
+    return MajorPlan(
+        name=str(raw.get("text") or ""),
+        image_url=str(raw.get("imgUrl") or ""),
+        intro=intro,
+        requirements=requirements,
+        warn_text=str(raw.get("warnText") or ""),
+        url=url,
+    )
+
+
+def parse_major_plans(html: str, *, url: str = "") -> PlansCatalog:
+    """解析主站专业培养方案页 HTML。
+
+    ``navList`` 是全部 8 个专业的数组（任一专业页都有全量数据）。
+
+    Raises:
+        ParseError: 找不到组件或 ``navList`` 数组。
+    """
+    block = _require_component(html, MAJOR_PLAN_COMPONENT, url)
+    match = re.search(r"\bnavList\s*:\s*\[", block)
+    if not match:
+        raise ParseError(f"培养方案页缺少 navList 数组：{url}")
+    raw_list = js_literal(balanced(block, match.end() - 1))
+    if not isinstance(raw_list, list):
+        raise ParseError(f"培养方案页 navList 不是数组：{url}")
+    majors = [_parse_major_plan(item, url=url) for item in raw_list if isinstance(item, dict) and item.get("text")]
+    if not majors:
+        raise ParseError(f"培养方案页未解析出任何专业：{url}")
+    return PlansCatalog(majors=majors, url=url)
+
+
 # --------------------------------------------------------------------------- #
 # 网络层
 # --------------------------------------------------------------------------- #
@@ -530,6 +777,60 @@ def majors(
     )
 
 
+def major_plans(
+    major: str | None = None,
+    *,
+    session: requests.Session | None = None,
+    refresh: bool = False,
+    timeout: float | None = None,
+) -> PlansCatalog:
+    """抓取并解析主站专业培养方案（学分要求 + 课程表 + 先修课程 + 课程简介）。
+
+    任一专业页都含全部 8 个专业的数据；指定 ``major`` 时抓该专业自己的 URL
+    （语义忠实），未知名称回退到 ``人工智能`` 页并给出全量结果。
+
+    Args:
+        major: 专业中文名（见 :data:`MAJOR_SLUGS`）；``None`` 表示不指定。
+        session: 可注入的 :class:`requests.Session`（测试用）。
+        refresh: 为 ``True`` 时先清掉本地缓存再请求。
+        timeout: 请求超时（秒），缺省 :data:`~westlake_survival._net.DEFAULT_TIMEOUT`。
+
+    Returns:
+        :class:`PlansCatalog`（``majors`` 含全部 8 个专业）。
+
+    Raises:
+        WestlakeError: 网络层失败。
+        ParseError: HTTP 4xx/5xx，或页面结构变化导致解析失败。
+        OffCampusError: 被校外访问网关拦截。
+    """
+    slug = MAJOR_SLUGS.get(major or "", MAJOR_SLUGS["人工智能"])
+    url = MAIN_SITE + MAJOR_PLAN_PATH.format(slug=slug)
+    cache_name = f"program/plan_{slug}.html"
+    if refresh:
+        _drop_etag_cache(cache_name)
+    session = session if session is not None else http_session()
+    try:
+        body, _etag = http_get_with_etag(
+            url,
+            cache_name=cache_name,
+            session=session,
+            timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
+        )
+    except requests.HTTPError as exc:
+        response = exc.response
+        if response is not None and getattr(response, "status_code", 0) == 403 and is_offcampus(response):
+            raise OffCampusError(f"主站培养方案页拒绝访问（403）：{url}") from exc
+        status = getattr(response, "status_code", "?")
+        raise ParseError(f"主站培养方案页返回 HTTP {status}：{url}") from exc
+    except requests.Timeout as exc:
+        raise WestlakeError(
+            f"主站培养方案页请求超时（{timeout if timeout is not None else DEFAULT_TIMEOUT}s）：{url}"
+        ) from exc
+    except requests.RequestException as exc:
+        raise WestlakeError(f"主站培养方案页请求失败：{exc}") from exc
+    return parse_major_plans(_repair_mojibake(body), url=url)
+
+
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
@@ -575,6 +876,13 @@ def _lang_option(default: str | None = "zh"):
 def _refresh_option(func):
     """``--refresh`` 选项：跳过本地缓存强制重抓。"""
     return click.option("--refresh", is_flag=True, help="忽略本地缓存，强制重新抓取。")(func)
+
+
+def _fmt_credits(value: float | None) -> str:
+    """学分展示：整数值去掉 ``.0``，缺失显示 ``—``。"""
+    if value is None:
+        return "—"
+    return str(int(value)) if float(value).is_integer() else f"{value:g}"
 
 
 @click.group(
@@ -640,6 +948,60 @@ def curriculum_cmd(ctx: click.Context, lang: str | None, refresh: bool) -> None:
                 click.echo(f"[{section.table.name}]")
             for row in section.table.rows:
                 click.echo(f"  {row.name}：{'；'.join(row.items)}")
+
+
+@cli_group.command(name="plan")
+@click.argument("name", required=False)
+@_refresh_option
+@click.option("--detail", is_flag=True, help="同时打印每门课的课程简介。")
+@_handle_errors
+@click.pass_context
+def plan_cmd(ctx: click.Context, name: str | None, refresh: bool, detail: bool) -> None:
+    """专业培养方案：学分要求 + 课程表（含先修课程）；NAME 按专业名子串过滤。
+
+    数据源是主站专业详情页（每个专业页都含全部 8 个专业的培养方案）；只有
+    中文版。临床医学的专业课程表官网为空，此时只列通识学分块。
+    """
+    _, effective_refresh = _effective(ctx, None, refresh)
+    catalog = major_plans(name, refresh=effective_refresh)
+    targets = catalog.match(name) if name else catalog.majors
+    if not targets:
+        available = "、".join(major.name for major in catalog.majors)
+        click.secho(f"未找到名称含 {name!r} 的专业。可选：{available}", fg="yellow", err=True)
+        raise SystemExit(1)
+    for index, plan in enumerate(targets):
+        if index:
+            click.echo("")
+        total = plan.total_credits
+        head = f"== {plan.name} 培养方案 =="
+        summary = []
+        if total is not None:
+            summary.append(f"学分合计 {_fmt_credits(total)}")
+        else:
+            summary.append("学分合计见分项（含区间）")
+        summary.append(f"课程 {plan.course_count} 门")
+        click.echo(head + "  " + "　".join(summary))
+        for section in plan.intro:
+            text = section.content_text
+            if text:
+                click.echo(f"[{section.title or '介绍'}] {text}")
+        click.echo("")
+        for requirement in plan.requirements:
+            count = f"，{len(requirement.courses)} 门" if requirement.courses else ""
+            click.echo(f"-- {requirement.title}：{requirement.credits or '—'} 学分{count}")
+            if requirement.note and not requirement.courses:
+                click.echo(f"   {requirement.note}")
+            for course in requirement.courses:
+                group = f"[{course.group}] " if course.group else ""
+                line = f"   {group}{course.name}  {_fmt_credits(course.credits)} 学分"
+                if course.prerequisite:
+                    line += f"　先修：{course.prerequisite}"
+                click.echo(line)
+                if detail and course.description_text:
+                    click.echo(f"      {course.description_text}")
+        if plan.warn_text:
+            click.echo(f"\n{plan.warn_text}")
+    click.echo(f"\n来源：{catalog.url}（主站公开页，中文）")
 
 
 @cli_group.command(name="majors")

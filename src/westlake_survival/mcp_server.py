@@ -23,6 +23,7 @@
 ``sis_schedule`` / ``sis_grades`` / ``sis_exams`` / ``sis_evals_pending`` /
 ``calendar_today`` / ``calendar_week`` / ``transit_next`` / ``news_latest`` /
 ``program_overview`` / ``program_curriculum`` / ``program_majors`` /
+``program_plan`` /
 ``events_upcoming`` / ``research_latest`` / ``site_search`` / ``faculty_search`` /
 ``campus_dining`` / ``campus_housing`` / ``contact_info`` / ``context_snapshot`` /
 ``canvas_deadlines``；另有写操作工具 ``canvas_submit``（交作业，缺省只预检，
@@ -363,6 +364,57 @@ def _tool_program_majors(args: dict) -> Any:
     }
 
 
+def _tool_program_plan(args: dict) -> Any:
+    """专业培养方案：学分要求 + 课程表（含先修课程与可选简介）。"""
+    from westlake_survival.program import major_plans
+
+    major = _opt_str(args, "major")
+    detail = bool(args.get("detail"))
+    catalog = major_plans(major)
+    selected = catalog.match(major) if major else catalog.majors
+    if not selected:
+        selected = catalog.majors
+
+    def _course(course: Any) -> dict:
+        out: dict[str, Any] = {
+            "name": course.name,
+            "credits": course.credits,
+        }
+        if course.group:
+            out["group"] = course.group
+        if course.prerequisite:
+            out["prerequisite"] = course.prerequisite
+        if course.teachers:
+            out["teachers"] = course.teachers
+        if detail:
+            out["description"] = course.description_text
+        return out
+
+    return {
+        "url": catalog.url,
+        "majors": [
+            {
+                "name": plan.name,
+                "total_credits": plan.total_credits,
+                "course_count": plan.course_count,
+                "intro": [{"title": s.title, "content": s.content_text} for s in plan.intro],
+                "requirements": [
+                    {
+                        "title": req.title,
+                        "credits": req.credits,
+                        "note": req.note,
+                        "url": req.url,
+                        "courses": [_course(course) for course in req.courses],
+                    }
+                    for req in plan.requirements
+                ],
+                "warn_text": plan.warn_text,
+            }
+            for plan in selected
+        ],
+    }
+
+
 def _tool_events_upcoming(args: dict) -> Any:
     """未来 N 天的活动预告。"""
     from westlake_survival.events import upcoming
@@ -693,6 +745,17 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "本科专业设置：8 个专业（理学/工学/医学）总览与分专业介绍（招生网公开数据）。",
         "inputSchema": _schema({"lang": _str_param("站点语言，默认 zh。", enum=["zh", "en"])}),
         "handler": _tool_program_majors,
+    },
+    {
+        "name": "program_plan",
+        "description": "专业培养方案：按学分块列出的学分要求与课程表，含先修课程（主站公开页，中文）。",
+        "inputSchema": _schema(
+            {
+                "major": _str_param("专业中文名或子串，如「人工智能」；缺省返回全部 8 个专业。"),
+                "detail": {"type": "boolean", "description": "是否包含每门课的课程简介。"},
+            }
+        ),
+        "handler": _tool_program_plan,
     },
     {
         "name": "events_upcoming",

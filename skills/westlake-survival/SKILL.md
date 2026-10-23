@@ -28,7 +28,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 查看某作业已提交状态 | `westlake canvas submission --course … --assignment …` |
 | 讲座 / 学术会议 / 演出预告 | `westlake events` |
 | 西湖新闻 / 科研进展 | `westlake news` / `westlake research` |
-| 本科培养方案 / 课程体系 / 专业介绍 | `westlake program overview` / `curriculum` / `majors` |
+| 本科培养方案 / 课程体系 / 专业介绍 | `westlake program plan [专业]` / `curriculum` / `majors` / `overview` |
 | 官网全站搜索 | `westlake search <关键词>` |
 | 招聘岗位 / 导师名录 | `westlake careers` / `westlake faculty` |
 | 食堂咖啡 / 公寓 / 电话地址 | `westlake campus dining` / `housing` / `contact phones` |
@@ -64,6 +64,9 @@ westlake program curriculum                  # 课程体系六栏目，含通识
 westlake program majors                      # 8 个专业总览 + 分专业介绍
 westlake program majors 临床                 # 按专业名子串过滤
 westlake program majors --lang en            # 英文招生网同构（zh 缺省）
+westlake program plan                        # 8 专业培养方案：学分块 + 课程表
+westlake program plan 人工智能               # 单专业；含先修课程
+westlake program plan 人工智能 --detail      # 附每门课的课程简介
 westlake research --limit 10
 westlake research detail <URL>
 westlake events --days 7 --limit 20 --type 名家讲座
