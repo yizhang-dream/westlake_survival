@@ -109,6 +109,7 @@ westlake contact phones
 westlake map                                  # 三校区：地址/地图图片/全景/交通
 westlake map --campus 云谷
 westlake map login                            # 配置电子地图账号（一次，之后自动复用）
+westlake sso creds show                       # 终端显示已存教务学号/密码（忘记 SIS 密码时找回）
 westlake map status                           # 只报凭据/令牌有无
 westlake map poi 图书馆                        # 离线查楼宇/设施（随包数据集，无需登录）
 westlake pms stations

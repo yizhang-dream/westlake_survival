@@ -1005,6 +1005,20 @@ def create_app() -> Flask:
     def setup_page():
         return render_template("setup.html", **_setup_context())
 
+    @app.route("/setup/api/stored")
+    def setup_stored():
+        """本机已存教务凭据（设置页「查看密码」用；等价密码管理器的显示功能）。
+
+        服务只绑 127.0.0.1，与本机明文凭据文件同一信任域。
+        """
+        try:
+            from westlake_survival.sso import read_credentials
+
+            sid, password = read_credentials()
+        except Exception:
+            return {"configured": False}
+        return {"configured": True, "sid": sid, "password": password}
+
     @app.route("/setup/api/save", methods=["POST"])
     def setup_save():
         """保存凭据并（可选）验证。请求体含密码，只经 127.0.0.1，不落日志。"""

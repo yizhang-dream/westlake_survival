@@ -75,3 +75,12 @@ def test_setup_appears_in_help(tmp_path) -> None:
 
     assert result.returncode == 0
     assert "setup" in result.stdout
+
+
+def test_cli_creds_show_reveals_stored_password(tmp_path) -> None:
+    """`westlake sso creds show` 能找回本机存的教务密码（忘记密码场景）。"""
+    (tmp_path / "credentials.txt").write_text("20259999:dummy-pass" + chr(10), encoding="utf-8")
+    result = _run(["sso", "creds", "show"], tmp_path)
+    assert result.returncode == 0
+    assert "20259999" in result.stdout
+    assert "dummy-pass" in result.stdout
