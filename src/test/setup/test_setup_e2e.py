@@ -45,7 +45,7 @@ def test_setup_writes_credentials_without_keyring(tmp_path) -> None:
     cred = tmp_path / "credentials.txt"
     assert cred.exists(), "凭据文件应写入 WESTLAKE_HOME"
     assert cred.read_text(encoding="utf-8").startswith("20259999:")
-    for marker in ("首次配置", "教务 SIS", "Canvas", "公开功能", "已保存到"):
+    for marker in ("首次配置", "校园账号", "公开功能", "已保存到"):
         assert marker in result.stdout, marker
 
 

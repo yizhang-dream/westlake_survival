@@ -13,17 +13,11 @@
   <table class="data">
     <thead><tr><th>服务</th><th>状态</th></tr></thead>
     <tbody>
-      <tr><td>教务 SIS（课表/成绩/考试/评教/学籍）</td>
+      <tr><td>校园账号（教务 + Canvas）</td>
           <td style="display:flex;gap:.6rem;align-items:center">
             {% if creds.sis %}<span class="chip">已配置</span>
               <button type="button" id="revealBtn">查看密码</button>
               <span id="revealed" style="display:none"></span>
-            {% else %}<span class="chip warn">未配置</span>{% endif %}
-          </td></tr>
-      <tr><td>Canvas（课程/作业/考试）</td>
-          <td>
-            {% if creds.canvas %}<span class="chip">令牌已配</span>
-            {% elif creds.canvas_via_sso %}<span class="chip">统一密码可用</span>
             {% else %}<span class="chip warn">未配置</span>{% endif %}
           </td></tr>
     </tbody>
@@ -41,12 +35,6 @@
     <input type="checkbox" name="verify" checked style="min-width:auto">
     现在就登录验证（校内网络；校外请先连 VPN，或取消勾选先保存）
   </label>
-  <details style="margin:.4rem 0">
-    <summary class="muted" style="cursor:pointer;font-size:.88rem">更多账号（可选）</summary>
-    <label style="margin-top:.6rem">Canvas 访问令牌（账户 → 设置 → 新建访问令牌）
-      <input name="canvas_token" type="password" autocomplete="off">
-    </label>
-  </details>
   <div>
     <button type="submit" id="submitBtn">保存并检测</button>
   </div>
@@ -86,7 +74,6 @@
       password: form.password.value,
       verify: form.verify.checked,
     };
-    if (form.canvas_token.value.trim()) data.canvas_token = form.canvas_token.value.trim();
     try {
       var res = await fetch('/setup/api/save', {
         method: 'POST',
@@ -98,7 +85,7 @@
         box.innerHTML = '<div class="note">保存失败：' + (payload.error || res.status) + '</div>';
       } else {
         var rows = '';
-        [['教务 SIS', payload.sis], ['Canvas', payload.canvas]].forEach(function (pair) {
+        [['校园账号（教务 + Canvas）', payload.sis]].forEach(function (pair) {
           if (!pair[1]) return;
           var mark = pair[1].ok ? '✓' : '✗';
           var extra = pair[1].saved ? ' 已保存' + (pair[1].stored_in ? '（' + pair[1].stored_in + '）' : '') : '';
