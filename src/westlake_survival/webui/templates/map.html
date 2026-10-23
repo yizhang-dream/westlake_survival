@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}校园地图 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">校园地图</h1>
+
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+<form method="get" action="/map" style="margin:.6rem 0 1.2rem">
+  <select name="campus" style="padding:.35rem .5rem">
+    <option value="">全部校区</option>
+    {% for name in ['云谷', '云栖', '铜鉴湖'] %}
+    <option value="{{ name }}" {{ 'selected' if campus == name else '' }}>{{ name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">筛选</button>
+</form>
+
+{% if has_data %}
+  {% for c in campuses %}
+  <section class="card" style="margin-bottom:1.4rem">
+    <h2 class="section">{{ c.name }}校区</h2>
+    <p>{{ c.address or '—' }}{% if c.postcode %}　邮编 {{ c.postcode }}{% endif %}</p>
+
+    {% if c.map_url %}
+    <a href="{{ c.map_url }}" target="_blank" rel="noopener">
+      <img src="{{ c.map_url }}" alt="{{ c.name }}校区地图"
+           style="max-width:100%;height:auto;border-radius:10px;border:1px solid var(--line)">
+    </a>
+    <p class="muted" style="font-size:.82rem">点击图片可看原图</p>
+    {% else %}
+    <div class="empty">官网未提供该校区地图图片。</div>
+    {% endif %}
+
+    {% if c.panoramas %}
+    <p>校园全景：
+      {% for p in c.panoramas %}
+      <a href="{{ p.url }}" target="_blank" rel="noopener" class="btn">{{ p.title }}（720°）</a>
+      {% endfor %}
+    </p>
+    {% endif %}
+
+    {% if c.traffic %}
+    <h3 class="section" style="font-size:1rem">到校交通</h3>
+    <ul>
+      {% for line in c.traffic %}
+      <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% endfor %}
+  <p class="muted" style="font-size:.82rem">
+    地图为西湖大学官网静态图片，全景为官网链接的 720yun 页面。
+    校内电子地图系统 map.westlake.edu.cn 需本人账号登录，本页仅用公开数据。
+  </p>
+{% elif error %}
+  <div class="empty">校园地图数据暂不可用。</div>
+{% else %}
+  <div class="empty">没有匹配的校区。</div>
+{% endif %}
+{% endblock %}

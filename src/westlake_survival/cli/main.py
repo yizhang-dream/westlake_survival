@@ -29,6 +29,7 @@ import click
 from westlake_survival._version import __version__
 from westlake_survival.calendar import AcademicCalendar
 from westlake_survival.campus import cli_group as campus_cmd
+from westlake_survival.campusmap import cli_group as map_cmd
 from westlake_survival.careers import cli_group as careers_cmd
 from westlake_survival.contact import cli_group as contact_cmd
 from westlake_survival.events import cli_group as events_cmd
@@ -1243,6 +1244,7 @@ for _group in (
     careers_cmd,
     faculty_cmd,
     campus_cmd,
+    map_cmd,
     contact_cmd,
     context_cmd,
     digest_cmd,
