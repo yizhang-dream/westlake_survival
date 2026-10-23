@@ -35,6 +35,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -65,6 +66,7 @@ __all__ = [
     "save_map_credentials",
     "load_map_credentials",
     "delete_map_credentials",
+    "encrypt_password",
     "login",
     "MapClient",
 ]
@@ -91,6 +93,11 @@ TOKEN_FILENAME = "map_token.json"
 
 #: 进程内凭据。
 _MEMORY: dict[str, str] = {}
+
+#: 前端对密码做 AES-128-ECB（PKCS7）后 base64 再提交，密钥写死在前端。
+#: 2026-10-23 由「同一明文两次登录密文一致 + 用前端 bundle 字符串暴力比对」实测得出：
+#: 明文 ``abcdefghij`` → ``zFhDoqs9KQKChPammNV89A==``。
+PASSWORD_KEY = b"qlyndctasdumnrpQ"
 
 #: 登录失败码 → 中文说明（实测 20001 为账号密码错误）。
 _LOGIN_MESSAGES = {
@@ -280,6 +287,36 @@ def _save_token(token: MapToken) -> None:
 # --------------------------------------------------------------------------- #
 # HTTP
 # --------------------------------------------------------------------------- #
+def encrypt_password(password: str) -> str:
+    """把密码加密成前端提交的形态：AES-128-ECB + PKCS7 + base64。
+
+    前端不是发明文——直接发明文会稳定得到 ``20001 用户名或密码错误``，
+    很容易误判成「密码不对」。优先用 ``cryptography``，退回 ``pycryptodome``。
+
+    Raises:
+        WestlakeError: 两个加密库都不可用。
+    """
+    raw = password.encode("utf-8")
+    pad = 16 - len(raw) % 16
+    padded = raw + bytes([pad]) * pad
+    try:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+        encryptor = Cipher(algorithms.AES(PASSWORD_KEY), modes.ECB()).encryptor()
+        ciphertext = encryptor.update(padded) + encryptor.finalize()
+    except ImportError:
+        try:
+            from Crypto.Cipher import AES
+
+            ciphertext = AES.new(PASSWORD_KEY, AES.MODE_ECB).encrypt(padded)
+        except ImportError as exc:
+            raise WestlakeError(
+                "电子地图登录需要 AES：请安装 cryptography 或 pycryptodome"
+                "（pip install 'westlake_survival[crypto]'）"
+            ) from exc
+    return base64.b64encode(ciphertext).decode("ascii")
+
+
 def _auth_headers() -> dict[str, str]:
     """构造三个必需头（nonce 每次新建，无需签名）。"""
     return {
@@ -356,7 +393,7 @@ def login(
     body = urlencode(
         {
             "userName": user,
-            "password": password,
+            "password": encrypt_password(password),
             "catalog": CLIENT_ID,
             "requestType": "web",
             "verifyCodeToken": "null",
