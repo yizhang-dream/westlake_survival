@@ -209,6 +209,7 @@
       <a href="/capabilities" class="{{ 'active' if here.startswith('/capabilities') else '' }}">能力</a>
       <a href="/dining" class="{{ 'active' if here.startswith('/dining') else '' }}">餐饮</a>
       <a href="/search" class="{{ 'active' if here.startswith('/search') else '' }}">搜索</a>
+      <a href="/setup" class="{{ 'active' if here.startswith('/setup') else '' }}">设置</a>
       <a href="/api" class="{{ 'active' if here.startswith('/api') else '' }}">API</a>
     </nav>
     <button id="themeToggle" type="button" aria-label="切换明暗主题">☾ 暗色</button>
@@ -216,6 +217,12 @@
 </header>
 <main>
   <div class="wrap sheet">
+    {% if needs_setup %}
+    <div class="note" style="display:flex;justify-content:space-between;gap:1rem;align-items:center">
+      <span>还没有配置教务账号——公开功能照常可用；要用课表/成绩/作业，填一次学号密码即可。</span>
+      <a href="/setup" style="white-space:nowrap">去配置 →</a>
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </div>
 </main>

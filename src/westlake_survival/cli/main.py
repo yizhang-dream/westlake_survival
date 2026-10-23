@@ -1213,59 +1213,6 @@ def webui_serve(host: str, port: int) -> None:
         raise SystemExit(1) from exc
 
 
-def _interactive_stdin() -> bool:
-    """判断 stdin 是否真的连着控制台。
-
-    Windows 上 ``sys.stdin.isatty()`` 对 ``NUL`` 也可能返回真，所以再问一次
-    Win32 ``GetConsoleMode``——非控制台句柄会失败，据此排除重定向与管道。
-    """
-    import os
-    import sys
-
-    if sys.stdin is None or not sys.stdin.isatty():
-        return False
-    if os.name == "nt":
-        try:
-            import ctypes
-
-            mode = ctypes.c_uint32()
-            handle = ctypes.windll.kernel32.GetStdHandle(-10)  # STD_INPUT_HANDLE
-            return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
-        except Exception:
-            return False
-    return True
-
-
-def _maybe_first_run_wizard() -> bool:
-    """未配置凭据且处于交互终端时，自动启动首次配置向导。
-
-    Returns:
-        ``True`` 表示已经进入向导（调用方不再打印帮助）。
-    """
-    if not _interactive_stdin():
-        return False
-    try:
-        from westlake_survival.sso import read_credentials
-
-        read_credentials()
-    except Exception:
-        pass
-    else:
-        return False  # 已有凭据，正常走帮助
-    click.echo("检测到还没有配置教务账号。")
-    click.echo("公开功能不受影响；要用课表/成绩/作业，填一次学号密码即可。")
-    click.echo("（跳过本次配置可按 Ctrl-C，之后随时 `westlake setup`）")
-    click.echo("")
-    from westlake_survival.setup_cmd import run_setup
-
-    try:
-        run_setup()
-    except (KeyboardInterrupt, click.Abort, EOFError):
-        click.echo("")
-        click.echo("已跳过配置；随时可运行 `westlake setup`。")
-    return True
-
-
 # --------------------------------------------------------------------------- #
 # 顶层 group
 # --------------------------------------------------------------------------- #
@@ -1283,10 +1230,10 @@ def cli(ctx: click.Context) -> None:
     """
     if ctx.invoked_subcommand is not None:
         return
-    if _maybe_first_run_wizard():
-        return
     if not _first_run_configured():
-        click.echo("提示：还没有配置教务账号。运行 `westlake setup` 填一次学号密码即可（公开功能无需账号）。")
+        click.echo("提示：还没有配置教务账号。")
+        click.echo("用户侧：运行 `westlake webui serve`，在网页「设置」页填一次学号密码（公开功能无需账号）。")
+        click.echo("Agent 侧：可直接运行 `westlake setup`。")
         click.echo("")
     click.echo(ctx.get_help())
 

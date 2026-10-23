@@ -63,6 +63,7 @@ WEB_PAGES = (
     ("/search", "搜索", "官网全站搜索", False),
     ("/capabilities", "能力总览", "本页：CLI + MCP + WebUI 全部入口", False),
     ("/api", "API", "接口说明页：路径、用途与实时样例", False),
+    ("/setup", "设置", "网页端账号配置：学号密码一次填入，自动检测各服务", True),
 )
 
 

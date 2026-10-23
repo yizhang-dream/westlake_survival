@@ -111,8 +111,11 @@ def _persist(sid: str, password: str, *, use_keyring: bool = True) -> str:
     ``use_keyring=False`` 时只写配置文件——自动化与端到端测试必须走这条，
     否则会往真实的 Windows 凭据管理器里写测试账号。
     """
+    import os
+
     from westlake_survival.sso import keyring_available, save_credentials_keyring, write_credentials
 
+    use_keyring = use_keyring and not os.environ.get("WESTLAKE_NO_KEYRING")
     if use_keyring and keyring_available() and save_credentials_keyring(sid, password):
         return "系统钥匙串"
     path = write_credentials(sid, password)
