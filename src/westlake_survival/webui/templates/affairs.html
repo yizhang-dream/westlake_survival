@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}办事 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<h1 class="page">网上办事大厅</h1>
+
+<p class="muted" style="font-size:.9rem">
+  全校 {{ apps | length }} 个流程应用，来自任务中心免登录目录（{{ source_url }}）。
+  发起办理需登录学校统一认证；这里先用来搜「这件事在哪儿办」。
+</p>
+
+<input type="search" id="appFilter" placeholder="搜应用名或部门（如 预约 / 出入 / 经费 / 信息技术中心）"
+       style="width:100%;max-width:28rem;padding:.45rem .6rem;margin:.2rem 0 1.2rem;
+              border:1px solid var(--line);border-radius:8px">
+
+<div class="grid cols-2" id="appGrid">
+  {% for a in apps %}
+  <div class="card app-item" style="padding:.7rem .9rem">
+    <div style="font-weight:600">{{ a.name }}</div>
+    {% if a.department %}<div class="muted" style="font-size:.8rem;margin-top:.15rem">{{ a.department }}</div>{% endif %}
+    {% if a.description %}<div class="dim" style="font-size:.78rem;margin-top:.25rem">{{ a.description }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+<p class="muted" id="appCount" style="font-size:.82rem"></p>
+
+<h2 class="section">常用入口</h2>
+<table class="data">
+  <thead><tr><th>服务</th><th>地址</th><th>说明</th></tr></thead>
+  <tbody>
+    {% for l in links %}
+    <tr>
+      <td>{{ l.title }}</td>
+      <td><a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.url }}</a></td>
+      <td class="muted" style="font-size:.84rem">{{ l.note }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+(function () {
+  var input = document.getElementById('appFilter');
+  var items = Array.from(document.querySelectorAll('.app-item'));
+  var count = document.getElementById('appCount');
+  function paint() {
+    var q = input.value.trim().toLowerCase();
+    var shown = 0;
+    items.forEach(function (el) {
+      var hit = !q || el.innerText.toLowerCase().indexOf(q) !== -1;
+      el.style.display = hit ? '' : 'none';
+      if (hit) shown++;
+    });
+    count.textContent = q ? ('匹配 ' + shown + ' / ' + items.length + ' 个应用') : '';
+  }
+  input.addEventListener('input', paint);
+  paint();
+})();
+</script>
+{% endblock %}

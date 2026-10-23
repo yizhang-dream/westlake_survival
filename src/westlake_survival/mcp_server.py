@@ -25,7 +25,7 @@
 ``program_overview`` / ``program_curriculum`` / ``program_majors`` /
 ``program_plan`` / ``program_courses`` / ``program_course_search`` /
 ``events_upcoming`` / ``research_latest`` / ``site_search`` / ``faculty_search`` /
-``campus_dining`` / ``campus_housing`` / ``campus_map`` / ``contact_info`` / ``context_snapshot`` /
+``campus_dining`` / ``campus_housing`` / ``campus_map`` / ``affairs_apps`` / ``contact_info`` / ``context_snapshot`` /
 ``canvas_deadlines``；另有写操作工具 ``canvas_submit``（交作业，缺省只预检，
 ``confirm=true`` 才真正提交）。
 
@@ -567,6 +567,22 @@ def _tool_campus_housing(args: dict) -> Any:
     return _to_plain(housing(campus=campus))
 
 
+def _tool_affairs_apps(args: dict) -> Any:
+    """办事大厅应用目录（免登录，176 个流程应用）。"""
+    from westlake_survival.discovery import app_directory
+
+    keyword = _opt_str(args, "keyword")
+    limit = _opt_int(args, "limit", 30, minimum=1, maximum=200)
+    items = app_directory(keyword)
+    return {
+        "count": len(items),
+        "apps": [
+            {"name": a.name, "department": a.department, "description": a.description}
+            for a in items[:limit]
+        ],
+    }
+
+
 def _tool_campus_map(args: dict) -> Any:
     """校园地图辅助：地址、地图图片、720yun 全景与到校交通。"""
     from westlake_survival.campusmap import campus_map
@@ -910,6 +926,17 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "校内公寓信息（地址、配套服务、联系电话）。",
         "inputSchema": _schema({"campus": _CAMPUS_SCHEMA}),
         "handler": _tool_campus_housing,
+    },
+    {
+        "name": "affairs_apps",
+        "description": "网上办事大厅应用目录（免登录）：176 个流程应用，可按名称/部门过滤。",
+        "inputSchema": _schema(
+            {
+                "keyword": _str_param("应用名或部门子串，如「预约」「出入」「信息技术中心」。"),
+                "limit": _int_param("最多返回条数，默认 30。", minimum=1, maximum=200),
+            }
+        ),
+        "handler": _tool_affairs_apps,
     },
     {
         "name": "campus_map",

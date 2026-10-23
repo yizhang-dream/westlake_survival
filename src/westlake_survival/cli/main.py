@@ -32,6 +32,7 @@ from westlake_survival.campus import cli_group as campus_cmd
 from westlake_survival.campusmap import cli_group as map_cmd
 from westlake_survival.careers import cli_group as careers_cmd
 from westlake_survival.contact import cli_group as contact_cmd
+from westlake_survival.discovery import cli_group as affairs_cmd
 from westlake_survival.events import cli_group as events_cmd
 from westlake_survival.exceptions import AuthError, OffCampusError, WestlakeError
 from westlake_survival.faculty import cli_group as faculty_cmd
@@ -1166,14 +1167,44 @@ def _run_probe_item(func) -> tuple[str, str]:
         return "失败", message.replace("\n", " ")
 
 
-@click.command(name="probe")
-def probe_cmd() -> None:
-    """堵点状态探测（只读 GET，逐项 8 秒超时）：SIS 选课 / OPAC / 打印 / Canvas token。"""
+@click.group(name="probe", invoke_without_command=True)
+@click.pass_context
+def probe_cmd(ctx: click.Context) -> None:
+    """堵点与服务发现：不带参数跑四项常规探测；scan 做子域普查。"""
+    if ctx.invoked_subcommand is not None:
+        return
     rows = []
     for name, func in PROBE_ITEMS:
         status, detail = _run_probe_item(func)
         rows.append((name, status, detail))
     _print_table(rows, ("探测项", "状态", "说明"))
+
+
+@probe_cmd.command(name="scan")
+@click.option("--full", is_flag=True, help="扫全量候选（默认精选 36 个）。")
+@click.option("--hosts", default=None, help="只扫这些主机（逗号分隔，调试/测试用）。")
+@click.option("--timeout", type=float, default=6.0, show_default=True, help="单主机超时秒数。")
+@_handle_errors
+def probe_scan(full: bool, hosts: str | None, timeout: float) -> None:
+    """子域直连普查 + 办事大厅目录（绕系统代理；通配 502 不算活）。"""
+    from westlake_survival import discovery
+
+    if hosts:
+        host_list = [h.strip() for h in hosts.split(",") if h.strip()]
+    else:
+        host_list = None if full else discovery.CENSUS_HOSTS
+    results = discovery.subdomain_census(host_list, timeout=timeout)
+    alive = [r for r in results if r.alive]
+    click.echo(f"子域普查：{len(alive)} 活 / {len(results)} 探测（直连、绕系统代理）")
+    for r in sorted(alive, key=lambda x: x.host):
+        click.echo(f"  {r.status:<4} {r.host + '.westlake.edu.cn':.<34} {r.title[:28]}")
+    try:
+        apps = discovery.app_directory()
+        click.echo("")
+        click.echo(f"办事大厅目录：{len(apps)} 个流程应用（免登录接口）")
+    except Exception as exc:
+        click.echo("")
+        click.echo(f"办事大厅目录：获取失败（{exc}）")
 
 
 # --------------------------------------------------------------------------- #
@@ -1331,6 +1362,7 @@ for _group in (
     campus_cmd,
     map_cmd,
     contact_cmd,
+    affairs_cmd,
     context_cmd,
     digest_cmd,
     probe_cmd,
