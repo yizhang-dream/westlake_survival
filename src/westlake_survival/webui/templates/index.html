@@ -17,7 +17,11 @@
 {%- endmacro %}
 
 {% block content %}
-<h1 class="page">现在</h1>
+<div class="hero-head">
+  <div class="title">西湖生存手册</div>
+  <div class="sub">Westlake Survival · 课表 · 成绩 · 班车 · 培养方案 · 地图</div>
+</div>
+<h1 class="page" style="display:none">现在</h1>
 
 {% if not available %}
   <div class="note">context 模块暂不可用（或数据源缺失），卡片以「—」占位。页面其余功能不受影响。</div>
