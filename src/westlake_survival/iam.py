@@ -139,6 +139,15 @@ def _auth_chain(session, lck: str, entity_id: str, user: str, password: str) -> 
     message = str(execute.get("message") or execute.get("msg") or "")
     if "成功" not in message or "失败" in message:
         code = str(execute.get("code") or "")
+        if code == "4333" or "验证码" in message:
+            # 4333=验证码/登录名缺失：IAM 失败计数态开着（可持续一天且成功
+            # 登录也不复位）。此时继续试错只会给计数续期——提示走浏览器。
+            raise AuthError(
+                "IAM 当前强制图形验证码（失败计数态）：无头密码登录被禁。"
+                "请 westlake scholar ensure（浏览器本人输一次验证码），"
+                "或等学校侧重置后再试。原始信息："
+                f"（{code}）{message or '验证码或登录名为空'}"
+            )
         raise AuthError(f"IAM 登录失败（{code}）：{message or '用户名或密码错误'}")
     token = str(execute.get("loginToken") or "")
     if not token:
