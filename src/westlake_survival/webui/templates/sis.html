@@ -4,218 +4,407 @@
 <h1 class="page">学业（SIS）</h1>
 
 {% set sched = blocks.get('schedule') %}
-{% if sched and not sched.error %}
+{% set gr = blocks.get('grades') %}
+{% set ex = blocks.get('exams') %}
+{% set ev = blocks.get('evals') %}
+{% set reg = blocks.get('registration') %}
+{% set vh = blocks.get('vol_history') %}
+{% set cl = blocks.get('clubs') %}
+
+{# —— 概览数字条：首屏即答案 —— #}
+<div class="stats">
+  <div class="stat"><div class="label">在修课程</div><div class="value">{{ (sched | length) if sched and not sched.error else '—' }}</div></div>
+  {% if gr and not gr.error %}
+  <div class="stat"><div class="label">总课程</div><div class="value">{{ gr.total_courses }}</div></div>
+  <div class="stat"><div class="label">总学分</div><div class="value">{{ gr.total_credits }}</div></div>
+  <div class="stat"><div class="label">GPA（估算）</div><div class="value">{{ gr.gpa_estimated or '—' }}</div></div>
+  {% endif %}
+  <div class="stat"><div class="label">排期考试</div><div class="value">{{ (ex | length) if ex and not ex.error else '—' }}</div></div>
+  <div class="stat"><div class="label">待评教</div><div class="value">{{ (ev | length) if ev and not ev.error else '—' }}</div></div>
+  {% if vh and not vh.error %}
+  <div class="stat"><div class="label">志愿时长</div><div class="value">{{ vh.total_time or '—' }}</div></div>
+  {% endif %}
+  {% if cl is not none and not (cl and cl.error) %}
+  <div class="stat"><div class="label">我的社团</div><div class="value">{{ cl | length }}</div></div>
+  {% endif %}
+  {% if reg and not reg.error %}
+  <div class="stat"><div class="label">注册缴费</div><div class="value">{{ reg.fields.get('Payment Academic Year') or '—' }}</div></div>
+  {% endif %}
+</div>
+
+{# —— 吸顶锚点导航 —— #}
+<nav class="anchor-nav" id="sis-nav">
+  <a href="#sched">课表</a>
+  <a href="#grades">成绩</a>
+  <a href="#exams">考试</a>
+  <a href="#evals">评教</a>
+  <a href="#archive">学籍档案</a>
+  <a href="#campus">校园记录</a>
+  <a href="#orgs">社团与资助</a>
+</nav>
+
+{# ============================ 课表 ============================ #}
+<section id="sched">
 <h2 class="section">本学期课表（{{ sched | length }} 节）</h2>
+{% if sched and not sched.error %}
 <table class="data">
   <thead><tr><th>课程</th><th>教师</th><th>星期</th><th>时间</th><th>地点</th></tr></thead>
   <tbody>{% for c in sched %}<tr><td>{{ c.name }}</td><td>{{ c.teacher }}</td><td>{{ c.weekday }}</td><td class="time">{{ c.time }}</td><td>{{ c.location }}</td></tr>{% endfor %}</tbody>
 </table>
 {% else %}<div class="note">课表不可用：{{ sched.error if sched else '未加载' }}（需教务凭据与校园网/VPN）</div>{% endif %}
+</section>
 
-{% set gr = blocks.get('grades') %}
+{# ============================ 成绩 ============================ #}
+<section id="grades">
 {% if gr and not gr.error %}
 <h2 class="section">成绩（{{ gr.total_courses }} 门 / {{ gr.total_credits }} 学分{% if gr.gpa_estimated %} / GPA≈{{ gr.gpa_estimated }}{% endif %}）</h2>
 <p class="muted">{{ gr.gpa_note }}</p>
 {% if gr.rows %}
-<div class="grid cols-4">
-  <div class="card"><div class="label">总课程</div><div class="value">{{ gr.total_courses }}</div></div>
-  <div class="card"><div class="label">总学分</div><div class="value">{{ gr.total_credits }}</div></div>
-  {% if gr.gpa_estimated %}<div class="card"><div class="label">GPA（估算）</div><div class="value">{{ gr.gpa_estimated }}</div></div>{% endif %}
-</div>
+<form class="filter" id="grade-filter">
+  <label>筛课程
+    <input type="search" id="grade-q" placeholder="课程名 / 等级，如：数学" autocomplete="off">
+  </label>
+  <label>学期
+    <select id="grade-term"><option value="">全部</option></select>
+  </label>
+  <span class="muted" id="grade-count" style="align-self:center;font-size:.82rem;margin-left:auto"></span>
+</form>
 {% if gr.by_term %}
-<div class="grid cols-4">
-  {% for b in gr.by_term %}<div class="card"><div class="label">{{ b.term }}</div><div class="value">{{ b.count }} 门 · {{ b.credits }} 学分 · GPA {{ b.gpa or '—' }}</div></div>{% endfor %}
+<div class="term-cards">
+  {% for b in gr.by_term %}<div class="card"><div class="label">{{ b.term }}</div><div class="value">{{ b.count }} 门 · {{ b.credits }} 学分</div><div class="sub">GPA {{ b.gpa or '—' }}</div></div>{% endfor %}
 </div>
 {% endif %}
-<table class="data">
+<table class="data" id="grade-table">
   <thead><tr><th>学期</th><th>课程</th><th>等级</th><th>学分</th></tr></thead>
-  <tbody>{% for g in gr.rows[-60:] %}<tr><td>{{ g.term }}</td><td>{{ g.name }}</td><td>{{ g.grade }}</td><td>{{ g.credits }}</td></tr>{% endfor %}</tbody>
+  <tbody>{% set ns = namespace(prev='') %}{% for g in gr.rows %}<tr data-term="{{ g.term }}"{% if g.term != ns.prev %} class="grp"{% endif %}><td>{% if g.term == ns.prev %}<span class="rep">{{ g.term }}</span>{% else %}{{ g.term }}{% set ns.prev = g.term %}{% endif %}</td><td>{{ g.name }}</td><td>{{ g.grade }}</td><td>{{ g.credits }}</td></tr>{% endfor %}</tbody>
 </table>
 {% else %}
 <p class="muted">暂无成绩记录。</p>
 {% endif %}
 {% elif gr and gr.error %}<div class="note">成绩不可用：{{ gr.error }}</div>{% endif %}
+</section>
 
-{% set ex = blocks.get('exams') %}
-{% if ex is not none and not (ex and ex.error) %}
+{# ============================ 考试 / 评教 ============================ #}
+<section id="exams">
 <h2 class="section">考试安排</h2>
-{% if ex %}<table class="data">
+{% set ex2 = ex %}
+{% if ex2 is not none and not (ex2 and ex2.error) %}
+{% if ex2 %}<table class="data">
   <thead><tr><th>课程</th><th>日期</th><th>时间</th><th>类型</th><th>考场</th><th>座位</th></tr></thead>
-  <tbody>{% for e in ex %}<tr><td>{{ e.course }}</td><td>{{ e.date }}</td><td>{{ e.time }}</td><td>{{ e.kind }}</td><td>{{ e.room }}</td><td>{{ e.seat }}</td></tr>{% endfor %}</tbody>
+  <tbody>{% for e in ex2 %}<tr><td>{{ e.course }}</td><td>{{ e.date }}</td><td>{{ e.time }}</td><td>{{ e.kind }}</td><td>{{ e.room }}</td><td>{{ e.seat }}</td></tr>{% endfor %}</tbody>
 </table>{% else %}<p class="muted">本学期暂无排期考试。</p>{% endif %}
-{% elif ex and ex.error %}<div class="note">考试安排不可用：{{ ex.error }}</div>{% endif %}
+{% elif ex2 and ex2.error %}<div class="note">考试安排不可用：{{ ex2.error }}</div>{% endif %}
+</section>
 
-{% set ev = blocks.get('evals') %}
-{% if ev is not none %}
+<section id="evals">
 <h2 class="section">待评教</h2>
+{% if ev is not none %}
 {% if ev and not ev.error and ev %}<ul>{% for e in ev %}<li>{{ e.name }}（{{ e.term }}，{{ e.period }}）</li>{% endfor %}</ul>
 {% elif not (ev and ev.error) %}<p class="muted">暂无待评教任务。</p>{% else %}<div class="note">评教不可用：{{ ev.error }}</div>{% endif %}
 {% endif %}
+</section>
 
+{# ============================ 学籍档案 ============================ #}
+<section id="archive">
 <h2 class="section">学籍档案</h2>
+
 {% set pf = blocks.get('profile') %}
 {% if pf and not pf.error %}
-<h3 class="section">个人信息（{{ pf | length }} 项）</h3>
-<div class="grid cols-2">
-  {% for k, v in pf.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
-</div>
+<details class="fold" open>
+  <summary>个人信息<span class="chip">{{ pf | length }} 项</span></summary>
+  <div class="fold-body">
+    <div class="grid cols-2">
+      {% for k, v in pf.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+    </div>
+  </div>
+</details>
 {% endif %}
 
 {% set ac = blocks.get('academic') %}
 {% if ac and not ac.error %}
-<h3 class="section">学籍信息（{{ ac | length }} 项）</h3>
-<div class="grid cols-2">
-  {% for k, v in ac.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
-</div>
+<details class="fold" open>
+  <summary>学籍信息<span class="chip">{{ ac | length }} 项</span></summary>
+  <div class="fold-body">
+    <div class="grid cols-2">
+      {% for k, v in ac.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+    </div>
+  </div>
+</details>
 {% endif %}
 
 {% set ext = blocks.get('extended') %}
 {% if ext is not none and not (ext and ext.error) %}
-<h3 class="section">扩展信息（{{ ext | length if ext else 0 }} 项，含联系方式与户籍）</h3>
-<div class="grid cols-2">
-  {% for k, v in (ext or {}).items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
-</div>
+<details class="fold">
+  <summary>扩展信息<span class="chip">{{ ext | length if ext else 0 }} 项 · 联系方式与户籍</span></summary>
+  <div class="fold-body">
+    <div class="grid cols-2">
+      {% for k, v in (ext or {}).items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+    </div>
+  </div>
+</details>
 {% elif ext and ext.error %}<div class="note">扩展信息不可用：{{ ext.error }}</div>{% endif %}
 
-{% set reg = blocks.get('registration') %}
 {% if reg is not none and not (reg and reg.error) %}
-<h3 class="section">学期注册缴费（{{ reg.fields.get('Payment Academic Year') or '—' }}）</h3>
-<div class="grid cols-2">
-  {% for k, v in reg.fields.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
-</div>
-{% if reg.notice %}<p class="muted">站点提示：{{ reg.notice }}</p>{% endif %}
+<details class="fold">
+  <summary>学期注册缴费<span class="chip">{{ reg.fields.get('Payment Academic Year') or '—' }}</span>{% if reg.notice %}<span class="chip warn">未开放</span>{% endif %}</summary>
+  <div class="fold-body">
+    <div class="grid cols-2">
+      {% for k, v in reg.fields.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+    </div>
+    {% if reg.notice %}<p class="muted">站点提示：{{ reg.notice }}</p>{% endif %}
+  </div>
+</details>
 {% elif reg and reg.error %}<div class="note">学期注册不可用：{{ reg.error }}</div>{% endif %}
 
 {% set src = blocks.get('source') %}
 {% if src is not none and not (src and src.error) %}
-<h3 class="section">生源信息确认</h3>
-<p class="muted">{{ src.message or '状态未知' }}</p>
+<details class="fold">
+  <summary>生源信息确认{% if src.message and 'Not yet open' in src.message %}<span class="chip warn">未开放</span>{% endif %}</summary>
+  <div class="fold-body"><p class="muted">{{ src.message or '状态未知' }}</p></div>
+</details>
 {% elif src and src.error %}<div class="note">生源信息不可用：{{ src.error }}</div>{% endif %}
+</section>
 
+{# ============================ 校园记录 ============================ #}
+<section id="campus">
 <h2 class="section">校园记录</h2>
+
 {% set dorm = blocks.get('dorm') %}
 {% if dorm and not dorm.error %}
-<h3 class="section">住宿</h3>
-{% if dorm.info %}{% for k, v in dorm.info.items() %}{% if v %}<p>{{ k }}：<b>{{ v }}</b></p>{% endif %}{% endfor %}{% endif %}
-{% if dorm.applications %}
-<table class="data">
-  <thead><tr><th>申请号</th><th>类型</th><th>事由</th><th>时间</th><th>状态</th></tr></thead>
-  <tbody>{% for a in dorm.applications[:8] %}<tr><td>{{ a.application_no or '—' }}</td><td>{{ a.application_type or '—' }}</td><td>{{ a.reason or '—' }}</td><td>{{ a.date_time or '—' }}</td><td>{{ a.status or '—' }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="muted">暂无住宿申请记录。</p>{% endif %}
+<details class="fold" open>
+  <summary>住宿{% if dorm.info.get('On Campus Dormitory') %}<span class="chip">{{ dorm.info.get('On Campus Dormitory') }}</span>{% endif %}</summary>
+  <div class="fold-body">
+    {% if dorm.applications %}
+    <table class="data">
+      <thead><tr><th>申请号</th><th>类型</th><th>事由</th><th>时间</th><th>状态</th></tr></thead>
+      <tbody>{% for a in dorm.applications[:8] %}<tr><td>{{ a.application_no or '—' }}</td><td>{{ a.application_type or '—' }}</td><td>{{ a.reason or '—' }}</td><td>{{ a.date_time or '—' }}</td><td>{{ a.status or '—' }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="muted">暂无住宿申请记录。</p>{% endif %}
+  </div>
+</details>
 {% elif dorm and dorm.error %}<div class="note">住宿信息不可用：{{ dorm.error }}</div>{% endif %}
 
-{% set vh = blocks.get('vol_history') %}
 {% if vh is not none and not (vh and vh.error) %}
-<h3 class="section">志愿服务（总时长 {{ vh.total_time or '—' }}{% if vh.entries %}，{{ vh.entries | length }} 条{% endif %}）</h3>
-{% if vh.entries %}
-<table class="data">
-  <thead><tr><th>学年</th><th>来源</th><th>服务名称</th><th>时间</th><th>时长(h)</th></tr></thead>
-  <tbody>{% for e in vh.entries %}<tr><td>{{ e.year }}</td><td>{{ e.source }}</td><td>{{ e.name }}</td><td class="time">{{ e.time_text }}</td><td>{{ e.hours }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="muted">暂无志愿服务记录。</p>{% endif %}
+<details class="fold" open>
+  <summary>志愿服务<span class="chip">总时长 {{ vh.total_time or '—' }} · {{ vh.entries | length }} 条</span></summary>
+  <div class="fold-body">
+    {% if vh.entries %}
+    <table class="data">
+      <thead><tr><th>学年</th><th>来源</th><th>服务名称</th><th>时间</th><th>时长(h)</th></tr></thead>
+      <tbody>{% for e in vh.entries %}<tr><td>{{ e.year }}</td><td>{{ e.source }}</td><td>{{ e.name }}</td><td class="time">{{ e.time_text }}</td><td>{{ e.hours }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="muted">暂无志愿服务记录。</p>{% endif %}
+  </div>
+</details>
 {% elif vh and vh.error %}<div class="note">志愿服务不可用：{{ vh.error }}</div>{% endif %}
 
 {% set ho = blocks.get('honors') %}
 {% if ho is not none and not (ho and ho.error) %}
-<h3 class="section">荣誉</h3>
-{% if ho %}
-<table class="data">
-  <thead><tr><th>荣誉</th><th>级别</th><th>日期</th><th>状态</th></tr></thead>
-  <tbody>{% for h in ho[:10] %}<tr><td>{{ h.name or '—' }}</td><td>{{ h.level or '—' }}</td><td>{{ h.date or '—' }}</td><td>{{ h.status or '—' }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="muted">暂无荣誉记录。</p>{% endif %}
+<details class="fold">
+  <summary>荣誉{% if ho %}<span class="chip">{{ ho | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+  <div class="fold-body">
+    {% if ho %}
+    <table class="data">
+      <thead><tr><th>荣誉</th><th>级别</th><th>日期</th><th>状态</th></tr></thead>
+      <tbody>{% for h in ho[:10] %}<tr><td>{{ h.name or '—' }}</td><td>{{ h.level or '—' }}</td><td>{{ h.date or '—' }}</td><td>{{ h.status or '—' }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="muted">暂无荣誉记录。</p>{% endif %}
+  </div>
+</details>
 {% elif ho and ho.error %}<div class="note">荣誉不可用：{{ ho.error }}</div>{% endif %}
 
 {% set lv = blocks.get('leave') %}
 {% if lv is not none and not (lv and lv.error) %}
-<h3 class="section">请假</h3>
-{% if lv %}
-<table class="data">
-  <thead><tr><th>申请号</th><th>类型</th><th>开始</th><th>结束</th><th>状态</th></tr></thead>
-  <tbody>{% for l in lv[:10] %}<tr><td>{{ l.application_no or '—' }}</td><td>{{ l.leave_type or '—' }}</td><td>{{ l.start or '—' }}</td><td>{{ l.end or '—' }}</td><td>{{ l.status or '—' }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="muted">暂无请假记录。</p>{% endif %}
+<details class="fold">
+  <summary>请假{% if lv %}<span class="chip">{{ lv | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+  <div class="fold-body">
+    {% if lv %}
+    <table class="data">
+      <thead><tr><th>申请号</th><th>类型</th><th>开始</th><th>结束</th><th>状态</th></tr></thead>
+      <tbody>{% for l in lv[:10] %}<tr><td>{{ l.application_no or '—' }}</td><td>{{ l.leave_type or '—' }}</td><td>{{ l.start or '—' }}</td><td>{{ l.end or '—' }}</td><td>{{ l.status or '—' }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="muted">暂无请假记录。</p>{% endif %}
+  </div>
+</details>
 {% elif lv and lv.error %}<div class="note">请假不可用：{{ lv.error }}</div>{% endif %}
 
 {% set pr = blocks.get('practice') %}
 {% if pr is not none and not (pr and pr.error) %}
-<h3 class="section">社会实践</h3>
-{% if pr %}
-<table class="data">
-  <thead><tr><th>项目</th><th>组织</th><th>开始</th><th>结束</th><th>时长</th><th>状态</th></tr></thead>
-  <tbody>{% for p in pr[:10] %}<tr><td>{{ p.title or '—' }}</td><td>{{ p.organization or '—' }}</td><td>{{ p.start or '—' }}</td><td>{{ p.end or '—' }}</td><td>{{ p.hours or '—' }}</td><td>{{ p.status or '—' }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="muted">暂无社会实践记录。</p>{% endif %}
+<details class="fold">
+  <summary>社会实践{% if pr %}<span class="chip">{{ pr | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+  <div class="fold-body">
+    {% if pr %}
+    <table class="data">
+      <thead><tr><th>项目</th><th>组织</th><th>开始</th><th>结束</th><th>时长</th><th>状态</th></tr></thead>
+      <tbody>{% for p in pr[:10] %}<tr><td>{{ p.title or '—' }}</td><td>{{ p.organization or '—' }}</td><td>{{ p.start or '—' }}</td><td>{{ p.end or '—' }}</td><td>{{ p.hours or '—' }}</td><td>{{ p.status or '—' }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="muted">暂无社会实践记录。</p>{% endif %}
+  </div>
+</details>
 {% elif pr and pr.error %}<div class="note">社会实践不可用：{{ pr.error }}</div>{% endif %}
 
 {% set dc = blocks.get('discipline') %}
 {% if dc is not none and not (dc and dc.error) %}
-<h3 class="section">违纪</h3>
-{% if dc %}
-<table class="data">
-  <thead><tr><th>日期</th><th>类别</th><th>描述</th><th>状态</th></tr></thead>
-  <tbody>{% for d in dc[:10] %}<tr><td>{{ d.date or '—' }}</td><td>{{ d.category or '—' }}</td><td>{{ d.description or '—' }}</td><td>{{ d.status or '—' }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="muted">暂无违纪记录。</p>{% endif %}
+<details class="fold">
+  <summary>违纪{% if dc %}<span class="chip warn">{{ dc | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+  <div class="fold-body">
+    {% if dc %}
+    <table class="data">
+      <thead><tr><th>日期</th><th>类别</th><th>描述</th><th>状态</th></tr></thead>
+      <tbody>{% for d in dc[:10] %}<tr><td>{{ d.date or '—' }}</td><td>{{ d.category or '—' }}</td><td>{{ d.description or '—' }}</td><td>{{ d.status or '—' }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="muted">暂无违纪记录。</p>{% endif %}
+  </div>
+</details>
 {% elif dc and dc.error %}<div class="note">违纪信息不可用：{{ dc.error }}</div>{% endif %}
 
 {% set ap = blocks.get('appointments') %}
 {% if ap is not none and not (ap and ap.error) %}
-<h3 class="section">心理预约（{{ ap.week or '本周' }}）</h3>
-{% if ap.entries %}
-<table class="data">
-  <thead><tr><th>日期</th><th>时间</th><th>内容</th></tr></thead>
-  <tbody>{% for s in ap.entries %}<tr><td>{{ s.date or s.day }}</td><td>{{ s.time }}</td><td>{{ s.text }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="muted">本周无预约。</p>{% endif %}
+<details class="fold">
+  <summary>心理预约{% if ap.entries %}<span class="chip">{{ ap.entries | length }} 个时段</span>{% else %}<span class="chip">{{ ap.week or '本周' }} 无预约</span>{% endif %}</summary>
+  <div class="fold-body">
+    {% if ap.entries %}
+    <table class="data">
+      <thead><tr><th>日期</th><th>时间</th><th>内容</th></tr></thead>
+      <tbody>{% for s in ap.entries %}<tr><td>{{ s.date or s.day }}</td><td>{{ s.time }}</td><td>{{ s.text }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="muted">本周无预约。</p>{% endif %}
+  </div>
+</details>
 {% elif ap and ap.error %}<div class="note">预约信息不可用：{{ ap.error }}</div>{% endif %}
 
 {% set le = blocks.get('leaving') %}
 {% if le is not none and not (le and le.error) %}
-<h3 class="section">离校检查</h3>
-<p class="muted">{{ le.message or '状态未知' }}</p>
+<details class="fold">
+  <summary>离校检查{% if le.message and 'no task' in le.message %}<span class="chip">无离校任务</span>{% endif %}</summary>
+  <div class="fold-body"><p class="muted">{{ le.message or '状态未知' }}</p></div>
+</details>
 {% elif le and le.error %}<div class="note">离校检查不可用：{{ le.error }}</div>{% endif %}
+</section>
 
+{# ============================ 社团与资助 ============================ #}
+<section id="orgs">
 <h2 class="section">社团与资助</h2>
-{% set cl = blocks.get('clubs') %}
+
 {% if cl is not none and not (cl and cl.error) %}
-<h3 class="section">我的社团（{{ cl | length }}）</h3>
-{% if cl %}
-<table class="data">
-  <thead><tr><th>学年</th><th>社团</th><th>发起人</th><th>发起截止</th><th>当前人数</th></tr></thead>
-  <tbody>{% for c in cl %}<tr><td>{{ c.academic_year or '—' }}</td><td>{{ c.club_name or '—' }}</td><td>{{ c.founder or '—' }}</td><td>{{ c.initiation_deadline or '—' }}</td><td>{{ c.initiators or '—' }}</td></tr>{% endfor %}</tbody>
-</table>
-{% else %}<p class="muted">暂未加入社团。</p>{% endif %}
+<details class="fold" open>
+  <summary>我的社团<span class="chip">{{ cl | length }} 个</span></summary>
+  <div class="fold-body">
+    {% if cl %}
+    <table class="data">
+      <thead><tr><th>学年</th><th>社团</th><th>发起人</th><th>发起截止</th><th>当前人数</th></tr></thead>
+      <tbody>{% for c in cl %}<tr><td>{{ c.academic_year or '—' }}</td><td>{{ c.club_name or '—' }}</td><td>{{ c.founder or '—' }}</td><td>{{ c.initiation_deadline or '—' }}</td><td>{{ c.initiators or '—' }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="muted">暂未加入社团。</p>{% endif %}
+  </div>
+</details>
 {% elif cl and cl.error %}<div class="note">我的社团不可用：{{ cl.error }}</div>{% endif %}
 
 {% set og = blocks.get('orgs') %}
 {% if og is not none and not (og and og.error) %}
-<h3 class="section">社团目录（{{ og | length }} 个）</h3>
-{% if og %}
-<p class="muted">{{ og | map(attribute='name') | join(' · ') }}</p>
-{% else %}<p class="muted">目录为空。</p>{% endif %}
+<details class="fold">
+  <summary>社团目录<span class="chip">{{ og | length }} 个</span></summary>
+  <div class="fold-body">
+    {% if og %}<p class="muted">{{ og | map(attribute='name') | join(' · ') }}</p>
+    {% else %}<p class="muted">目录为空。</p>{% endif %}
+  </div>
+</details>
 {% elif og and og.error %}<div class="note">社团目录不可用：{{ og.error }}</div>{% endif %}
 
 {% set at = blocks.get('activities') %}
 {% if at is not none and not (at and at.error) %}
-<h3 class="section">社团活动</h3>
-{% if at %}
-<ul>{% for a in at[:15] %}<li>{{ a.name or a.title or a }}</li>{% endfor %}</ul>
-{% else %}<p class="muted">暂无活动报名记录。</p>{% endif %}
+<details class="fold">
+  <summary>社团活动{% if at %}<span class="chip">{{ at | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+  <div class="fold-body">
+    {% if at %}<ul>{% for a in at[:15] %}<li>{{ a.name or a.title or a }}</li>{% endfor %}</ul>
+    {% else %}<p class="muted">暂无活动报名记录。</p>{% endif %}
+  </div>
+</details>
 {% elif at and at.error %}<div class="note">社团活动不可用：{{ at.error }}</div>{% endif %}
 
 {% set ad = blocks.get('aid') %}
 {% if ad is not none and not (ad and ad.error) %}
-<h3 class="section">贷款 / 勤工助学 / 海外交流</h3>
-<ul>
-  <li>贷款援助记录：{{ ad.loans | length }} 条</li>
-  <li>贷款申请：{{ ad.loan_app | length }} 条</li>
-  <li>还款计划：{{ ad.repay | length }} 条</li>
-  <li>海外交流（Outbound）申请：{{ ad.outbound | length }} 条</li>
-  <li>交换项目申请：{{ ad.exchange | length }} 条</li>
-  <li>勤工助学岗位：{{ ad.jobs | length }} 个</li>
-</ul>
-{% if ad.claim_notice %}<p class="muted">工时申报：{{ ad.claim_notice }}</p>{% endif %}
+<details class="fold">
+  <summary>贷款 / 勤工助学 / 海外交流<span class="chip">贷款 {{ ad.loans | length }} · 岗位 {{ ad.jobs | length }} · 交流 {{ (ad.outbound | length) + (ad.exchange | length) }}</span></summary>
+  <div class="fold-body">
+    <ul>
+      <li>贷款援助记录：{{ ad.loans | length }} 条 · 贷款申请：{{ ad.loan_app | length }} 条 · 还款计划：{{ ad.repay | length }} 条</li>
+      <li>海外交流（Outbound）：{{ ad.outbound | length }} 条 · 交换项目申请：{{ ad.exchange | length }} 条</li>
+      <li>勤工助学岗位：{{ ad.jobs | length }} 个</li>
+    </ul>
+    {% if ad.claim_notice %}<p class="muted">工时申报：{{ ad.claim_notice }}</p>{% endif %}
+  </div>
+</details>
 {% elif ad and ad.error %}<div class="note">资助信息不可用：{{ ad.error }}</div>{% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // —— 成绩表筛选：课程名/等级搜索 + 学期下拉 ——
+  var table = document.getElementById('grade-table');
+  if (table) {
+    var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+    var q = document.getElementById('grade-q');
+    var term = document.getElementById('grade-term');
+    var count = document.getElementById('grade-count');
+    var terms = [];
+    rows.forEach(function (r) {
+      var t = r.getAttribute('data-term') || '';
+      if (terms.indexOf(t) < 0) terms.push(t);
+    });
+    terms.sort().forEach(function (t) {
+      var opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      term.appendChild(opt);
+    });
+    function apply() {
+      var kw = (q.value || '').toLowerCase();
+      var tv = term.value;
+      var shown = 0;
+      rows.forEach(function (r) {
+        var hit = (!kw || r.textContent.toLowerCase().indexOf(kw) >= 0)
+          && (!tv || r.getAttribute('data-term') === tv);
+        r.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      });
+      count.textContent = shown + ' / ' + rows.length + ' 门';
+    }
+    q.addEventListener('input', apply);
+    term.addEventListener('change', apply);
+    apply();
+  }
+  // —— 锚点导航 scroll-spy ——
+  var nav = document.getElementById('sis-nav');
+  if (nav && 'IntersectionObserver' in window) {
+    var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
+    var map = {};
+    links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (a) { a.classList.remove('active'); });
+          var a = map[e.target.id];
+          if (a) a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-25% 0px -65% 0px' });
+    document.querySelectorAll('section[id]').forEach(function (sec) { spy.observe(sec); });
+    var first = document.querySelector('section[id]');
+    if (first && map[first.id]) map[first.id].classList.add('active');
+  }
+  // —— 折叠块开合记忆 ——
+  document.querySelectorAll('details.fold').forEach(function (d) {
+    var key = 'wl-fold-' + location.pathname + '/' + d.querySelector('summary').textContent.trim().slice(0, 12);
+    var saved = null;
+    try { saved = localStorage.getItem(key); } catch (e) {}
+    if (saved === '1') d.open = true;
+    if (saved === '0') d.open = false;
+    d.addEventListener('toggle', function () {
+      try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) {}
+    });
+  });
+})();
+</script>
 {% endblock %}

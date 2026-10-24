@@ -224,8 +224,9 @@ def test_sis_grades_full_history_rendered(server: str) -> None:
 def test_sis_profile_blocks_full_render(server: str) -> None:
     """个人信息 11 项 / 学籍 20 项 / 扩展 16 项全渲染（SIS 三页全量）。"""
     _, html = _get(server + "/sis")
-    for marker in ("个人信息（11 项）", "学籍信息（20 项）", "扩展信息（16 项"):
-        assert marker in html, marker
+    for label, count in (("个人信息", "11 项"), ("学籍信息", "20 项"), ("扩展信息", "16 项")):
+        assert label in html, label
+        assert count in html, count
     # 学籍关键字段上页面（导师/预计毕业/书院）
     assert "Supervisor" in html and "Expected Graduation" in html
 
@@ -236,12 +237,15 @@ def test_sis_all_blocks_render(server: str) -> None:
     for marker in (
         "学期注册缴费",       # registration（含缴费提示句）
         "生源信息确认",       # source_info_status
-        "志愿服务（总时长",   # volunteer_history（总时长 + 明细）
+        "志愿服务",           # volunteer_history（总时长 + 明细）
         "心理预约",           # appointments（周历）
         "离校检查",           # leaving_check
         "我的社团",           # my_clubs
-        "社团目录（39 个）",  # student_orgs 目录 39 行
+        "社团目录",           # student_orgs 目录
+        "39 个",              # 目录计数徽标
         "贷款 / 勤工助学 / 海外交流",  # aid 汇总块
+        "anchor-nav",         # 吸顶锚点导航
+        "grade-filter",       # 成绩表筛选器
     ):
         assert marker in html, marker
     # 志愿总时长实数值（24 HOUR）与学期注册缴费提示句

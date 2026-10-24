@@ -127,7 +127,7 @@
     max-width: 1100px; margin: 20px auto; padding: 25px 50px 35px;
     background: var(--card); border-radius: var(--radius);
     box-shadow: 0 8px 32px var(--shadow), 0 1px 3px var(--shadow);
-    position: relative; overflow: hidden;
+    position: relative; /* 不设 overflow:hidden——会废掉内容页里的 sticky 吸顶导航 */
     animation: rise .35s var(--ease-spring) both;
   }
   .wrap.sheet::before {
@@ -261,7 +261,8 @@
     font-size: .9em;
   }
   /* —— 内容密集页：概览数字条 / 吸顶锚点导航 / 折叠块 —— */
-  .stats { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); margin: 0 0 1.1rem; }
+  .stats { display: flex; flex-wrap: wrap; gap: .6rem; margin: 0 0 1.1rem; }
+  .stats .stat { flex: 1 1 118px; min-width: 0; }
   .stat {
     background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px;
     padding: .55rem .8rem; transition: all .2s var(--ease-spring);
@@ -271,7 +272,7 @@
   .stat .value { font-size: 1.18rem; font-weight: 700; margin-top: .12rem; color: var(--heading); }
   .stat .value small { font-size: .78rem; font-weight: 600; color: var(--muted); }
   .anchor-nav {
-    position: sticky; top: 47px; z-index: 90; display: flex; flex-wrap: wrap; gap: .4rem;
+    position: sticky; top: var(--topbar-h, 47px); z-index: 90; display: flex; flex-wrap: wrap; gap: .4rem;
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
     padding: .5rem .6rem; margin: 0 0 1.2rem; box-shadow: 0 4px 14px var(--shadow);
   }
@@ -301,6 +302,12 @@
   details.fold > summary .chip { flex-shrink: 0; }
   details.fold > .fold-body { padding: 0 1rem 1rem; }
   details.fold[open] > summary { border-bottom: 1px solid var(--line); }
+  .term-cards { display: flex; flex-wrap: wrap; gap: .6rem; margin: 0 0 1.1rem; }
+  .term-cards .card { flex: 1 1 190px; min-width: 0; }
+  .term-cards .value { white-space: nowrap; font-size: 1.02rem; }
+  .term-cards .sub { font-size: .82rem; color: var(--muted); margin-top: .15rem; font-weight: 600; }
+  td .rep { visibility: hidden; }
+  #grade-table tr.grp td { border-top: 2px solid var(--line); }
 
   hr { border: none; border-top: 2px dashed var(--line); margin: 1.6rem 0; }
   @media (max-width: 720px) {
@@ -382,5 +389,16 @@
   })();
 </script>
   {% block scripts %}{% endblock %}
+  <script>
+    // 顶栏实际高度（换行后可能两行）写进 CSS 变量，供吸顶导航 offset 用
+    (function () {
+      function fit() {
+        var bar = document.querySelector('header.topbar');
+        if (bar) document.documentElement.style.setProperty('--topbar-h', bar.offsetHeight + 'px');
+      }
+      fit();
+      window.addEventListener('resize', fit);
+    })();
+  </script>
 </body>
 </html>
