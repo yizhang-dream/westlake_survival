@@ -182,3 +182,11 @@ def test_services_scan_api(server: str) -> None:
     assert payload["total"] == 2
     hosts = [r["host"] for r in payload["alive"]]
     assert "www" in hosts and "mydisk" not in hosts
+
+
+def test_sis_page_has_nine_blocks(server: str) -> None:
+    """学业页九块信息全渲染（空数据块显示空态而非消失）。"""
+    status, html = _get(server + "/sis")
+    assert status == 200
+    for section in ("本学期课表", "成绩与 GPA", "考试安排", "待评教", "个人信息", "学籍信息", "住宿", "荣誉记录", "志愿服务"):
+        assert section in html, section
