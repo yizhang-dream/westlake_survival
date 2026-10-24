@@ -15,6 +15,8 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+
+from westlake_survival.discovery import SERVICE_REGISTRY
 import re as _re
 from datetime import date, datetime, time
 from enum import Enum
@@ -802,19 +804,53 @@ def _sis_context() -> dict:
 
 
 def _canvas_context() -> dict:
-    """Canvas 页：在修课程 + 未来截止（令牌或统一会话，失败降级）。"""
+    """Canvas 页：课程+成绩 / 公告 / 截止 / 考试 / 测验（令牌或统一会话，逐块降级）。"""
     context: dict = {"courses": [], "deadlines": [], "error": None}
     try:
         from westlake_survival.canvas.client import CanvasClient
 
         client = CanvasClient()
+        courses = client.list_courses()
+        name_by_id = {c.id: (c.name or "") for c in courses}
         context["courses"] = [
-            {"name": c.name, "code": getattr(c, "code", ""), "id": c.id} for c in client.list_courses()
+            {"name": c.name, "code": getattr(c, "code", ""), "id": c.id} for c in courses
         ]
+        # 课程成绩（老师未发布时为 None，页面如实显示）
+        try:
+            context["grades"] = client.course_grades()
+        except Exception:
+            context["grades"] = []
+        # 每门课最新一条公告（并行抓，限前 6 门）
+        def _latest_announcement(course_id):
+            try:
+                items = client.list_announcements(course_id)
+                return items[0] if items else None
+            except Exception:
+                return None
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        announcements = []
+        try:
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                for ann in pool.map(_latest_announcement, [c.id for c in courses[:6]]):
+                    if ann is not None:
+                        announcements.append({
+                            "course": name_by_id.get(ann.course_id, str(ann.course_id)),
+                            "title": ann.title,
+                            "posted": ann.posted_at.strftime("%m-%d %H:%M") if ann.posted_at else "",
+                            "url": ann.html_url,
+                        })
+        except Exception:
+            announcements = []
+        context["announcements"] = sorted(
+            announcements, key=lambda a: a["posted"], reverse=True
+        )
         # 考试/测验（库已有：quizzes + 日历 exam 事件）
         try:
             context["quizzes"] = [
-                {"title": q.title, "course": str(q.course_id), "due": (q.due_at.isoformat() if q.due_at else ""),
+                {"title": q.title, "course": name_by_id.get(q.course_id, str(q.course_id)),
+                 "due": (q.due_at.strftime("%m-%d %H:%M") if q.due_at else ""),
                  "url": q.html_url}
                 for q in client.quizzes()[:15]
             ]
@@ -822,7 +858,8 @@ def _canvas_context() -> dict:
             context["quizzes"] = []
         try:
             context["exams"] = [
-                {"title": e.title, "start": (e.start_at.isoformat() if e.start_at else ""), "url": e.url}
+                {"title": e.title, "start": (e.start_at.strftime("%m-%d %H:%M") if e.start_at else ""),
+                 "url": e.url}
                 for e in client.exam_events()[:10]
             ]
         except Exception:
@@ -830,8 +867,8 @@ def _canvas_context() -> dict:
         context["deadlines"] = [
             {
                 "title": a.name,
-                "course": str(a.course_id),
-                "due": a.due_at.isoformat() if a.due_at else "",
+                "course": name_by_id.get(a.course_id, str(a.course_id)),
+                "due": a.due_at.strftime("%m-%d %H:%M") if a.due_at else "",
                 "url": a.html_url,
             }
             for a in client.upcoming_deadlines(limit=15)
@@ -984,95 +1021,6 @@ def _scholar_doi_context() -> dict:
     return context
 
 
-#: 服务注册表（2026-10-24 盘点；全部接入：mode=接入方式）。
-SERVICE_REGISTRY = (
-    ("2dmater", "二维材料与量子输运实验室", "入口卡+在线状态"),
-    ("aging-conference", "衰老生物学会议站（西湖×Cell Press）", "入口卡+在线状态"),
-    ("ac", "无线控制器", "入口卡+在线状态"),
-    ("1x", "802.1x 网络认证（内网）", "状态卡（内网）"),
-    ("alumni", "校友", "入口卡+在线状态"),
-    ("astro", "天文平台（SPA）", "入口卡+在线状态"),
-    ("audio", "李晓飞实验室", "入口卡+在线状态"),
-    ("assets", "采购办公室", "入口卡+在线状态"),
-    ("bioinfo", "基因组学与生物信息学核心实验室", "入口卡+在线状态"),
-    ("brcf", "生物医学实验技术中心", "入口卡+在线状态"),
-    ("brcfen", "生物医学中心（英文）", "入口卡+在线状态"),
-    ("cap", "人工光合作用与太阳能燃料中心", "入口卡+在线状态"),
-    ("car", "智能交通平台（登录）", "入口卡+在线状态"),
-    ("career", "就业服务网（招聘公告/招聘会/宣讲会）", "内容页（三区块）"),
-    ("cbis", "CBIS（仅证书存在）", "状态卡"),
-    ("chatbot", "门户 AI 助手后端", "入口卡+在线状态"),
-    ("cms", "危化品管理系统", "入口卡+在线状态"),
-    ("construction", "基本建设部", "入口卡+在线状态"),
-    ("dq", "党群工作部", "入口卡+在线状态"),
-    ("en", "英文主站", "入口卡+在线状态"),
-    ("en-soe", "工学院英文站", "入口卡+在线状态"),
-    ("energy", "能耗监控（第三方）", "入口卡+在线状态"),
-    ("eer.lab", "生态环境研究实验室（课题组站）", "入口卡+在线状态"),
-    ("engineering", "工学院", "内容页（五院聚合）"),
-    ("eniscps", "理化平台（英文）", "入口卡+在线状态"),
-    ("exchange", "邮件（→heqdata）", "入口卡+在线状态"),
-    ("facilities", "实验室与科研设施部", "入口卡+在线状态"),
-    ("file", "办公文件共享（登录）", "入口卡+在线状态"),
-    ("graduateschool", "研究生院", "入口卡+在线状态"),
-    ("heqdata", "数据平台", "入口卡+在线状态"),
-    ("hr", "人事（IAM OAuth2）", "入口卡+在线状态"),
-    ("huxin", "湖心讲堂", "入口卡+在线状态"),
-    ("idp", "CARSI 身份提供方（Shibboleth IdP）", "入口卡+在线状态"),
-    ("info", "信息技术中心（IT 服务台）", "入口卡+在线状态"),
-    ("international", "国际处", "入口卡+在线状态"),
-    ("iot", "物联网", "入口卡+在线状态"),
-    ("iscms", "分子科学公共实验平台", "入口卡+在线状态"),
-    ("iscps", "物质科学公共实验平台", "入口卡+在线状态"),
-    ("isearch", "搜索（占位）", "状态卡"),
-    ("its", "理论科学研究院官网", "内容页（新闻/活动）"),
-    ("lab", "实验室综合管理平台", "入口卡+在线状态"),
-    ("lams", "站群地图", "入口卡+在线状态"),
-    ("larc", "实验动物中心", "入口卡+在线状态"),
-    ("lifesciences", "生科院英文站", "入口卡+在线状态"),
-    ("mail", "邮件", "入口卡+在线状态"),
-    ("medicine", "医学院", "内容页（五院聚合）"),
-    ("my", "门户/办事大厅", "统一会话"),
-    ("my-soe", "工学院信息管理系统", "入口卡+在线状态"),
-    ("mp", "微信平台后端（403）", "状态卡"),
-    ("pan", "校园网盘（登录）", "入口卡+在线状态"),
-    ("mydisk", "个人网盘（内网）", "状态卡"),
-    ("nanolab", "先进微纳加工与测试平台", "入口卡+在线状态"),
-    ("oa", "办公自动化（→one）", "入口卡+在线状态"),
-    ("oaa", "教学事务部", "入口卡+在线状态"),
-    ("oala", "审计与法务办公室", "入口卡+在线状态"),
-    ("officialweb-test", "官网测试站", "状态卡"),
-    ("ohr", "人力资源部", "入口卡+在线状态"),
-    ("one", "任务中心：我的待办/进行中", "统一会话（浏览器）"),
-    ("ore", "科技合作部", "入口卡+在线状态"),
-    ("osa", "学生事务部", "入口卡+在线状态"),
-    ("payment", "支付（占位）", "状态卡"),
-    ("procurement", "采购门户（CMS）", "入口卡+在线状态"),
-    ("report", "报表服务（Tomcat，404）", "状态卡"),
-    ("qiushi", "求是西湖", "入口卡+在线状态"),
-    ("remotework", "远程办公", "入口卡+在线状态"),
-    ("science", "理学院", "内容页（五院聚合）"),
-    ("security", "保卫处", "入口卡+在线状态"),
-    ("share", "大型仪器共享管理系统", "入口卡+在线状态"),
-    ("sls", "生命科学学院", "内容页（五院聚合）"),
-    ("sso", "统一认证 CAS", "入口卡+在线状态"),
-    ("storage", "对象存储（403）", "状态卡"),
-    ("supply", "采购管理系统（登录）", "入口卡+在线状态"),
-    ("test", "智能DNS（基础设施）", "状态卡"),
-    ("testrpm", "内部测试（内网）", "状态卡（内网）"),
-    ("testzh", "测试站", "状态卡"),
-    ("ugadmission", "本科招生入口", "入口卡+在线状态"),
-    ("ugadmissions", "本科招生网（英文）", "入口卡+在线状态"),
-    ("ugapply", "本科申请系统", "入口卡+在线状态"),
-    ("visitor", "访客预约系统", "入口卡+在线状态"),
-    ("webvpn", "WebVPN（内网）", "状态卡"),
-    ("webvpn2", "WebVPN 备用（内网）", "状态卡（内网）"),
-    ("westlakefellows", "Westlake Fellows 项目", "入口卡+在线状态"),
-    ("wudf", "发展基金会（捐赠）", "入口卡+在线状态"),
-    ("www", "官网（新闻/讲座/教师/招聘/搜索）", "内容页"),
-    ("yanglab", "Yang Lab 课题组站", "入口卡+在线状态"),
-    ("zh-ugadmissions", "本科招生网（中文）", "入口卡+在线状态"),
-)
 
 
 

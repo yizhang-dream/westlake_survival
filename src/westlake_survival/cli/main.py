@@ -1312,6 +1312,58 @@ def go_cmd(port: int, no_browser: bool) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# 运行时自发现：westlake find <需求关键词>
+# --------------------------------------------------------------------------- #
+@click.command(name="find", help="按需求找能力：搜 CLI / MCP / 网页 / 学术库 / 服务注册表。")
+@click.argument("query", required=False)
+def find_cmd(query: str | None) -> None:
+    """``westlake find 作业`` —— Agent 不确定某需求归哪条命令时的路由入口。"""
+    from westlake_survival.capabilities import find_capabilities
+
+    result = find_capabilities(query or "")
+    if not query:
+        click.echo(result["hint"])
+        click.echo("例：westlake find 作业 / 论文 / 班车 / 待办 / 预约 / 打印 / 成绩")
+        return
+    q = query.strip()
+    total = 0
+
+    def _label(name: str) -> str:
+        return name.split(":", 1)[1] if ":" in name else name
+
+    def _echo_group(title: str, rows: list[dict], render) -> None:
+        nonlocal total
+        if not rows:
+            return
+        click.secho(f"{title}（{len(rows)}）", fg="cyan")
+        for row in rows[:12]:
+            render(row)
+        total += len(rows)
+        if len(rows) > 12:
+            click.echo(f"  …其余 {len(rows) - 12} 条")
+
+    _echo_group("CLI 命令", result["cli"], lambda r: click.echo(
+        f"  {_label(r['name'])}"
+        f"{' → ' + '、'.join(c['name'] for c in r.get('matched_commands', [])[:4]) if r.get('matched_commands') else ''}"
+        f"  — {r['summary'][:52]}"
+        + ("（需凭据）" if r.get("needs_auth") else "")))
+    _echo_group("MCP 工具", result["mcp"], lambda r: click.echo(
+        f"  {_label(r['name'])}  — {r['summary'][:56]}"))
+    _echo_group("网页", result["web"], lambda r: click.echo(
+        f"  {_label(r['name'])}  — {r['summary'][:56]}"))
+    _echo_group("学术数据库", result["databases"], lambda r: click.echo(
+        f"  [{r['access']}] {r['name']}  {r['url']}"))
+    _echo_group("服务站点", result["services"], lambda r: click.echo(
+        f"  {r['host']}  {r['name']}（{r['mode']}）"))
+    if total == 0:
+        click.echo(f"没有命中「{q}」。试试更短的关键词，或 westlake --help 看全部命令组。")
+    else:
+        if len(result.get("matched_terms", [])) > 1:
+            click.echo(f"匹配词：{' / '.join(result['matched_terms'][:6])}")
+        click.echo(f"共 {total} 条命中。详情：westlake <组> --help 或网页 /capabilities。")
+
+
+# --------------------------------------------------------------------------- #
 # 顶层 group
 # --------------------------------------------------------------------------- #
 @click.group(
@@ -1349,6 +1401,7 @@ def _first_run_configured() -> bool:
 
 for _group in (
     go_cmd,
+    find_cmd,
     setup_cmd,
     sso_cmd,
     calendar_cmd,

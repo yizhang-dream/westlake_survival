@@ -307,6 +307,44 @@ class CanvasClient:
         """取单个课程详情（``GET /courses/:id``）。"""
         return Course.from_json(self._json(self._get(f"/courses/{course_id}")))
 
+    def course_grades(self, enrollment_state: str = "active") -> list[dict]:
+        """列出课程的当前/最终成绩（``include[]=total_scores``）。
+
+        ``GET /courses?include[]=total_scores&enrollment_state=active`` 会在每门课的
+        ``enrollments[]`` 里附带 ``grades``（``current_score`` / ``current_grade`` /
+        ``final_score`` / ``final_grade``）。老师未发布成绩时对应字段为 ``None``。
+
+        Returns:
+            ``[{name, course_code, term_name, current_score, current_grade,
+            final_score, final_grade}]``，按课程名排序。
+        """
+        params = {
+            "enrollment_state": enrollment_state,
+            "include[]": "total_scores",
+        }
+        rows: list[dict] = []
+        for item in self._paginate("/courses", params):
+            if not isinstance(item, dict):
+                continue
+            grades: dict = {}
+            for enrollment in item.get("enrollments") or []:
+                if isinstance(enrollment, Mapping) and enrollment.get("grades"):
+                    grades = dict(enrollment["grades"])
+                    break
+            course = Course.from_json(item)
+            rows.append(
+                {
+                    "name": course.name or "",
+                    "course_code": course.course_code or "",
+                    "term_name": course.term_name or "",
+                    "current_score": grades.get("current_score"),
+                    "current_grade": grades.get("current_grade"),
+                    "final_score": grades.get("final_score"),
+                    "final_grade": grades.get("final_grade"),
+                }
+            )
+        return sorted(rows, key=lambda r: r["name"])
+
     def list_assignments(
         self,
         course_id: int | str,
