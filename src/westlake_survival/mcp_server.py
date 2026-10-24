@@ -229,6 +229,21 @@ def _tool_sis_clubs(args: dict) -> Any:
     return [org.to_dict() for org in my_clubs()]
 
 
+def _tool_sites_index(args: dict) -> Any:
+    """全部已接入站点索引（key/名称/分组/URL）。"""
+    from westlake_survival.sites import sites_index
+
+    return sites_index()
+
+
+def _tool_site_content(args: dict) -> Any:
+    """取一个站点的栏目与条目（key 见 sites_index）。"""
+    key = _opt_str(args, "key") or ""
+    from westlake_survival.sites import site_content
+
+    return site_content(key, limit=int(args.get("limit") or 8)).to_dict()
+
+
 def _tool_sis_statuses(args: dict) -> Any:
     """离校检查 / 生源确认 / 工时申报三类状态提示。"""
     from westlake_survival.sis.aid import job_claim
@@ -924,6 +939,21 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "取我的社团列表（学年 / 社团 / 发起人 / 人数）。",
         "inputSchema": _schema(),
         "handler": _tool_sis_clubs,
+    },
+    {
+        "name": "sites_index",
+        "description": "取全部已接入站点索引（key / 名称 / 分组 / URL）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sites_index,
+    },
+    {
+        "name": "site_content",
+        "description": "取一个站点的栏目与条目（通知公告 / 新闻 / 答辩公告等）。",
+        "inputSchema": _schema(
+            {"key": {"type": "string", "description": "站点 key（见 sites_index）"}},
+            required=["key"],
+        ),
+        "handler": _tool_site_content,
     },
     {
         "name": "sis_statuses",

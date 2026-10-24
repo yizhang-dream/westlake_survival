@@ -1094,6 +1094,36 @@ def _affairs_context() -> dict:
     return context
 
 
+def _sites_context() -> dict:
+    """全站页上下文：30 站内容并行抓取（博达/静态/TRS/特例四路），分组渲染。"""
+    module = _import_module("sites")
+    if module is None:
+        return {"error": "sites 模块不可用", "groups": [], "stats": {}}
+    from concurrent.futures import ThreadPoolExecutor
+
+    sites = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for content in pool.map(lambda k: module.site_content(k, limit=6), module.all_keys()):
+            data = content.to_dict()
+            # Jinja 坑（第四次）：dict 键名 items 命中方法，页面侧改名 entries
+            data["sections"] = [
+                {"label": sec["label"], "entries": sec["items"]} for sec in data["sections"]
+            ]
+            data["n_items"] = sum(len(sec["entries"]) for sec in data["sections"])
+            sites.append(data)
+    groups: list[dict] = []
+    for group in module.SITE_GROUPS:
+        rows = [c for c in sites if c["group"] == group]
+        if rows:
+            groups.append({"name": group, "sites": rows})
+    stats = {
+        "total": len(sites),
+        "with_items": sum(1 for c in sites if c["n_items"]),
+        "items": sum(c["n_items"] for c in sites),
+    }
+    return {"error": None, "groups": groups, "stats": stats}
+
+
 def _capabilities_context():
     """组装能力总览页上下文：CLI / MCP / WebUI 三组，含是否需要凭据。"""
     module = _import_module("capabilities")
@@ -1500,6 +1530,13 @@ def create_app() -> Flask:
         return result
 
     # -- 学院官网聚合页 ------------------------------------------------------ #
+    @app.route("/sites")
+    def sites_page():
+        context = _sites_context()
+        if context.get("error"):
+            return render_template("error.html", message=context["error"]), 503
+        return render_template("sites.html", **context)
+
     @app.route("/schools")
     def schools_page():
         module = _import_module("schools")
