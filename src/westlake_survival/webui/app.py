@@ -1119,7 +1119,7 @@ def _sites_context() -> dict:
     stats = {
         "total": len(sites),
         "with_items": sum(1 for c in sites if c["n_items"]),
-        "items": sum(c["n_items"] for c in sites),
+        "entry_count": sum(c["n_items"] for c in sites),
     }
     return {"error": None, "groups": groups, "stats": stats}
 

@@ -6,7 +6,7 @@
 <div class="stats">
   <div class="stat"><div class="label">已接入站点</div><div class="value" data-count="{{ stats.total }}">{{ stats.total }}</div></div>
   <div class="stat"><div class="label">有条目站点</div><div class="value" data-count="{{ stats.with_items }}">{{ stats.with_items }}</div></div>
-  <div class="stat"><div class="label">条目总数</div><div class="value" data-count="{{ stats.items }}">{{ stats.items }}</div></div>
+  <div class="stat"><div class="label">条目总数</div><div class="value" data-count="{{ stats.entry_count }}">{{ stats.entry_count }}</div></div>
 </div>
 
 <nav class="anchor-nav">
@@ -18,7 +18,7 @@
 <h2 class="section">{{ g.name }}（{{ g.sites | length }} 站）</h2>
 {% for c in g.sites %}
 <details class="fold"{% if c.sections and c.sections[0].items %} open{% endif %}>
-  <summary>{{ c.name }}{% if c.n_items %}<span class="chip">{{ c.n_items }} 条</span>{% else %}<span class="chip">简介</span>{% endif %}</summary>
+  <summary>{{ c.name }}{% if c.n_items %}<span class="chip">{{ c.n_items }} 条</span>{% else %}<span class="chip plain">简介</span>{% endif %}</summary>
   <div class="fold-body">
     {% if c.error %}<div class="callout warn"><span>抓取异常：{{ c.error }}</span></div>{% endif %}
     {% if c.intro %}<div class="callout"><span>{{ c.intro }} <a href="{{ c.url }}" target="_blank" rel="noopener">进入站点 →</a></span></div>{% endif %}
