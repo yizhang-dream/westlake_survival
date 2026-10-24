@@ -27,7 +27,7 @@
       {% if sec.entries %}
       <h3 class="sub">{{ sec.label }}<span class="count">{{ sec.entries | length }}</span></h3>
       <table class="data">
-        <tbody>{% for i in sec.entries %}<tr><td class="time">{{ i.date }}</td><td><a href="{{ i.url }}" target="_blank" rel="noopener">{{ i.title }}</a></td></tr>{% endfor %}</tbody>
+        <tbody>{% for i in sec.entries %}<tr data-detail-url="{{ i.url }}"><td class="time">{{ i.date }}</td><td><a href="{{ i.url }}" target="_blank" rel="noopener">{{ i.title }}</a></td><td class="exp"><button class="btn ghost tiny" type="button">详情</button></td></tr>{% endfor %}</tbody>
       </table>
       {% elif sec.label %}
       <div class="callout mute"><span>{{ sec.label }}：暂无条目。</span></div>
@@ -46,6 +46,38 @@
 {% block scripts %}
 <script>
 (function () {
+  // 行内详情（深挖层 2）：点「详情」拉取摘要+附件，展开成一条子行
+  document.querySelectorAll('tr[data-detail-url]').forEach(function (tr) {
+    var btn = tr.querySelector('.exp button');
+    if (!btn) return;
+    var open = false, loaded = false, sub = null;
+    btn.addEventListener('click', function () {
+      open = !open;
+      if (open && !loaded) {
+        btn.textContent = '加载中…';
+        fetch('/api/sites/detail?url=' + encodeURIComponent(tr.getAttribute('data-detail-url')))
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            loaded = true;
+            btn.textContent = '收起';
+            sub = document.createElement('tr');
+            sub.className = 'detail-row';
+            var atts = (d.attachments || []).map(function (a) {
+              return '<a class="chip outlink" href="' + a.url + '" target="_blank" rel="noopener">📎 ' + a.name + '</a>';
+            }).join(' ');
+            sub.innerHTML = '<td></td><td colspan="2"><div class="callout"><span>' +
+              (d.excerpt || '（无正文摘要）') + '</span></div>' +
+              (atts ? '<div class="chip-cloud" style="margin-top:.4rem">' + atts + '</div>' : '') + '</td>';
+            tr.after(sub);
+          })
+          .catch(function () { btn.textContent = '失败,重试'; loaded = false; open = false; });
+      } else if (sub) {
+        sub.style.display = open ? '' : 'none';
+        btn.textContent = open ? '收起' : '详情';
+      }
+    });
+  });
+
   // 折叠记忆：用户手动开过的记住，没动过的按 data-should-open 默认值
   document.querySelectorAll('details.fold[data-fold-key]').forEach(function (d) {
     var key = 'fold-' + d.getAttribute('data-fold-key');

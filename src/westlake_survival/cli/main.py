@@ -39,6 +39,7 @@ from westlake_survival.mirrors import cli_group as mirrors_cmd
 from westlake_survival.institute import cli_group as institute_cmd
 from westlake_survival.schools import cli_group as schools_cmd
 from westlake_survival.sites import cli_group as sites_cmd
+from westlake_survival.vpn import cli_group as vpn_cmd
 from westlake_survival.taskcenter import cli_group as todo_cmd
 from westlake_survival.portal import cli_group as portal_cmd
 from westlake_survival.scholar import cli_group as scholar_cmd
@@ -1432,6 +1433,7 @@ for _group in (
     institute_cmd,
     schools_cmd,
     sites_cmd,
+    vpn_cmd,
     todo_cmd,
     portal_cmd,
     scholar_cmd,

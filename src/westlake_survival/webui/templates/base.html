@@ -171,6 +171,12 @@
     background: color-mix(in srgb, var(--muted) 14%, transparent);
     border-radius: 999px; padding: .1rem .5rem; vertical-align: middle;
   }
+  table.data td.exp { width: 52px; white-space: nowrap; text-align: right; }
+  .btn.tiny { padding: .12rem .55rem; font-size: .74rem; }
+  .btn.ghost { background: transparent; border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent); color: var(--muted); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); transform: none; }
+  tr.detail-row td { padding-top: 0; }
+  tr.detail-row .callout { margin: .2rem 0 .5rem; font-size: .88rem; line-height: 1.55; }
   p { color: var(--muted); }
   .grid { display: grid; gap: .9rem; }
   .grid.cols-4 { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
@@ -421,6 +427,7 @@
       <a href="/mirrors" class="{{ 'active' if here.startswith('/mirrors') else '' }}">镜像</a>
       <a href="/schools" class="{{ 'active' if here.startswith('/institute') or here.startswith('/schools') else '' }}">学院</a>
       <a href="/sites" class="{{ 'active' if here.startswith('/sites') else '' }}">全站</a>
+      <a href="/vpn" class="{{ 'active' if here.startswith('/vpn') else '' }}">VPN</a>
       <a href="/scholar" class="{{ 'active' if here.startswith('/scholar') else '' }}">学术</a>
       <a href="/capabilities" class="{{ 'active' if here.startswith('/capabilities') else '' }}">能力</a>
       <a href="/services" class="{{ 'active' if here.startswith('/services') else '' }}">服务</a>

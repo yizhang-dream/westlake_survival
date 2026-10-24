@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}VPN · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">SSL VPN（vpn.westlake.edu.cn）</h1>
+
+<div class="grid cols-2">
+  <div class="card reveal">
+    <div class="card-head"><h2 class="section">会话状态</h2></div>
+    <div id="vpn-status" class="callout {{ 'ok' if status.logged_in else 'warn' }}">
+      <span>{% if status.logged_in %}<span class="pulse"></span>会话有效（code={{ status.code }}）{% else %}<span class="pulse"></span>未登录或已过期（{{ status.message or status.code }}）{% endif %}</span>
+    </div>
+    <p style="margin-top:.8rem">深信服 SSL VPN 门户对校内出口 IP 启用了图形验证码（防暴破），机器读码不稳定。
+      点下面按钮会弹出登录窗口——<strong>你手动输入验证码</strong>登录一次，会话自动保存，命令行和爬虫层复用。</p>
+    <button id="vpn-login-btn" class="btn">打开登录窗口（手动输验证码）</button>
+    <span id="vpn-login-note" style="margin-left:.6rem"></span>
+  </div>
+  <div class="card reveal">
+    <div class="card-head"><h2 class="section">为什么需要它</h2></div>
+    <div class="callout"><span>HPC 成果库（论文/专利/软件著作权）在 <code>172.16.75.35:8007</code>，只对 VPN/特定网段开放——校园 WiFi 直连被防火墙静默丢包（对照实验：eer.lab / OPAC / psc_yy 全通，唯独这台全端口 DROP）。登录 VPN 后源地址进入 VPN 地址池，即可达。</span></div>
+    <p style="margin-top:.6rem">登录后此页会列出 VPN 里发布的全部内网资源。</p>
+  </div>
+</div>
+
+<section class="reveal" id="vpn-res-sec" style="display:none">
+<h2 class="section">VPN 内网资源</h2>
+<table class="data" id="vpn-res-table">
+  <thead><tr><th>资源</th><th>入口</th></tr></thead>
+  <tbody></tbody>
+</table>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var btn = document.getElementById('vpn-login-btn');
+  var note = document.getElementById('vpn-login-note');
+  btn.addEventListener('click', function () {
+    note.textContent = '启动中…';
+    fetch('/vpn/api/login', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        note.textContent = d.message || '已打开';
+        poll(120);
+      })
+      .catch(function (e) { note.textContent = '失败：' + e; });
+  });
+
+  function render(st) {
+    var box = document.getElementById('vpn-status');
+    box.className = 'callout ' + (st.logged_in ? 'ok' : 'warn');
+    box.querySelector('span').innerHTML = st.logged_in
+      ? '<span class="pulse"></span>会话有效（code=' + (st.code || '') + '）'
+      : '<span class="pulse"></span>未登录或已过期（' + (st.message || st.code || '') + '）';
+    var sec = document.getElementById('vpn-res-sec');
+    if (st.logged_in && st.resources && st.resources.length) {
+      sec.style.display = '';
+      var tb = document.querySelector('#vpn-res-table tbody');
+      tb.innerHTML = st.resources.map(function (r) {
+        return '<tr><td>' + (r.title || '') + '</td><td><a href="' + (r.url || '#') + '" target="_blank" rel="noopener">' + (r.url || '') + '</a></td></tr>';
+      }).join('');
+    }
+  }
+
+  function poll(times) {
+    fetch('/vpn/api/status').then(function (r) { return r.json(); }).then(function (st) {
+      render(st);
+      if (!st.logged_in && times > 0) setTimeout(function () { poll(times - 1); }, 3000);
+    }).catch(function () { if (times > 0) setTimeout(function () { poll(times - 1); }, 5000); });
+  }
+  poll(1);
+})();
+</script>
+{% endblock %}

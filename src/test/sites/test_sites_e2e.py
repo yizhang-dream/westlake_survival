@@ -100,6 +100,42 @@ def test_ore_discovery_from_empty_cols() -> None:
     assert sum(len(s.items) for s in content.sections) >= 10
 
 
+def test_item_urls_absolute_no_double_slash() -> None:
+    """条目 URL 必须是可用绝对地址（回归 2026-10-25 双斜杠坏链）。"""
+    mod = _mod()
+    content = mod.site_content("brcf", limit=4)
+    urls = [i.url for s in content.sections for i in s.items]
+    assert urls, "应有条目"
+    for u in urls:
+        assert u.startswith("https://"), u
+        assert "//westlake.edu.cn/" not in u, f"双斜杠坏链: {u}"
+        assert "404" not in u
+
+
+def test_site_detail_extractor() -> None:
+    """详情深挖：真实条目页 -> 标题/摘要/附件；白名单拒绝外域。"""
+    mod = _mod()
+    content = mod.site_content("osa", limit=4)
+    item = next(i for s in content.sections for i in s.items)
+    d = mod.site_detail(item.url)
+    assert "404" not in d["title"], f"详情页应可访问: {item.url}"
+    assert len(d["excerpt"]) >= 30, "应有正文摘要"
+    assert isinstance(d["attachments"], list)
+    # HPC 手册章节（mkdocs）也走同一提取器
+    hpc = mod.site_detail("https://hpc.westlake.edu.cn/document/science/login/login.html")
+    assert hpc["title"] and len(hpc["excerpt"]) >= 30
+    with pytest.raises(Exception):
+        mod.site_detail("https://example.com/not-allowed.htm")
+
+
+def test_vpn_status_shape() -> None:
+    """VPN 会话层：未登录时 status 返回 20026 语义（不触登录流程）。"""
+    vpn = importlib.import_module("westlake_survival.vpn")
+    st = vpn.status()
+    assert set(st) >= {"logged_in", "code", "message"}
+    assert st["logged_in"] is False
+
+
 def test_webui_sites_page() -> None:
     """/sites 页四件套齐：stats、锚点、折叠块、至少 40 条条目上页面。
 

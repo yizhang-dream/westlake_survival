@@ -1543,6 +1543,62 @@ def create_app() -> Flask:
             return render_template("error.html", message=context["error"]), 503
         return render_template("sites.html", **context)
 
+    @app.route("/api/sites/detail")
+    def api_sites_detail():
+        """条目详情（深挖层 2）：?url= 站内页面 -> 标题/摘要/附件。"""
+        from flask import request
+
+        module = _import_module("sites")
+        url = (request.args.get("url") or "").strip()
+        if module is None or not url:
+            return {"error": "缺 ?url= 参数"}, 400
+        try:
+            return module.site_detail(url)
+        except Exception as exc:  # noqa: BLE001 - 单条失败不影响列表
+            return {"error": f"{exc.__class__.__name__}: {exc}"[:160]}, 502
+
+    @app.route("/vpn")
+    def vpn_page():
+        """SSL VPN 手动登录页：状态卡 + 拉起登录窗口按钮 + 资源列表。"""
+        module = _import_module("vpn")
+        st = {"logged_in": False, "code": "", "message": "vpn 模块不可用"}
+        if module is not None:
+            st = module.status()
+        return render_template("vpn.html", status=st)
+
+    @app.route("/vpn/api/login", methods=["POST"])
+    def vpn_api_login():
+        """拉起 `westlake vpn login` 子进程（有头浏览器，本人输验证码）。"""
+        import subprocess
+        import sys
+
+        try:
+            subprocess.Popen(
+                [sys.executable, "-m", "westlake_survival", "vpn", "login"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            return {"ok": True, "message": "登录窗口已打开：在弹出的浏览器里输入验证码完成登录"}
+        except Exception as exc:  # noqa: BLE001 - 拉起失败如实回报
+            return {"ok": False, "message": f"{exc.__class__.__name__}: {exc}"[:120]}, 500
+
+    @app.route("/vpn/api/status")
+    def vpn_api_status():
+        """轮询会话状态；活则顺带资源列表。"""
+        module = _import_module("vpn")
+        if module is None:
+            return {"logged_in": False, "message": "vpn 模块不可用"}, 503
+        st = module.status()
+        res: list = []
+        if st.get("logged_in"):
+            try:
+                res = [{"title": r.get("title", ""), "url": r.get("url", "")}
+                       for r in (module.resources() or [])[:40]]
+            except Exception as exc:  # noqa: BLE001 - 资源失败不影响状态
+                st["resources_error"] = f"{exc.__class__.__name__}: {exc}"[:100]
+        st["resources"] = res
+        return st
+
     @app.route("/schools")
     def schools_page():
         module = _import_module("schools")

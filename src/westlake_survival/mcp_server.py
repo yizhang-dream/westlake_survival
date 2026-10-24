@@ -244,6 +244,29 @@ def _tool_site_content(args: dict) -> Any:
     return site_content(key, limit=int(args.get("limit") or 8)).to_dict()
 
 
+def _tool_site_detail(args: dict) -> Any:
+    """抓一条站内页面详情：标题/正文摘要/附件下载（仅 *.westlake.edu.cn）。"""
+    url = _opt_str(args, "url") or ""
+    from westlake_survival.sites import site_detail
+
+    return site_detail(url)
+
+
+def _tool_vpn_status(args: dict) -> Any:
+    """SSL VPN 会话状态与已发布内网资源（需在 /vpn 页手动登录过）。"""
+    from westlake_survival.vpn import resources, status
+
+    st = status()
+    if st.get("logged_in"):
+        try:
+            st["resources"] = [
+                {"title": r.get("title", ""), "url": r.get("url", "")} for r in resources()[:40]
+            ]
+        except Exception as exc:  # noqa: BLE001 - 资源失败不影响状态
+            st["resources_error"] = f"{exc.__class__.__name__}: {exc}"[:100]
+    return st
+
+
 def _tool_sis_statuses(args: dict) -> Any:
     """离校检查 / 生源确认 / 工时申报三类状态提示。"""
     from westlake_survival.sis.aid import job_claim
@@ -954,6 +977,21 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             required=["key"],
         ),
         "handler": _tool_site_content,
+    },
+    {
+        "name": "site_detail",
+        "description": "点进一条站内页面取详情：标题 / 正文摘要 / 附件下载（仅 *.westlake.edu.cn）。",
+        "inputSchema": _schema(
+            {"url": {"type": "string", "description": "条目页绝对 URL（来自 site_content）"}},
+            required=["url"],
+        ),
+        "handler": _tool_site_detail,
+    },
+    {
+        "name": "vpn_status",
+        "description": "SSL VPN 会话状态与内网资源列表（需在网页 /vpn 手动登录过）。",
+        "inputSchema": _schema(),
+        "handler": _tool_vpn_status,
     },
     {
         "name": "sis_statuses",

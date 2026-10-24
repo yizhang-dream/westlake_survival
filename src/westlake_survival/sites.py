@@ -239,11 +239,15 @@ def _decoded(response) -> str:
 
 
 def _abs(base: str, url: str) -> str:
-    """把条目相对 URL 拼成绝对地址。"""
+    """把条目相对 URL 拼成绝对地址（相对站点根，条目 href 已剥 ../ 前缀）。
+
+    2026-10-25 修复：旧实现 rsplit("/westlake.edu.cn") 在子域主机上永不
+    命中（域名前是 ``.`` 不是 ``/``），产出 ``//westlake.edu.cn/info/…``
+    双斜杠坏链——列表页所有条目点开全 404，e2e 只断言了前缀没拦住。
+    """
     if url.startswith("http"):
         return url
-    root = base.rsplit("/westlake.edu.cn", 1)[0] + "/westlake.edu.cn"
-    return f"{root}/{url.lstrip('./')}"
+    return urljoin(base, url.lstrip("./"))
 
 
 def _host(key: str) -> str:
@@ -307,16 +311,36 @@ def _discover_baida_columns(key: str, s, manual_paths: set[str],
     sections: list[SiteSection] = []
     for norm, label in candidates:
         try:
-            resp = s.get(base + norm, timeout=DEFAULT_TIMEOUT)
-            page = _decoded(resp)
+            items = _column_items(s, base, norm, limit)
         except Exception:
             continue
-        if len(_ITEM_LINK_RE.findall(page)) < 2:
-            continue
-        items = _extract_items(page, base, limit)
         if len(items) >= 2:
             sections.append(SiteSection(label=label, items=items))
     return sections
+
+
+def _column_items(s, base: str, path: str, limit: int) -> list:
+    """取一个栏目的条目：第 1 页 + 第 2 页分页（博达 ``<拼音>/2.htm`` 规则）。
+
+    深挖层 1.5：栏目首页只挂最新 ~10 条，第 2 页补历史条目；仅翻一页
+    控制请求预算。404 / 无新条目即停。
+    """
+    resp = s.get(base + path, timeout=DEFAULT_TIMEOUT)
+    items = _extract_items(_decoded(resp), base, limit)
+    stem = path.rsplit("/", 1)[-1][:-4]
+    parent = path.rsplit("/", 1)[0] + "/" if "/" in path else ""
+    seen = {i.url for i in items}
+    if len(items) >= max(4, limit // 2):
+        try:
+            r2 = s.get(f"{base}{parent}{stem}/2.htm", timeout=DEFAULT_TIMEOUT)
+            more = _extract_items(_decoded(r2), base, limit) if r2.status_code == 200 else []
+        except Exception:
+            more = []
+        for i in more:
+            if i.url not in seen and len(items) < limit * 2:
+                seen.add(i.url)
+                items.append(i)
+    return items
 
 
 def _fetch_baida_columns(key: str, cols: dict, limit: int) -> list[SiteSection]:
@@ -325,10 +349,7 @@ def _fetch_baida_columns(key: str, cols: dict, limit: int) -> list[SiteSection]:
     s = _session()
     sections = []
     for label, path in cols.items():
-        url = base + path
-        resp = s.get(url, timeout=DEFAULT_TIMEOUT)
-        html = _decoded(resp)
-        items = _extract_items(html, base, limit)
+        items = _column_items(s, base, path, limit)
         if items:
             sections.append(SiteSection(label=label, items=items))
     discovered = _discover_baida_columns(
@@ -551,6 +572,83 @@ def _fetch_hpc(key: str, limit: int) -> tuple[list[SiteSection], str]:
     return sections, note
 
 
+# --------------------------------------------------------------------------- #
+# 条目详情（深挖层 2：点进列表页的每一条）
+# --------------------------------------------------------------------------- #
+#: 详情页只允许校内域（防 SSRF；只读 GET）。
+_DETAIL_HOST_RE = re.compile(r"^https?://[a-z0-9.\-]+\.westlake\.edu\.cn(?::\d+)?/", re.I)
+#: 正文容器：博达 v_news_content / TRS_Editor / mkdocs article / sphinx body，四形态。
+_CONTENT_BLOCK_RES = (
+    re.compile(r'class="[^"]*v_news_content[^"]*"[^>]*>([\s\S]{40,6000}?)</div>', re.I),
+    re.compile(r'id="[^"]*TRS_Editor[^"]*"[^>]*>([\s\S]{40,6000}?)</div>', re.I),
+    re.compile(r'<article[^>]*class="[^"]*md-content[^"]*"[^>]*>([\s\S]{40,6000}?)</article>', re.I),
+    re.compile(r'<div[^>]*class="[^"]*body[^"]*"[^>]*>([\s\S]{40,6000}?)</div>', re.I),
+    re.compile(r'<div[^>]*class="[^"]*(?:content|article|detail)[^"]*"[^>]*>([\s\S]{40,6000}?)</div>', re.I),
+)
+#: 正文截断标记（博达详情页尾部的上下篇 / 相关阅读导航）。
+_EXCERPT_CUT_RE = re.compile(r"(上一篇|下一篇|相关阅读|责任编辑|【打印】|版权所有)")
+_ATTACHMENT_RE = re.compile(
+    r'<a[^>]+href="([^"]+\.(?:pdf|docx?|xlsx?|pptx?|zip|rar|wps))"[^>]*>([^<]{1,80})</a>', re.I)
+_WS_COLLAPSE_RE = re.compile(r"\s+")
+#: 详情 TTL 缓存（模块级，进程内 10 分钟）。
+_detail_cache: dict[str, tuple[float, dict]] = {}
+_DETAIL_TTL = 600.0
+
+
+def _strip_html(fragment: str) -> str:
+    """去标签去脚本样式，压空白。"""
+    fragment = re.sub(r"<(script|style)[\s\S]*?</\1>", "", fragment, flags=re.I)
+    return _WS_COLLAPSE_RE.sub("", _TAG_RE.sub("", fragment).replace("&nbsp;", " ")).strip()
+
+
+def site_detail(url: str) -> dict:
+    """抓一条站内页面的详情：标题 / 正文摘要 / 附件下载。
+
+    深挖层 2：列表页只给「标题+日期」，本函数点进条目页把正文摘要和
+    附件（申请表 PDF / DOC 等——学生真正要下载的东西）挖出来。
+    仅允许 ``*.westlake.edu.cn``（只读 GET，防 SSRF）。
+    """
+    if not _DETAIL_HOST_RE.match(url):
+        raise WestlakeError("仅支持 *.westlake.edu.cn 站内页面")
+    import time as _time
+
+    now = _time.monotonic()
+    hit = _detail_cache.get(url)
+    if hit and now - hit[0] < _DETAIL_TTL:
+        return hit[1]
+    s = _session()
+    resp = s.get(url, timeout=DEFAULT_TIMEOUT)
+    html = _decoded(resp)
+    title_m = re.search(r"<title>([^<]+)</title>", html)
+    title = (title_m.group(1).strip() if title_m else "").rsplit("-", 1)[0].strip()
+    excerpt = ""
+    for pat in _CONTENT_BLOCK_RES:
+        m = pat.search(html)
+        if not m:
+            continue
+        text = _strip_html(m.group(1))
+        cut = _EXCERPT_CUT_RE.search(text)
+        if cut:
+            text = text[: cut.start()]
+        if len(text) >= 30:
+            excerpt = text[:280]
+            break
+    if not excerpt:  # 容器全失手时退化为整页文本
+        body = re.search(r"<body[\s\S]*?</body>", html)
+        text = _strip_html(body.group(0) if body else html)
+        cut = _EXCERPT_CUT_RE.search(text)
+        excerpt = (text[: cut.start()] if cut else text)[:280]
+    attachments = []
+    for href, name in _ATTACHMENT_RE.findall(html):
+        name = name.strip() or href.rsplit("/", 1)[-1]
+        attachments.append({"name": name[:60], "url": urljoin(url, href)})
+    data = {"url": url, "title": title, "excerpt": excerpt, "attachments": attachments[:8]}
+    if len(_detail_cache) > 300:
+        _detail_cache.clear()
+    _detail_cache[url] = (now, data)
+    return data
+
+
 def site_content(key: str, limit: int = 8) -> SiteContent:
     """取一个站点的内容（博达 / 静态 / homePage / HPC / 特例简介五路分发）。"""
     config = BAIDA_SITES.get(key)
@@ -693,3 +791,19 @@ def sites_site(key: str, limit: int) -> None:
         for item in section.items:
             date = f" {item.date}" if item.date else ""
             click.echo(f"  {item.title}{date}\n    {item.url}")
+
+
+@cli_group.command(name="detail")
+@click.argument("url")
+def sites_detail(url: str) -> None:
+    """抓一条站内页面详情：标题 / 正文摘要 / 附件下载。"""
+    data = site_detail(url)
+    click.echo(data["title"] or data["url"])
+    if data["excerpt"]:
+        click.echo(f"摘要：{data['excerpt']}")
+    if data["attachments"]:
+        click.echo("附件：")
+        for att in data["attachments"]:
+            click.echo(f"  {att['name']}\n    {att['url']}")
+    else:
+        click.echo("附件：（无）")
