@@ -214,3 +214,12 @@ def test_sis_grades_full_history_rendered(server: str) -> None:
     assert credits and float(credits.group(1)) > 50
     terms = set(_re.findall(r"(202\d-20\d\d [春夏秋冬]季学期)", html))
     assert len(terms) >= 3, terms
+
+
+def test_sis_profile_blocks_full_render(server: str) -> None:
+    """个人信息 11 项 / 学籍 20 项 / 扩展 16 项全渲染（SIS 三页全量）。"""
+    _, html = _get(server + "/sis")
+    for marker in ("个人信息（11 项）", "学籍信息（20 项）", "扩展信息（16 项"):
+        assert marker in html, marker
+    # 学籍关键字段上页面（导师/预计毕业/书院）
+    assert "Supervisor" in html and "Expected Graduation" in html

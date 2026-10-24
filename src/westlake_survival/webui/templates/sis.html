@@ -64,11 +64,19 @@
 
 {% set ac = blocks.get('academic') %}
 {% if ac and not ac.error %}
-<h2 class="section">学籍信息</h2>
+<h2 class="section">学籍信息（{{ ac | length }} 项）</h2>
 <div class="grid cols-2">
   {% for k, v in ac.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
 </div>
 {% endif %}
+
+{% set ext = blocks.get('extended') %}
+{% if ext and not ext.error %}
+<h2 class="section">扩展信息（{{ ext | length }} 项，含联系方式与户籍）</h2>
+<div class="grid cols-2">
+  {% for k, v in ext.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+</div>
+{% elif ext and ext.error %}<div class="note">扩展信息不可用：{{ ext.error }}</div>{% endif %}
 
 {% set dorm = blocks.get('dorm') %}
 {% if dorm and not dorm.error %}
