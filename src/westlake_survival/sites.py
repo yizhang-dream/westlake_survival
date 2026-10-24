@@ -153,13 +153,24 @@ TRS_LIST_SITES: dict = {
     "graduateschool": {
         "name": "研究生院", "group": "招生与基金", "banner": True,
         "cols": {"通知公告": {"path": "Notice/", "comp": "notice",
-                              "key": "rightList", "title": "text"}},
+                              "key": "rightList", "title": "text"},
+                 # 三棵树都是 JS 跳转壳 -> ./Supervisors/，组件 list=8 个子标签页，
+                 # 每个子页 rightList=条目（tabs 模式逐子页抓）。
+                 "规章制度": {"path": "Regulations/Supervisors/", "comp": "regulations",
+                              "key": "rightList", "title": "text", "tabs": True},
+                 "办事指南": {"path": "Guidelines/Supervisors/", "comp": "regulations",
+                              "key": "rightList", "title": "text", "tabs": True},
+                 "下载专区": {"path": "Download/Supervisors/", "comp": "regulations",
+                              "key": "rightList", "title": "text", "tabs": True}},
     },
     "wudf": {
         "name": "发展基金会（捐赠）", "group": "招生与基金",
         "cols": {
             "捐赠新闻": {"path": "News_Center/Foundation_News/", "comp": "donationNews", "key": "list"},
             "机构公告": {"path": "News_Center/Institutional_Announcements/", "comp": "institutionNotice", "key": "list"},
+            # 信息公示 = 分组 PDF（list[].reportsList[]{name,fileUrl}，相对链接）
+            "信息公示": {"path": "Information_Disclosure/", "comp": "information",
+                        "key": "list", "disclosure": True},
         },
     },
     "zh-ugadmissions": {
@@ -454,7 +465,7 @@ def _fetch_homepage_banner(key: str, limit: int) -> list[SiteSection]:
                           url=str(r.get("href") or base))
                  for r in rows[:limit] if isinstance(r, dict) and r.get("title")]
         if items:
-            sections.append(SiteSection(label="办事指南", items=items))
+            sections.append(SiteSection(label="办事指南目录", items=items))
     except (WestlakeError, KeyError):
         pass
     try:
@@ -718,27 +729,63 @@ def _fetch_trs_list(key: str, config: dict, limit: int) -> list[SiteSection]:
             pass
     for label, cfg in config["cols"].items():
         try:
-            html = _decoded(s.get(base + cfg["path"], timeout=DEFAULT_TIMEOUT))
+            page_url = base + cfg["path"]
+            html = _decoded(s.get(page_url, timeout=DEFAULT_TIMEOUT))
             block = component_script(html, cfg["comp"])
             rows = array_of(block, cfg["key"]) if block else []
         except Exception:  # noqa: BLE001 - 单栏失败继续
             continue
         items = []
         title_f, date_f = cfg.get("title", "title"), cfg.get("date", "date")
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            title = str(row.get(title_f) or "").strip()
+
+        def _push(row: dict) -> None:
+            title = str(row.get(title_f) or row.get("name") or "").strip()
             if not title:
-                continue
+                return
             items.append(SiteItem(
                 title=title[:90],
-                url=str(row.get("url") or base),
+                url=str(row.get("url") or row.get("fileUrl") or base),
                 date=str(row.get(date_f) or "")[:10]))
-            if len(items) >= limit:
-                break
+
+        if cfg.get("disclosure"):  # 分组 PDF：list[].reportsList[]{name,fileUrl}
+            for group in rows:
+                if not isinstance(group, dict):
+                    continue
+                for entry in group.get("reportsList") or []:
+                    if isinstance(entry, dict):
+                        entry["url"] = urljoin(page_url, str(entry.get("fileUrl") or ""))
+                        _push(entry)
+                        if len(items) >= limit:
+                            break
+        elif cfg.get("tabs"):  # 子标签树：list[]=子栏页，逐页抓 key 条目
+            for row in rows:  # 根页（当前子栏）自己的条目先入
+                if isinstance(row, dict):
+                    _push(row)
+            tabs = array_of(block, "list") or []
+            sub_urls: list[str] = []
+            for tab in tabs:
+                if not isinstance(tab, dict):
+                    continue
+                sub = str(tab.get("url") or "")
+                if sub and sub != page_url and sub not in sub_urls:
+                    sub_urls.append(sub)
+            for sub in sub_urls[:8]:
+                try:
+                    sub_html = _decoded(s.get(sub, timeout=DEFAULT_TIMEOUT))
+                    sub_block = component_script(sub_html, cfg["comp"])
+                    for row in array_of(sub_block, cfg["key"]) if sub_block else []:
+                        if isinstance(row, dict):
+                            _push(row)
+                except Exception:  # noqa: BLE001 - 子页失败继续
+                    continue
+        else:
+            for row in rows:
+                if isinstance(row, dict):
+                    _push(row)
+                if len(items) >= limit:
+                    break
         if items:
-            sections.append(SiteSection(label=label, items=items))
+            sections.append(SiteSection(label=label, items=items[:limit]))
     return sections
 
 
