@@ -33,6 +33,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 通识课程清单（学分/开课学期/教师） | `westlake program courses [--category 理工\|人文\|素质]` |
 | 官网全站搜索 | `westlake search <关键词>` |
 | 招聘岗位 / 导师名录 | `westlake careers` / `westlake faculty` |
+| 校园招聘/招聘会/宣讲会（就业服务网） | `westlake career list [--kind campus|jobfair|teachin]`，网页 `/careers` 下半区 |
 | 食堂咖啡 / 公寓 / 电话地址 | `westlake campus dining` / `housing` / `contact phones` |
 | 校区地图 / 校园全景 / 怎么到校 | `westlake map [--campus 云谷]` |
 | 什么事在哪儿办（全校流程应用目录） | `westlake affairs apps [关键词]` |
@@ -55,10 +56,7 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 当前 IP 能否直连订阅库 | `westlake scholar campus`（信标探测，缓存 30 分钟） |
 | CARSI 联盟资源目录（356 个） | `westlake scholar carsi [关键词] [--refresh]` |
 | 校外登录某数据库（CARSI/统一密码） | `westlake scholar sso cnki`（浏览器一次，验证码本人输）；`status` 查会话 |
-| 服务是否可达（选课/OPAC/打印/token） | `westlake probe
-westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
-# 前端配色取自西湖大学官网实测（品牌橙 #ee7823 / 门户蓝 #0d5fbd / 门户深墨 #171725 导航）
-# + 明暗切换（右上按钮，存 localStorage）+ 弹性缓动动效（spring cubic-bezier）` |
+| 服务是否可达（选课/OPAC/打印/token） | `westlake probe` |
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
 | 前端接口有哪些、返回什么 | `/capabilities` 页底部「HTTP 接口」区（含实时样例） |
 | 一步打开全部功能 | `westlake go`（启动 WebUI 并自动开浏览器，用户唯一要记的命令） |
