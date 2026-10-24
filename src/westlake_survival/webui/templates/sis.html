@@ -13,19 +13,19 @@
 
 {# —— 概览数字条：首屏即答案 —— #}
 <div class="stats">
-  <div class="stat"><div class="label">在修课程</div><div class="value">{{ (sched | length) if sched and not sched.error else '—' }}</div></div>
+  <div class="stat"><div class="label">在修课程</div><div class="value"{% if sched and not sched.error %} data-count="{{ sched | length }}"{% endif %}>{{ (sched | length) if sched and not sched.error else '—' }}</div></div>
   {% if gr and not gr.error %}
-  <div class="stat"><div class="label">总课程</div><div class="value">{{ gr.total_courses }}</div></div>
-  <div class="stat"><div class="label">总学分</div><div class="value">{{ gr.total_credits }}</div></div>
-  <div class="stat"><div class="label">GPA（估算）</div><div class="value">{{ gr.gpa_estimated or '—' }}</div></div>
+  <div class="stat"><div class="label">总课程</div><div class="value" data-count="{{ gr.total_courses }}">{{ gr.total_courses }}</div></div>
+  <div class="stat"><div class="label">总学分</div><div class="value" data-count="{{ gr.total_credits }}">{{ gr.total_credits }}</div></div>
+  <div class="stat"><div class="label">GPA（估算）</div><div class="value"{% if gr.gpa_estimated %} data-count="{{ gr.gpa_estimated }}"{% endif %}>{{ gr.gpa_estimated or '—' }}</div></div>
   {% endif %}
-  <div class="stat"><div class="label">排期考试</div><div class="value">{{ (ex | length) if ex and not ex.error else '—' }}</div></div>
-  <div class="stat"><div class="label">待评教</div><div class="value">{{ (ev | length) if ev and not ev.error else '—' }}</div></div>
+  <div class="stat"><div class="label">排期考试</div><div class="value"{% if ex and not ex.error %} data-count="{{ ex | length }}"{% endif %}>{{ (ex | length) if ex and not ex.error else '—' }}</div></div>
+  <div class="stat"><div class="label">待评教</div><div class="value"{% if ev and not ev.error %} data-count="{{ ev | length }}"{% endif %}>{{ (ev | length) if ev and not ev.error else '—' }}</div></div>
   {% if vh and not vh.error %}
-  <div class="stat"><div class="label">志愿时长</div><div class="value">{{ vh.total_time or '—' }}</div></div>
+  <div class="stat"><div class="label">志愿时长</div><div class="value">{% if vh.total_time %}<span data-count="{{ vh.total_time.split(' ')[0] }}">{{ vh.total_time.split(' ')[0] }}</span> <small>{{ vh.total_time.split(' ')[1] }}</small>{% else %}—{% endif %}</div></div>
   {% endif %}
   {% if cl is not none and not (cl and cl.error) %}
-  <div class="stat"><div class="label">我的社团</div><div class="value">{{ cl | length }}</div></div>
+  <div class="stat"><div class="label">我的社团</div><div class="value" data-count="{{ cl | length }}">{{ cl | length }}</div></div>
   {% endif %}
   {% if reg and not reg.error %}
   <div class="stat"><div class="label">注册缴费</div><div class="value">{{ reg.fields.get('Payment Academic Year') or '—' }}</div></div>
@@ -44,7 +44,7 @@
 </nav>
 
 {# ============================ 课表 ============================ #}
-<section id="sched">
+<section id="sched" class="reveal">
 <h2 class="section">本学期课表（{{ sched | length }} 节）</h2>
 {% if sched and not sched.error %}
 <table class="data">
@@ -55,10 +55,10 @@
 </section>
 
 {# ============================ 成绩 ============================ #}
-<section id="grades">
+<section id="grades" class="reveal">
 {% if gr and not gr.error %}
 <h2 class="section">成绩（{{ gr.total_courses }} 门 / {{ gr.total_credits }} 学分{% if gr.gpa_estimated %} / GPA≈{{ gr.gpa_estimated }}{% endif %}）</h2>
-<p class="muted">{{ gr.gpa_note }}</p>
+<div class="callout"><span>{{ gr.gpa_note }}官方成绩单以教务为准。</span></div>
 {% if gr.rows %}
 <form class="filter" id="grade-filter">
   <label>筛课程
@@ -79,33 +79,36 @@
   <tbody>{% set ns = namespace(prev='') %}{% for g in gr.rows %}<tr data-term="{{ g.term }}"{% if g.term != ns.prev %} class="grp"{% endif %}><td>{% if g.term == ns.prev %}<span class="rep">{{ g.term }}</span>{% else %}{{ g.term }}{% set ns.prev = g.term %}{% endif %}</td><td>{{ g.name }}</td><td>{{ g.grade }}</td><td>{{ g.credits }}</td></tr>{% endfor %}</tbody>
 </table>
 {% else %}
-<p class="muted">暂无成绩记录。</p>
+<div class="callout mute"><span>暂无成绩记录。</span></div>
 {% endif %}
 {% elif gr and gr.error %}<div class="note">成绩不可用：{{ gr.error }}</div>{% endif %}
 </section>
 
 {# ============================ 考试 / 评教 ============================ #}
-<section id="exams">
+<section id="exams" class="reveal">
 <h2 class="section">考试安排</h2>
 {% set ex2 = ex %}
 {% if ex2 is not none and not (ex2 and ex2.error) %}
 {% if ex2 %}<table class="data">
   <thead><tr><th>课程</th><th>日期</th><th>时间</th><th>类型</th><th>考场</th><th>座位</th></tr></thead>
   <tbody>{% for e in ex2 %}<tr><td>{{ e.course }}</td><td>{{ e.date }}</td><td>{{ e.time }}</td><td>{{ e.kind }}</td><td>{{ e.room }}</td><td>{{ e.seat }}</td></tr>{% endfor %}</tbody>
-</table>{% else %}<p class="muted">本学期暂无排期考试。</p>{% endif %}
+</table>{% else %}<div class="callout mute"><span>本学期暂无排期考试。</span></div>{% endif %}
 {% elif ex2 and ex2.error %}<div class="note">考试安排不可用：{{ ex2.error }}</div>{% endif %}
 </section>
 
-<section id="evals">
+<section id="evals" class="reveal">
 <h2 class="section">待评教</h2>
 {% if ev is not none %}
-{% if ev and not ev.error and ev %}<ul>{% for e in ev %}<li>{{ e.name }}（{{ e.term }}，{{ e.period }}）</li>{% endfor %}</ul>
-{% elif not (ev and ev.error) %}<p class="muted">暂无待评教任务。</p>{% else %}<div class="note">评教不可用：{{ ev.error }}</div>{% endif %}
+{% if ev and not ev.error and ev %}<table class="data">
+  <thead><tr><th>课程</th><th>学期</th><th>时段</th></tr></thead>
+  <tbody>{% for e in ev %}<tr><td>{{ e.name }}</td><td>{{ e.term }}</td><td>{{ e.period }}</td></tr>{% endfor %}</tbody>
+</table>
+{% elif not (ev and ev.error) %}<div class="callout mute"><span>暂无待评教任务。</span></div>{% else %}<div class="note">评教不可用：{{ ev.error }}</div>{% endif %}
 {% endif %}
 </section>
 
 {# ============================ 学籍档案 ============================ #}
-<section id="archive">
+<section id="archive" class="reveal">
 <h2 class="section">学籍档案</h2>
 
 {% set pf = blocks.get('profile') %}
@@ -151,7 +154,7 @@
     <div class="grid cols-2">
       {% for k, v in reg.fields.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
     </div>
-    {% if reg.notice %}<p class="muted">站点提示：{{ reg.notice }}</p>{% endif %}
+    {% if reg.notice %}<div class="callout warn"><span>站点提示：{{ reg.notice }}</span></div>{% endif %}
   </div>
 </details>
 {% elif reg and reg.error %}<div class="note">学期注册不可用：{{ reg.error }}</div>{% endif %}
@@ -160,13 +163,13 @@
 {% if src is not none and not (src and src.error) %}
 <details class="fold">
   <summary>生源信息确认{% if src.message and 'Not yet open' in src.message %}<span class="chip warn">未开放</span>{% endif %}</summary>
-  <div class="fold-body"><p class="muted">{{ src.message or '状态未知' }}</p></div>
+  <div class="fold-body"><div class="callout"><span>{{ src.message or '状态未知' }}</span></div></div>
 </details>
 {% elif src and src.error %}<div class="note">生源信息不可用：{{ src.error }}</div>{% endif %}
 </section>
 
 {# ============================ 校园记录 ============================ #}
-<section id="campus">
+<section id="campus" class="reveal">
 <h2 class="section">校园记录</h2>
 
 {% set dorm = blocks.get('dorm') %}
@@ -177,9 +180,9 @@
     {% if dorm.applications %}
     <table class="data">
       <thead><tr><th>申请号</th><th>类型</th><th>事由</th><th>时间</th><th>状态</th></tr></thead>
-      <tbody>{% for a in dorm.applications[:8] %}<tr><td>{{ a.application_no or '—' }}</td><td>{{ a.application_type or '—' }}</td><td>{{ a.reason or '—' }}</td><td>{{ a.date_time or '—' }}</td><td>{{ a.status or '—' }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for a in dorm.applications[:8] %}<tr><td>{{ a.application_no or '—' }}</td><td>{{ a.application_type or '—' }}</td><td>{{ a.reason or '—' }}</td><td>{{ a.date_time or '—' }}</td><td>{% if a.status %}<span class="chip ok">{{ a.status }}</span>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
     </table>
-    {% else %}<p class="muted">暂无住宿申请记录。</p>{% endif %}
+    {% else %}<div class="callout mute"><span>暂无住宿申请记录。</span></div>{% endif %}
   </div>
 </details>
 {% elif dorm and dorm.error %}<div class="note">住宿信息不可用：{{ dorm.error }}</div>{% endif %}
@@ -191,9 +194,9 @@
     {% if vh.entries %}
     <table class="data">
       <thead><tr><th>学年</th><th>来源</th><th>服务名称</th><th>时间</th><th>时长(h)</th></tr></thead>
-      <tbody>{% for e in vh.entries %}<tr><td>{{ e.year }}</td><td>{{ e.source }}</td><td>{{ e.name }}</td><td class="time">{{ e.time_text }}</td><td>{{ e.hours }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% set vs = namespace(prev='') %}{% for e in vh.entries %}{% set cur = e.year ~ '|' ~ e.source %}<tr><td>{% if cur == vs.prev %}<span class="rep">{{ e.year }}</span>{% else %}{{ e.year }}{% endif %}</td><td>{% if cur == vs.prev %}<span class="rep">{{ e.source }}</span>{% else %}{{ e.source }}{% set vs.prev = cur %}{% endif %}</td><td>{{ e.name }}</td><td class="time">{{ e.time_text }}</td><td>{{ e.hours }}</td></tr>{% endfor %}</tbody>
     </table>
-    {% else %}<p class="muted">暂无志愿服务记录。</p>{% endif %}
+    {% else %}<div class="callout mute"><span>暂无志愿服务记录。</span></div>{% endif %}
   </div>
 </details>
 {% elif vh and vh.error %}<div class="note">志愿服务不可用：{{ vh.error }}</div>{% endif %}
@@ -206,9 +209,9 @@
     {% if ho %}
     <table class="data">
       <thead><tr><th>荣誉</th><th>级别</th><th>日期</th><th>状态</th></tr></thead>
-      <tbody>{% for h in ho[:10] %}<tr><td>{{ h.name or '—' }}</td><td>{{ h.level or '—' }}</td><td>{{ h.date or '—' }}</td><td>{{ h.status or '—' }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for h in ho[:10] %}<tr><td>{{ h.name or '—' }}</td><td>{{ h.level or '—' }}</td><td>{{ h.date or '—' }}</td><td>{% if h.status %}<span class="chip">{{ h.status }}</span>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
     </table>
-    {% else %}<p class="muted">暂无荣誉记录。</p>{% endif %}
+    {% else %}<div class="callout mute"><span>暂无荣誉记录。</span></div>{% endif %}
   </div>
 </details>
 {% elif ho and ho.error %}<div class="note">荣誉不可用：{{ ho.error }}</div>{% endif %}
@@ -221,9 +224,9 @@
     {% if lv %}
     <table class="data">
       <thead><tr><th>申请号</th><th>类型</th><th>开始</th><th>结束</th><th>状态</th></tr></thead>
-      <tbody>{% for l in lv[:10] %}<tr><td>{{ l.application_no or '—' }}</td><td>{{ l.leave_type or '—' }}</td><td>{{ l.start or '—' }}</td><td>{{ l.end or '—' }}</td><td>{{ l.status or '—' }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for l in lv[:10] %}<tr><td>{{ l.application_no or '—' }}</td><td>{{ l.leave_type or '—' }}</td><td>{{ l.start or '—' }}</td><td>{{ l.end or '—' }}</td><td>{% if l.status %}<span class="chip">{{ l.status }}</span>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
     </table>
-    {% else %}<p class="muted">暂无请假记录。</p>{% endif %}
+    {% else %}<div class="callout mute"><span>暂无请假记录。</span></div>{% endif %}
   </div>
 </details>
 {% elif lv and lv.error %}<div class="note">请假不可用：{{ lv.error }}</div>{% endif %}
@@ -236,9 +239,9 @@
     {% if pr %}
     <table class="data">
       <thead><tr><th>项目</th><th>组织</th><th>开始</th><th>结束</th><th>时长</th><th>状态</th></tr></thead>
-      <tbody>{% for p in pr[:10] %}<tr><td>{{ p.title or '—' }}</td><td>{{ p.organization or '—' }}</td><td>{{ p.start or '—' }}</td><td>{{ p.end or '—' }}</td><td>{{ p.hours or '—' }}</td><td>{{ p.status or '—' }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for p in pr[:10] %}<tr><td>{{ p.title or '—' }}</td><td>{{ p.organization or '—' }}</td><td>{{ p.start or '—' }}</td><td>{{ p.end or '—' }}</td><td>{{ p.hours or '—' }}</td><td>{% if p.status %}<span class="chip">{{ p.status }}</span>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
     </table>
-    {% else %}<p class="muted">暂无社会实践记录。</p>{% endif %}
+    {% else %}<div class="callout mute"><span>暂无社会实践记录。</span></div>{% endif %}
   </div>
 </details>
 {% elif pr and pr.error %}<div class="note">社会实践不可用：{{ pr.error }}</div>{% endif %}
@@ -251,9 +254,9 @@
     {% if dc %}
     <table class="data">
       <thead><tr><th>日期</th><th>类别</th><th>描述</th><th>状态</th></tr></thead>
-      <tbody>{% for d in dc[:10] %}<tr><td>{{ d.date or '—' }}</td><td>{{ d.category or '—' }}</td><td>{{ d.description or '—' }}</td><td>{{ d.status or '—' }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for d in dc[:10] %}<tr><td>{{ d.date or '—' }}</td><td>{{ d.category or '—' }}</td><td>{{ d.description or '—' }}</td><td>{% if d.status %}<span class="chip warn">{{ d.status }}</span>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
     </table>
-    {% else %}<p class="muted">暂无违纪记录。</p>{% endif %}
+    {% else %}<div class="callout mute"><span>暂无违纪记录。</span></div>{% endif %}
   </div>
 </details>
 {% elif dc and dc.error %}<div class="note">违纪信息不可用：{{ dc.error }}</div>{% endif %}
@@ -268,7 +271,7 @@
       <thead><tr><th>日期</th><th>时间</th><th>内容</th></tr></thead>
       <tbody>{% for s in ap.entries %}<tr><td>{{ s.date or s.day }}</td><td>{{ s.time }}</td><td>{{ s.text }}</td></tr>{% endfor %}</tbody>
     </table>
-    {% else %}<p class="muted">本周无预约。</p>{% endif %}
+    {% else %}<div class="callout mute"><span>本周无预约。</span></div>{% endif %}
   </div>
 </details>
 {% elif ap and ap.error %}<div class="note">预约信息不可用：{{ ap.error }}</div>{% endif %}
@@ -277,13 +280,13 @@
 {% if le is not none and not (le and le.error) %}
 <details class="fold">
   <summary>离校检查{% if le.message and 'no task' in le.message %}<span class="chip">无离校任务</span>{% endif %}</summary>
-  <div class="fold-body"><p class="muted">{{ le.message or '状态未知' }}</p></div>
+  <div class="fold-body"><div class="callout"><span>{{ le.message or '状态未知' }}</span></div></div>
 </details>
 {% elif le and le.error %}<div class="note">离校检查不可用：{{ le.error }}</div>{% endif %}
 </section>
 
 {# ============================ 社团与资助 ============================ #}
-<section id="orgs">
+<section id="orgs" class="reveal">
 <h2 class="section">社团与资助</h2>
 
 {% if cl is not none and not (cl and cl.error) %}
@@ -295,7 +298,7 @@
       <thead><tr><th>学年</th><th>社团</th><th>发起人</th><th>发起截止</th><th>当前人数</th></tr></thead>
       <tbody>{% for c in cl %}<tr><td>{{ c.academic_year or '—' }}</td><td>{{ c.club_name or '—' }}</td><td>{{ c.founder or '—' }}</td><td>{{ c.initiation_deadline or '—' }}</td><td>{{ c.initiators or '—' }}</td></tr>{% endfor %}</tbody>
     </table>
-    {% else %}<p class="muted">暂未加入社团。</p>{% endif %}
+    {% else %}<div class="callout mute"><span>暂未加入社团。</span></div>{% endif %}
   </div>
 </details>
 {% elif cl and cl.error %}<div class="note">我的社团不可用：{{ cl.error }}</div>{% endif %}
@@ -305,8 +308,8 @@
 <details class="fold">
   <summary>社团目录<span class="chip">{{ og | length }} 个</span></summary>
   <div class="fold-body">
-    {% if og %}<p class="muted">{{ og | map(attribute='name') | join(' · ') }}</p>
-    {% else %}<p class="muted">目录为空。</p>{% endif %}
+    {% if og %}<div class="chip-cloud">{% for o in og %}<span class="chip{% if 'Outstanding' in o.name or 'Vibrant' in o.name %} star{% endif %}{% if '链接' in o.name or 'link' in o.name %} outlink{% endif %}">{{ o.name }}</span>{% endfor %}</div>
+    {% else %}<div class="callout mute"><span>目录为空。</span></div>{% endif %}
   </div>
 </details>
 {% elif og and og.error %}<div class="note">社团目录不可用：{{ og.error }}</div>{% endif %}
@@ -316,8 +319,8 @@
 <details class="fold">
   <summary>社团活动{% if at %}<span class="chip">{{ at | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
   <div class="fold-body">
-    {% if at %}<ul>{% for a in at[:15] %}<li>{{ a.name or a.title or a }}</li>{% endfor %}</ul>
-    {% else %}<p class="muted">暂无活动报名记录。</p>{% endif %}
+    {% if at %}<div class="chip-cloud">{% for a in at[:30] %}<span class="chip">{{ a.name or a.title or a }}</span>{% endfor %}</div>
+    {% else %}<div class="callout mute"><span>暂无活动报名记录。</span></div>{% endif %}
   </div>
 </details>
 {% elif at and at.error %}<div class="note">社团活动不可用：{{ at.error }}</div>{% endif %}
@@ -327,12 +330,15 @@
 <details class="fold">
   <summary>贷款 / 勤工助学 / 海外交流<span class="chip">贷款 {{ ad.loans | length }} · 岗位 {{ ad.jobs | length }} · 交流 {{ (ad.outbound | length) + (ad.exchange | length) }}</span></summary>
   <div class="fold-body">
-    <ul>
-      <li>贷款援助记录：{{ ad.loans | length }} 条 · 贷款申请：{{ ad.loan_app | length }} 条 · 还款计划：{{ ad.repay | length }} 条</li>
-      <li>海外交流（Outbound）：{{ ad.outbound | length }} 条 · 交换项目申请：{{ ad.exchange | length }} 条</li>
-      <li>勤工助学岗位：{{ ad.jobs | length }} 个</li>
-    </ul>
-    {% if ad.claim_notice %}<p class="muted">工时申报：{{ ad.claim_notice }}</p>{% endif %}
+    <div class="stats">
+      <div class="stat"><div class="label">贷款援助</div><div class="value">{{ ad.loans | length }}<small> 条</small></div></div>
+      <div class="stat"><div class="label">贷款申请</div><div class="value">{{ ad.loan_app | length }}<small> 条</small></div></div>
+      <div class="stat"><div class="label">还款计划</div><div class="value">{{ ad.repay | length }}<small> 条</small></div></div>
+      <div class="stat"><div class="label">海外交流</div><div class="value">{{ ad.outbound | length }}<small> 条</small></div></div>
+      <div class="stat"><div class="label">交换申请</div><div class="value">{{ ad.exchange | length }}<small> 条</small></div></div>
+      <div class="stat"><div class="label">勤工助学</div><div class="value">{{ ad.jobs | length }}<small> 个</small></div></div>
+    </div>
+    {% if ad.claim_notice %}<div class="callout mute"><span>工时申报：{{ ad.claim_notice }}</span></div>{% endif %}
   </div>
 </details>
 {% elif ad and ad.error %}<div class="note">资助信息不可用：{{ ad.error }}</div>{% endif %}

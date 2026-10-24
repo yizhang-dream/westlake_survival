@@ -83,9 +83,14 @@
 
   /* 顶部导航：门户深墨底 + 品牌橙强调条 */
   header.topbar {
-    background: var(--navbar-bg); color: var(--navbar-text);
+    background: color-mix(in srgb, var(--navbar-bg) 66%, transparent);
+    color: var(--navbar-text);
     position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 1px 0 rgba(238,120,35,.35), 0 4px 20px rgba(0,0,0,.18);
+    backdrop-filter: blur(18px) saturate(1.8) brightness(1.06);
+    -webkit-backdrop-filter: blur(18px) saturate(1.8) brightness(1.06);
+    border-bottom: 1px solid rgba(255,255,255,.16);
+    box-shadow: 0 1px 0 rgba(238,120,35,.4), 0 6px 26px rgba(0,0,0,.28),
+                inset 0 1px 0 rgba(255,255,255,.12);
   }
   .topbar .wrap {
     max-width: 1100px; margin: 0 auto; padding: .5rem 1.6rem;
@@ -203,6 +208,9 @@
     font-weight: 600;
   }
   .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.ok { background: rgba(26,158,92,.14); color: #178a52; }
+  .chip.star { background: var(--accent); color: #fff; }
+  .chip.outlink { border: 1px solid color-mix(in srgb, var(--link) 45%, transparent); color: var(--link); }
   .note {
     background: var(--warn-soft); color: var(--warn); border: 1px solid var(--line);
     border-left: 4px solid var(--accent);
@@ -272,9 +280,15 @@
   .stat .value { font-size: 1.18rem; font-weight: 700; margin-top: .12rem; color: var(--heading); }
   .stat .value small { font-size: .78rem; font-weight: 600; color: var(--muted); }
   .anchor-nav {
-    position: sticky; top: var(--topbar-h, 47px); z-index: 90; display: flex; flex-wrap: wrap; gap: .4rem;
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    padding: .5rem .6rem; margin: 0 0 1.2rem; box-shadow: 0 4px 14px var(--shadow);
+    position: sticky; top: calc(var(--topbar-h, 47px) + 8px); z-index: 90;
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    background: color-mix(in srgb, var(--card) 52%, transparent);
+    backdrop-filter: blur(18px) saturate(1.9);
+    -webkit-backdrop-filter: blur(18px) saturate(1.9);
+    border: 1px solid rgba(255,255,255,.65);
+    border-radius: 14px;
+    padding: .5rem .6rem; margin: 0 0 1.2rem;
+    box-shadow: 0 8px 26px var(--shadow), inset 0 1px 0 rgba(255,255,255,.75);
   }
   .anchor-nav a {
     font-size: .84rem; font-weight: 600; color: var(--muted); text-decoration: none;
@@ -286,6 +300,9 @@
   details.fold {
     background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
     padding: 0; margin: .55rem 0; overflow: hidden;
+  }
+  [data-theme="dark"] details.fold {
+    background: color-mix(in srgb, var(--surface-2) 92%, #fff); /* 暗色下折叠条提亮一档，与页面底拉开 */
   }
   details.fold > summary {
     list-style: none; cursor: pointer; display: flex; align-items: center; gap: .55rem;
@@ -308,6 +325,50 @@
   .term-cards .sub { font-size: .82rem; color: var(--muted); margin-top: .15rem; font-weight: 600; }
   td .rep { visibility: hidden; }
   #grade-table tr.grp td { border-top: 2px solid var(--line); }
+  td .chip { white-space: nowrap; }
+
+  /* —— 提示组件 callout：替代裸文字段落 —— */
+  .callout {
+    display: flex; gap: .65rem; align-items: flex-start;
+    background: var(--accent-soft); border-radius: 12px;
+    padding: .7rem .95rem; font-size: .88rem; color: var(--ink);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    margin: .3rem 0 .8rem;
+  }
+  .callout::before {
+    content: ''; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); margin-top: .4rem; flex-shrink: 0;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  .callout.warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
+  .callout.warn::before { background: var(--warn); }
+  .callout.mute { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
+  .callout.mute::before { background: var(--muted); animation: none; }
+  .callout > span { flex: 1; min-width: 0; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+    50% { box-shadow: 0 0 0 6px transparent; }
+  }
+
+  /* —— 徽标云：长名单不入裸串 —— */
+  .chip-cloud { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .chip-cloud .chip { transition: all .18s var(--ease-spring); cursor: default; }
+  .chip-cloud .chip:hover { transform: translateY(-3px); box-shadow: 0 5px 12px var(--shadow); border-color: var(--accent); }
+
+  /* —— 折叠块展开动画 —— */
+  @keyframes unfold {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  details.fold[open] > .fold-body { animation: unfold .3s var(--ease-spring) both; }
+
+  /* —— 分区入场（配合 .reveal + JS IntersectionObserver）—— */
+  .reveal { opacity: 0; transform: translateY(14px); }
+  .reveal.in { opacity: 1; transform: none; transition: opacity .5s ease, transform .5s var(--ease-spring); }
+
+  /* —— 数字滚动值 —— */
+  .stat .value[data-count] { font-variant-numeric: tabular-nums; }
+  .stat .value small { font-size: .74rem; font-weight: 600; color: var(--muted); margin-left: .1rem; }
 
   hr { border: none; border-top: 2px dashed var(--line); margin: 1.6rem 0; }
   @media (max-width: 720px) {
@@ -389,6 +450,36 @@
   })();
 </script>
   {% block scripts %}{% endblock %}
+  <script>
+    // 分区入场动效 + 数字滚动（页面元素打 .reveal / data-count 标记即生效）
+    (function () {
+      if ('IntersectionObserver' in window) {
+        var ro = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('in'); ro.unobserve(e.target); }
+          });
+        }, { rootMargin: '0px 0px -8% 0px' });
+        document.querySelectorAll('.reveal').forEach(function (el) { ro.observe(el); });
+      } else {
+        document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+      }
+      document.querySelectorAll('[data-count]').forEach(function (el) {
+        var target = parseFloat(el.getAttribute('data-count'));
+        if (isNaN(target)) return;
+        var decimals = (String(el.getAttribute('data-count')).split('.')[1] || '').length;
+        var start = null, dur = 650;
+        function frame(ts) {
+          if (!start) start = ts;
+          var p = Math.min((ts - start) / dur, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = (target * eased).toFixed(decimals);
+          if (p < 1) requestAnimationFrame(frame);
+          else el.textContent = target.toFixed(decimals);
+        }
+        requestAnimationFrame(frame);
+      });
+    })();
+  </script>
   <script>
     // 顶栏实际高度（换行后可能两行）写进 CSS 变量，供吸顶导航 offset 用
     (function () {
