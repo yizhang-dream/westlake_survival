@@ -52,7 +52,8 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`（OPAC 服务端当前 404，可能不可用） |
 | 服务是否可达（选课/OPAC/打印/token） | `westlake probe
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
-# 前端外观参考 xiuyuliang.cn：暖纸底 + 白色内容卡 + 细边框 + 明暗切换（右上按钮，存 localStorage）` |
+# 前端配色取自西湖大学官网实测（品牌橙 #ee7823 / 门户蓝 #0d5fbd / 门户深墨 #171725 导航）
+# + 明暗切换（右上按钮，存 localStorage）+ 弹性缓动动效（spring cubic-bezier）` |
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
 | 前端接口有哪些、返回什么 | `/capabilities` 页底部「HTTP 接口」区（含实时样例） |
 | 一步打开全部功能 | `westlake go`（启动 WebUI 并自动开浏览器，用户唯一要记的命令） |
@@ -129,7 +130,8 @@ westlake map poi 图书馆                        # 离线查楼宇/设施（随
 westlake pms stations
 westlake probe
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
-# 前端外观参考 xiuyuliang.cn：暖纸底 + 白色内容卡 + 细边框 + 明暗切换（右上按钮，存 localStorage）
+# 前端配色取自西湖大学官网实测（品牌橙 #ee7823 / 门户蓝 #0d5fbd / 门户深墨 #171725 导航）
+# + 明暗切换（右上按钮，存 localStorage）+ 弹性缓动动效（spring cubic-bezier）
 westlake cache clear --module events
 ```
 

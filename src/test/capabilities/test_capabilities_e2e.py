@@ -130,7 +130,7 @@ def test_all_pages_share_the_new_shell(server: str) -> None:
         assert 'id="themeToggle"' in html, path
         assert 'data-theme="light"' in html, path
         assert "wrap sheet" in html, path
-        assert "--bg: #f4f2ed" in html, path
+        assert "--bg: #f7f6f3" in html, path  # 西湖品牌配色版
 
 
 def test_capabilities_page_documents_http_endpoints(server: str) -> None:
