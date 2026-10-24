@@ -744,7 +744,8 @@ def sso_browser(target: str = "cnki", *, headless: bool = False,
     merged = 0
     with _browser() as playwright:
         context = playwright.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=headless, viewport={"width": 1280, "height": 860}
+            str(PROFILE_DIR), headless=headless, viewport={"width": 1280, "height": 860},
+            args=["--disable-features=PasswordSavingOnSignIn,PasswordManagerEnabled"],
         )
         page = context.pages[0] if context.pages else context.new_page()
         try:
