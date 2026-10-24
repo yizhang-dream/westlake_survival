@@ -309,6 +309,9 @@ SNOWBALL_SEEDS = (
     "https://remotework.westlake.edu.cn/portal/",
     "https://zh-ugadmissions.westlake.edu.cn/",
     "https://info.westlake.edu.cn/",
+    "https://facilities.westlake.edu.cn/",
+    "https://iscms.westlake.edu.cn/",
+    "https://iscps.westlake.edu.cn/",
 )
 
 
