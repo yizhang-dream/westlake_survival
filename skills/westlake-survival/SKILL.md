@@ -50,6 +50,11 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 招聘岗位（网页） | WebUI `/careers` |
 | 打印网点 / 我的打印任务 | `westlake pms stations` / `jobs` |
 | 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`（OPAC 服务端当前 404，可能不可用） |
+| 学术数据库清单与访问通道 | `westlake scholar dbs [-k 关键词]`，网页 `/scholar` |
+| 某篇论文（DOI）的题录/PDF | `westlake scholar doi <doi> [-o out.pdf]`（校园网内走订阅通道直下） |
+| 当前 IP 能否直连订阅库 | `westlake scholar campus`（信标探测，缓存 30 分钟） |
+| CARSI 联盟资源目录（356 个） | `westlake scholar carsi [关键词] [--refresh]` |
+| 校外登录某数据库（CARSI/统一密码） | `westlake scholar sso cnki`（浏览器一次，验证码本人输）；`status` 查会话 |
 | 服务是否可达（选课/OPAC/打印/token） | `westlake probe
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
 # 前端配色取自西湖大学官网实测（品牌橙 #ee7823 / 门户蓝 #0d5fbd / 门户深墨 #171725 导航）
@@ -78,7 +83,8 @@ Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
 - **Canvas 类**（`canvas`）：优先令牌（`WESTLAKE_CANVAS_TOKEN` 或 `~/.westlake_survival/canvas_token.txt` 首行）；**无令牌时自动回退统一认证**（IAM CAS 会话，2026-10-24 实测 REST API 认会话 Cookie）——配好教务统一密码即可用 Canvas，无需任何令牌。
 - **电子地图类**：无账号。`/map` 只放官网公开内容（校区地图图片 + 720° 全景链接 + 交通），按用户裁定 2026-10-24 已移除账号与数据集抓取体系。
-- **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`。
+- **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`，以及 `scholar dbs|campus|doi|carsi`（学术库注册表、校园 IP 信标、DOI 解析、CARSI 目录——后两者离线也查得到快照，PDF 下载需校园网/VPN 或 OA 副本）。
+- **学术资源（2026-10-24 实测）**：本校是 CARSI 联盟成员（`idp.westlake.edu.cn` Shibboleth IdP），统一密码可登录各出版社；校园网内出版社按 IP 认账（ScienceDirect 实测自动认证、Springer PDF 直下实测 200）。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url（校园 IP 订阅通道）」两级取全文；校外先 `scholar sso <库>` 建立联盟会话（Playwright profile 持久化，IAM 若弹图形验证码由本人在窗口输入一次）。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
 
 ## 常用命令速查表
@@ -206,7 +212,7 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 18 个工具（`sis_schedule` / `sis_grades` / `sis_exams` / `sis_evals_pending` / `calendar_today` / `calendar_week` / `transit_next` / `news_latest` / `events_upcoming` / `research_latest` / `site_search` / `faculty_search` / `campus_dining` / `campus_housing` / `contact_info` / `context_snapshot` / `canvas_deadlines` / `canvas_submit`）。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 34 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业 `canvas_deadlines`/`canvas_submit`）。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}
