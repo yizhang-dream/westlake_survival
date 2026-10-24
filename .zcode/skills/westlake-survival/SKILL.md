@@ -55,7 +55,8 @@ description: 查询西湖大学校园信息：课表/成绩/考试/评教、Canv
 | 某篇论文（DOI）的题录/PDF | `westlake scholar doi <doi> [-o out.pdf]`（校园网内走订阅通道直下） |
 | 当前 IP 能否直连订阅库 | `westlake scholar campus`（信标探测，缓存 30 分钟） |
 | CARSI 联盟资源目录（356 个） | `westlake scholar carsi [关键词] [--refresh]` |
-| 校外登录某数据库（CARSI/统一密码） | `westlake scholar sso cnki`（浏览器一次，验证码本人输）；`status` 查会话 |
+| 校外登录某数据库（CARSI/统一密码） | `westlake scholar ensure`（Agent 主入口：会话活着零动作→验证码关时无头登录→必要时弹浏览器由本人输一次验证码；会话 cookie 全机共享）；`status` 查会话与验证码态 |
+| 让别的 Agent 一气呵成用学术资源 | `westlake scholar ensure` 一条命令拿共享会话（~/.westlake_survival/scholar_cookies.json），之后 `scholar doi … -o` 直接带订阅通道下载 |
 | 服务是否可达（选课/OPAC/打印/token） | `westlake probe` |
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
 | 前端接口有哪些、返回什么 | `/capabilities` 页底部「HTTP 接口」区（含实时样例） |

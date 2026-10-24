@@ -43,6 +43,8 @@ from westlake_survival.exceptions import AuthError, WestlakeError
 
 __all__ = [
     "IDP_ENTITY_ID",
+    "COOKIES_PATH",
+    "CaptchaRequired",
     "Database",
     "CampusStatus",
     "Paper",
@@ -52,8 +54,12 @@ __all__ = [
     "carsi_sso_entry",
     "resolve_doi",
     "fetch_pdf",
-    "sso_status",
+    "iam_captcha_required",
+    "sso_alive",
+    "carsi_login_requests",
     "sso_browser",
+    "sso_ensure",
+    "sso_status",
     "cli_group",
 ]
 
@@ -443,7 +449,7 @@ def fetch_pdf(doi: str, out: str | Path | None = None, *, paper: Paper | None = 
     信息里带人工兜底链接。
     """
     paper = paper or resolve_doi(doi, with_pdf_url=True)
-    session = _direct_session()
+    session, _cookies = _load_cookie_session()  # 带上 CARSI 会话（有则免费加成）
     candidates: list[tuple[str, str]] = []
     if paper.oa_pdf_url:
         candidates.append(("OA 副本", paper.oa_pdf_url))
@@ -475,8 +481,222 @@ def fetch_pdf(doi: str, out: str | Path | None = None, *, paper: Paper | None = 
 
 
 # --------------------------------------------------------------------------- #
-# CARSI SSO（Playwright 持久化会话，taskcenter 同套路）
+# CARSI SSO：三级通道（会话复用 → requests 直登 → 浏览器兜底一次验证码）
+#
+# 2026-10-24 米格尔街复爬实测教训：
+# * IAM 失败计数态（图形验证码强制）**持续 14h+ 且成功登录不复位**——期间
+#   一切无头密码登录（requests/headless）都收 4333；
+# * 验证码态下对 authExecute 的任何试错都会**续期**该状态——所以本模块在
+#   登录前必用 ``verifyCodeIsNeed``（只读查询）探测，验证码开着就绝不提交；
+# * 一次性会话是最大浪费：登录成功后必须把 IdP/SP cookie 落盘共享
+#   （``~/.westlake_survival/scholar_cookies.json``），别的 Agent 与 requests
+#   流程直接复用，并在每次 ensure 时 touch 保活。
 # --------------------------------------------------------------------------- #
+COOKIES_PATH = Path.home() / ".westlake_survival" / "scholar_cookies.json"
+
+_IDENTITY_HOSTS = ("idp.westlake.edu.cn", "iam.westlake.edu.cn", "Shibboleth.sso")
+
+
+def _left_identity_layer(url: str) -> bool:
+    return not any(h in url for h in _IDENTITY_HOSTS)
+
+
+class CaptchaRequired(WestlakeError):
+    """IAM 当前要求图形验证码，无头登录不可行（浏览器人工输一次可解）。"""
+
+
+def _idp_lck(entry_url: str, session=None):
+    """走 SP 入口到 IAM 登录上下文，返回 ``(lck, entityId, session)``。
+
+    链路（2026-10-24 实测）：SP Shibboleth.sso/Login → IdP SSO 会话中转表单
+    （``_eventId_proceed``）POST → ``iam/ac/#/index?lck=context_CAS_…&entityId=
+    https://idp.westlake.edu.cn``。
+    """
+    session = session if session is not None else _direct_session()
+    r = session.get(entry_url, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
+    for action, fields in _forms_of(r.text):
+        if "shib_idp_ls_supported" in fields or "_eventId_proceed" in fields:
+            fields["_eventId_proceed"] = ""
+            r = session.post(urljoin(r.url, action), data=fields, timeout=DEFAULT_TIMEOUT)
+            break
+    text = f"{r.url} {r.text[:4000]}"
+    match = re.search(r"lck=(context_[A-Za-z0-9_]+)&entityId=([^&\"'#\s]+)", text)
+    if not match:
+        raise WestlakeError("未从 IdP 跳转解析到 lck/entityId——入口结构可能变化")
+    return match.group(1), match.group(2), session
+
+
+def _forms_of(html: str):
+    """提取表单（action 与 value 均做 HTML 实体解码——SAML auto-POST 的
+    action 常含 ``&#x3a;`` 类实体，不解码会 POST 到坏 URL）。"""
+    from html import unescape
+
+    for m in re.finditer(r'<form[^>]*action="([^"]*)"[^>]*>(.*?)</form>', html, re.S | re.I):
+        fields: dict[str, str] = {}
+        for tag in re.findall(r"<input[^>]*>", m.group(2)):
+            n = re.search(r'name="([^"]*)"', tag)
+            v = re.search(r'value="([^"]*)"', tag)
+            if n:
+                fields[unescape(n.group(1))] = unescape(v.group(1)) if v else ""
+        yield unescape(m.group(1)), fields
+
+
+def iam_captcha_required(target: str = "cnki") -> bool:
+    """只读探测 IAM 当前是否强制图形验证码（不发登录请求、不增失败计数）。"""
+    from westlake_survival.sso import read_credentials
+
+    sid, _password = read_credentials()
+    _lck, entity_id, session = _idp_lck(carsi_sso_entry(target))
+    response = session.post(
+        f"https://iam.westlake.edu.cn/idp/authn/verifyCodeIsNeed",
+        json={"lang": "zh_CN", "loginName": sid,
+              "chainCode": "01d07b133a7484ffeda934bef8baed08",
+              "authModuleCode": "userAndPwd"},
+        headers={"Referer": "https://iam.westlake.edu.cn/ac/",
+                 "X-Requested-With": "XMLHttpRequest"},
+        timeout=DEFAULT_TIMEOUT,
+    )
+    try:
+        return bool(response.json().get("result"))
+    except ValueError:
+        raise WestlakeError("verifyCodeIsNeed 返回非 JSON——IAM 接口可能变化")
+
+
+def _save_cookie_jar(session) -> int:
+    """把 IdP/SP 会话 cookie 落盘共享（别的 Agent 与 requests 流程复用）。
+
+    不按域过滤：SP 会话（fsso.cnki.net、kns.cnki.net 等）与 IdP 会话同样
+    值钱——这个 session 本来就只用于学术资源流程。
+    """
+    jar = [
+        {"name": c.name, "value": c.value, "domain": c.domain, "path": c.path,
+         "expires": c.expires}
+        for c in session.cookies
+    ]
+    COOKIES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    COOKIES_PATH.write_text(json.dumps({"ts": time.time(), "cookies": jar},
+                                       ensure_ascii=False), encoding="utf-8")
+    return len(jar)
+
+
+def _load_cookie_session():
+    """从 jar 建 requests 会话（无 jar 返回全新直连会话）。"""
+    session = _direct_session()
+    if not COOKIES_PATH.exists():
+        return session, 0
+    try:
+        payload = json.loads(COOKIES_PATH.read_text(encoding="utf-8"))
+    except ValueError:
+        return session, 0
+    from http.cookiejar import Cookie as _Cookie
+    count = 0
+    for item in payload.get("cookies") or []:
+        # Playwright 对会话 cookie 给 expires=-1；cookiejar 会把 <=0 当作
+        # 「1970 前已过期」而不发送——必须归一为 None（会话 cookie）
+        expires = item.get("expires") or None
+        if expires is not None and expires <= 0:
+            expires = None
+        try:
+            session.cookies.set_cookie(_Cookie(
+                version=0, name=item["name"], value=item["value"],
+                port=None, port_specified=False,
+                domain=item["domain"], domain_specified=True, domain_initial_dot=False,
+                path=item.get("path") or "/", path_specified=True,
+                secure=True, expires=expires,
+                discard=expires is None, comment=None, comment_url=None,
+                rest={}, rfc2109=False,
+            ))
+            count += 1
+        except Exception:
+            continue
+    return session, count
+
+
+def sso_alive(target: str = "cnki") -> dict:
+    """requests 探测 CARSI 会话是否有效（带 cookie jar，不发登录请求）。
+
+    命中身份层域名 = 会话失效。该探测本身会 touch IdP/SP 会话（保活作用）。
+    """
+    session, loaded = _load_cookie_session()
+    entry = carsi_sso_entry(target)
+    try:
+        r = session.get(entry, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
+        # IdP 断言回跳可能是 auto-POST 表单，跟完最多 4 跳
+        for _ in range(4):
+            if _left_identity_layer(str(r.url)):
+                break
+            posted = False
+            for action, fields in _forms_of(r.text):
+                if "SAMLResponse" in fields or "_eventId_proceed" in fields:
+                    r = session.post(urljoin(r.url, action), data=fields,
+                                     timeout=DEFAULT_TIMEOUT)
+                    posted = True
+                    break
+            if posted:
+                continue
+            break
+        alive = _left_identity_layer(str(r.url))
+        return {"logged_in": alive, "final_url": str(r.url)[:160], "cookies_loaded": loaded,
+                "detail": "会话有效（IdP 已静默放行）" if alive
+                else "会话失效或未建立（westlake scholar ensure）"}
+    except Exception as exc:
+        return {"logged_in": False, "final_url": "", "cookies_loaded": loaded,
+                "detail": f"探测失败：{exc.__class__.__name__}"}
+
+
+def carsi_login_requests(target: str = "cnki", return_url: str | None = None) -> dict:
+    """无头 requests 版 CARSI 联盟登录（验证码关闭时零人工）。
+
+    验证码强制时抛 :class:`CaptchaRequired`——**绝不提交 authExecute**
+    （试错会给失败计数续期，把验证码态越锁越长）。
+    """
+    from westlake_survival.iam import _auth_chain, _run_engine
+    from westlake_survival.sso import read_credentials
+
+    sid, password = read_credentials()
+    entry = carsi_sso_entry(target, return_url)
+    lck, entity_id, session = _idp_lck(entry)
+    need = session.post(
+        f"https://iam.westlake.edu.cn/idp/authn/verifyCodeIsNeed",
+        json={"lang": "zh_CN", "loginName": sid,
+              "chainCode": "01d07b133a7484ffeda934bef8baed08",
+              "authModuleCode": "userAndPwd"},
+        headers={"Referer": "https://iam.westlake.edu.cn/ac/",
+                 "X-Requested-With": "XMLHttpRequest"},
+        timeout=DEFAULT_TIMEOUT,
+    ).json()
+    if need.get("result"):
+        raise CaptchaRequired(
+            "IAM 当前强制图形验证码（失败计数态，可持续一天且成功登录也不复位）："
+            "自动登录会加重它。请 westlake scholar ensure（开浏览器由本人输一次验证码）"
+        )
+    token = _auth_chain(session, lck, entity_id, sid, password)
+    engine = _run_engine(session, token)
+    target_url = engine.headers.get("Location", "")
+    r = session.get(target_url, timeout=DEFAULT_TIMEOUT, allow_redirects=True) \
+        if target_url else engine
+    # 引擎回到 IdP 后是 SAML auto-POST 链，跟到离开身份层为止
+    for _ in range(6):
+        if _left_identity_layer(str(r.url)):
+            break
+        posted = False
+        for action, fields in _forms_of(r.text):
+            if "SAMLResponse" in fields or "_eventId_proceed" in fields:
+                fields["_eventId_proceed"] = ""
+                r = session.post(urljoin(r.url, action), data=fields,
+                                 timeout=DEFAULT_TIMEOUT)
+                posted = True
+                break
+        if not posted:
+            break
+    if not _left_identity_layer(str(r.url)):
+        raise WestlakeError(
+            f"requests 版 SSO 未落到数据库侧（停在 {str(r.url)[:100]}）——协议可能变化"
+        )
+    saved = _save_cookie_jar(session)
+    return {"final_url": str(r.url)[:160], "cookies_saved": saved}
+
+
 def _browser() -> "object":
     try:
         from playwright.sync_api import sync_playwright
@@ -492,20 +712,24 @@ def _iam_login_pending(page) -> bool:
     return page.locator('input[placeholder*="用户名/手机号/邮箱"]').count() > 0
 
 
-def _fill_iam_login(page, sid: str, password: str) -> None:
-    """用统一凭据填 IAM 表单（验证码留给用户在可见窗口输入）。"""
-    page.fill('input[placeholder*="用户名/手机号/邮箱"]', sid)
-    page.fill('input[placeholder*="密码"]', password)
-    page.locator('span:has-text("立即登录")').first.click(force=True)
+_BANNER_JS = """
+(() => {
+  document.querySelectorAll('#wl-banner').forEach(e=>e.remove());
+  const d=document.createElement('div'); d.id='wl-banner';
+  d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#ee7823;color:#fff;padding:10px 16px;font:16px/1.5 sans-serif;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+  d.textContent='已自动填好账号密码 → 请输入图形验证码并点「立即登录」，成功后本窗口自动关闭。';
+  document.body.appendChild(d);
+})()
+"""
 
 
 def sso_browser(target: str = "cnki", *, headless: bool = False,
-                return_url: str | None = None, timeout_ms: int = 180000) -> str:
-    """打开浏览器走一次 CARSI 联盟登录，落回数据库后返回最终 URL。
+                return_url: str | None = None, timeout_ms: int = 180000) -> dict:
+    """浏览器走一次 CARSI 登录（验证码态的唯一通道），成功后导出 cookie jar。
 
-    首次（或 IdP 会话失效）：自动填统一凭据；如 IAM 弹图形验证码，**由用户
-    在窗口里输入**（不代解验证码）。会话持久化在 ``~/.westlake_survival/
-    scholar_profile``，之后 ``sso_status``/headless 复用无需再登录。
+    自动填账号密码 + 顶部横幅提示；验证码由本人输一次；成功即把 profile 里
+    的 IdP/SP cookie 合并进 ``scholar_cookies.json``，requests 流程与其他
+    Agent 直接复用（不再需要浏览器）。
     """
     from westlake_survival.sso import read_credentials
 
@@ -516,6 +740,8 @@ def sso_browser(target: str = "cnki", *, headless: bool = False,
 
     entry = carsi_sso_entry(target, return_url)
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    landing = ""
+    merged = 0
     with _browser() as playwright:
         context = playwright.chromium.launch_persistent_context(
             str(PROFILE_DIR), headless=headless, viewport={"width": 1280, "height": 860}
@@ -528,44 +754,101 @@ def sso_browser(target: str = "cnki", *, headless: bool = False,
             while time.time() < deadline:
                 page.wait_for_timeout(2000)
                 url = str(page.url)
-                if "iam.westlake.edu.cn" in url and _iam_login_pending(page) and not filled:
-                    _fill_iam_login(page, sid, password)
-                    filled = True  # 只填一次；验证码错回表单则交还给用户
-                    if not headless:
-                        print("已在 IAM 表单填入账号密码；若出现验证码请在窗口中输入。")
-                if "idp.westlake.edu.cn" not in url and "iam.westlake.edu.cn" not in url \
-                        and "Shibboleth.sso" not in url:
-                    return url  # 已离开身份层，落到数据库侧
-            raise WestlakeError(
-                f"SSO 在 {timeout_ms / 1000:.0f}s 内未完成——若弹了验证码请在浏览器窗口输入；"
-                "仍失败则检查统一密码或数据库入口结构是否变化"
-            )
+                if "iam.westlake.edu.cn" in url:
+                    if _iam_login_pending(page) and not filled:
+                        page.fill('input[placeholder*="用户名/手机号/邮箱"]', sid)
+                        page.fill('input[placeholder*="密码"]', password)
+                        filled = True  # 只填提交一次；验证码错回表单交还本人
+                        if not headless:
+                            try:
+                                page.evaluate(_BANNER_JS)
+                            except Exception:
+                                pass
+                            print("已在 IAM 表单填入账号密码；请在窗口输入验证码并登录。")
+                elif _left_identity_layer(url):
+                    landing = url
+                    break
+            if not landing:
+                raise WestlakeError(
+                    f"SSO 在 {timeout_ms / 1000:.0f}s 内未完成——若窗口有验证码请输入；"
+                    "仍失败则检查统一密码或入口结构变化"
+                )
+            # 导出浏览器会话 cookie 供 requests/其他 Agent 复用
+            # （全量：IdP/IAM + 落到的 SP 及其后续域，如 kns.cnki.net）
+            jar = [
+                {"name": c["name"], "value": c["value"], "domain": c["domain"],
+                 "path": c.get("path") or "/", "expires": c.get("expires", -1)}
+                for c in context.cookies()
+            ]
+            merged = _merge_cookie_jar(jar)
         finally:
             context.close()
+    return {"final_url": landing, "cookies_merged": merged}
+
+
+def _merge_cookie_jar(jar: list[dict]) -> int:
+    """把浏览器导出的 cookie 并入共享 jar（按 name+domain 去重）。"""
+    existing = {}
+    if COOKIES_PATH.exists():
+        try:
+            payload = json.loads(COOKIES_PATH.read_text(encoding="utf-8"))
+            for c in payload.get("cookies") or []:
+                existing[(c["name"], c["domain"])] = c
+        except ValueError:
+            pass
+    for c in jar:
+        existing[(c["name"], c["domain"])] = c
+    COOKIES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    COOKIES_PATH.write_text(
+        json.dumps({"ts": time.time(), "cookies": list(existing.values())},
+                   ensure_ascii=False), encoding="utf-8")
+    return len(existing)
+
+
+def sso_ensure(target: str = "cnki", *, allow_browser: bool = True,
+               timeout_ms: int = 180000) -> dict:
+    """一条命令拿到可用 CARSI 会话（给 Agent 的主入口）。
+
+    三级通道：①共享 cookie jar 会话仍活 → 直接用（并顺带保活）；
+    ②IAM 验证码未开 → 无头 requests 登录（零人工）；③开浏览器由本人输
+    一次验证码（唯一需要人的一步），成功后 cookie 共享给所有流程。
+    """
+    alive = sso_alive(target)
+    if alive["logged_in"]:
+        return {"path": "session", **alive}
+    captcha = iam_captcha_required(target)
+    if not captcha:
+        try:
+            result = carsi_login_requests(target)
+            return {"path": "requests", "logged_in": True, **result}
+        except CaptchaRequired:  # 探测与提交之间状态翻转（罕见）
+            pass
+        except WestlakeError:
+            if not allow_browser:
+                raise
+    if not allow_browser:
+        if captcha:
+            raise CaptchaRequired(
+                "IAM 验证码态开启且不允许弹浏览器：请 westlake scholar ensure"
+            )
+        raise WestlakeError("requests 登录失败且 --no-browser 已指定")
+    result = sso_browser(target, timeout_ms=timeout_ms)
+    return {"path": "browser", "logged_in": True, **result}
 
 
 def sso_status(target: str = "cnki") -> dict:
-    """headless 检查 CARSI 会话是否仍有效（不动凭据、不弹窗）。"""
-    entry = carsi_sso_entry(target)
-    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-    if not any(PROFILE_DIR.iterdir()):
-        return {"logged_in": False, "detail": "尚未做过首次登录（westlake scholar sso cnki）"}
-    with _browser() as playwright:
-        context = playwright.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=True, viewport={"width": 1280, "height": 860}
-        )
-        page = context.pages[0] if context.pages else context.new_page()
-        try:
-            page.goto(entry, wait_until="domcontentloaded", timeout=60000)
-            page.wait_for_timeout(6000)
-            url = str(page.url)
-            logged_in = ("idp.westlake.edu.cn" not in url
-                         and "iam.westlake.edu.cn" not in url
-                         and "Shibboleth.sso" not in url)
-            return {"logged_in": logged_in, "final_url": url[:160],
-                    "detail": "IdP 会话有效" if logged_in else "需要重新 SSO（westlake scholar sso）"}
-        finally:
-            context.close()
+    """CARSI 会话状态（requests 优先，无 jar 时报告验证码态）。"""
+    alive = sso_alive(target)
+    if alive.get("cookies_loaded"):
+        return alive
+    state = {"logged_in": False, "detail": alive["detail"]}
+    try:
+        state["captcha_required"] = iam_captcha_required(target)
+        if state["captcha_required"]:
+            state["detail"] += "；IAM 验证码态开启（ensure 将弹浏览器要本人输一次）"
+    except Exception:
+        pass
+    return state
 
 
 # --------------------------------------------------------------------------- #
@@ -653,23 +936,46 @@ def _cli():
         if len(sps) > 60:
             click.echo(f"  …（其余 {len(sps) - 60} 条请加关键词过滤）")
 
+    @group.command(name="ensure")
+    @click.argument("target", default="cnki")
+    @click.option("--no-browser", is_flag=True, help="禁止弹浏览器（验证码态时直接报错）")
+    @handle
+    def ensure_cmd(target: str, no_browser: bool) -> None:
+        """拿到可用 CARSI 会话（Agent 主入口）：复用→无头登录→浏览器兜底。"""
+        result = sso_ensure(target, allow_browser=not no_browser)
+        path_label = {"session": "复用已有会话（并保活）",
+                      "requests": "无头登录成功（验证码未开，零人工）",
+                      "browser": "浏览器登录成功（本人输了一次验证码）"}
+        click.echo(f"✅ {path_label.get(result.get('path'), result.get('path'))}")
+        if result.get("final_url"):
+            click.echo(f"  落点：{result['final_url']}")
+        if result.get("path") in ("requests", "browser"):
+            n = result.get("cookies_saved") or result.get("cookies_merged") or 0
+            click.echo(f"  共享 cookie：{n} 条已存 {COOKIES_PATH}（其他 Agent/requests 直接复用）")
+        else:
+            click.echo(f"  共享会话：{COOKIES_PATH}（本机所有 Agent 复用，ensure 顺带保活）")
+
     @group.command(name="sso")
     @click.argument("target", default="cnki")
     @handle
     def sso_cmd(target: str) -> None:
-        """浏览器走一次 CARSI 联盟登录（统一密码；验证码本人输入一次）。"""
-        url = sso_browser(target, headless=False)
-        click.echo(f"已登录并落到：{url}")
-        click.echo("会话已存入 ~/.westlake_survival/scholar_profile，后续 headless 复用。")
+        """同 ensure：拿到可用会话（会话活着就零动作，验证码态才弹浏览器）。"""
+        ensure_cmd.callback(target, False)
 
     @group.command(name="status")
+    @click.option("--captcha", is_flag=True, help="附带只读探测 IAM 验证码态")
     @handle
-    def status_cmd() -> None:
-        """CARSI SSO 会话是否仍有效（headless，不动凭据）。"""
+    def status_cmd(captcha: bool) -> None:
+        """CARSI 会话是否有效（requests 优先，不动凭据、不弹窗）。"""
         result = sso_status()
         click.echo(("✅ " if result["logged_in"] else "❌ ") + str(result["detail"]))
         if result.get("final_url"):
             click.echo(f"  落点：{result['final_url']}")
+        if result.get("captcha_required") is not None:
+            click.echo(f"  IAM 验证码态：{'开（无头登录被禁）' if result['captcha_required'] else '关'}")
+        if captcha and result.get("captcha_required") is None:
+            need = iam_captcha_required()
+            click.echo(f"  IAM 验证码态（实时）：{'开（无头登录被禁）' if need else '关'}")
 
     @group.command(name="open")
     @click.argument("target")
