@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import re
 import time
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import click
@@ -73,38 +72,64 @@ def _auth_code(xml_text: str) -> tuple[str, str]:
 
 
 def status() -> dict:
-    """VPN 会话状态：conf.csp 非 20026 即活。"""
+    """VPN 会话状态：``update_session.csp?twfid=`` 回 success 即活。
+
+    2026-10-25 实测校准：conf.csp 的 "unexpected user service"（20026）
+    登录后依旧如此，不能当存活信号；update_session 才是权威判据。
+    """
     try:
-        r = _session().get(f"{VPN_URL}/por/conf.csp", timeout=8)
+        twfid = next((c["value"] for c in _load_cookies() if c.get("name") == "TWFID"), "")
+        if not twfid:
+            return {"logged_in": False, "code": "no-session", "message": "未登录（先在网页 /vpn 登录）"}
+        r = _session().get(f"{VPN_URL}/por/update_session.csp?twfid={twfid}", timeout=8)
         code, msg = _auth_code(r.text)
-        return {"logged_in": code not in ("20026", "?"), "code": code, "message": msg}
+        ok = "success" in (r.text or "") or code == "1"
+        return {"logged_in": ok, "code": code, "message": msg or ("success" if ok else "会话失效")}
     except Exception as exc:  # noqa: BLE001 - 状态查询失败也算一种状态
         return {"logged_in": False, "code": "", "message": f"{exc.__class__.__name__}: {exc}"[:120]}
 
 
 def resources() -> list[dict]:
-    """VPN 里发布的内网资源列表（需已登录）。"""
-    r = _session().get(f"{VPN_URL}/por/rclist.csp", timeout=10)
-    code, msg = _auth_code(r.text)
-    if code == "20026":
-        raise WestlakeError("VPN 会话失效：请在网页 /vpn 重新登录")
-    rows: list[dict] = []
+    """VPN 当前发布的内网资源 = 隧道推送的主机路由（深信服客户端在线时）。
+
+    2026-10-25 实测：``/por/rclist.csp`` 登录后也回 "unexpected user
+    service"（假阴性，不能当资源接口）；EasyConnect 隧道建立后系统路由
+    表会出现经 Sangfor 虚拟网卡（下一跳 172.20.*）的 /32 主机路由——
+    那才是本账号真实拿到的资源清单。Windows 下用 PowerShell 读。
+    """
+    import subprocess
+
+    ps = (
+        "Get-NetRoute -AddressFamily IPv4 | Where-Object "
+        "{$_.NextHop -like '172.20.*'} | Select-Object DestinationPrefix,NextHop "
+        "| ConvertTo-Json -Compress"
+    )
     try:
-        root = ET.fromstring(re.sub(r"&(?!\w+;)", "&amp;", r.text))
-    except ET.ParseError as exc:
-        raise WestlakeError(f"资源列表解析失败（{exc}）") from exc
-    for row in root.iter():
-        if (row.tag or "").lower() not in ("row", "rc", "resource"):
-            continue
-        fields = {c.tag.lower(): (c.text or "").strip() for c in row if c.text and c.text.strip()}
-        if not fields:
-            continue
-        rows.append({
-            "title": fields.get("name") or fields.get("resname") or fields.get("title") or "",
-            "url": fields.get("uri") or fields.get("url") or fields.get("link") or "",
-            "raw": fields,
-        })
-    return rows
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps],
+            capture_output=True, text=True, timeout=15,
+        ).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        out = ""
+    rows: list[dict] = []
+    if out:
+        import json as _json
+
+        try:
+            data = _json.loads(out)
+            data = data if isinstance(data, list) else [data]
+        except ValueError:
+            data = []
+        for item in data:
+            prefix = str(item.get("DestinationPrefix") or "")
+            if "/" not in prefix:
+                continue
+            rows.append({
+                "title": prefix,
+                "url": f"http://{prefix.split('/')[0]}/",
+                "raw": {"nexthop": item.get("NextHop")},
+            })
+    return sorted(rows, key=lambda r: r["title"])
 
 
 def open_login(wait_seconds: int = 300) -> dict:
@@ -124,18 +149,40 @@ def open_login(wait_seconds: int = 300) -> dict:
             str(PROFILE_DIR), headless=False, viewport={"width": 1180, "height": 800})
         page = context.pages[0] if context.pages else context.new_page()
         try:
-            page.goto(f"{VPN_URL}/portal", timeout=60_000)
+            try:
+                page.goto(f"{VPN_URL}/portal", timeout=90_000, wait_until="domcontentloaded")
+            except Exception:  # noqa: BLE001 - 门户慢加载不致命，页面在即可
+                pass
             deadline = time.monotonic() + wait_seconds
             while time.monotonic() < deadline:
                 time.sleep(3)
-                try:
+                body = ""
+                try:  # 双路探测：request API 与页面内 fetch 各试一次
                     probe = context.request.get(f"{VPN_URL}/por/conf.csp",
                                                 headers={"Referer": f"{VPN_URL}/portal/"})
-                    if "20026" not in (probe.text() or ""):
-                        result = {"ok": True, "message": "登录成功，会话已导出"}
-                        break
-                except Exception:  # noqa: BLE001 - 探测失败继续等
+                    body = probe.text() or ""
+                except Exception:  # noqa: BLE001
                     pass
+                if "20026" in body:
+                    try:
+                        body = page.evaluate(
+                            "fetch('/por/conf.csp',{credentials:'include'})"
+                            ".then(function(r){return r.text()})")
+                    except Exception:  # noqa: BLE001
+                        body = ""
+                if body and "20026" not in body:
+                    try:  # 成功横幅：让本人看到再关窗
+                        page.evaluate(
+                            "var d=document.createElement('div');d.style.cssText="
+                            "'position:fixed;top:0;left:0;right:0;z-index:99999;background:#2e7d32;"
+                            "color:#fff;padding:14px;font-size:16px;text-align:center;font-family:sans-serif';"
+                            "d.textContent='✅ 登录成功，会话已保存，本窗口 5 秒后自动关闭';"
+                            "document.body.appendChild(d);")
+                    except Exception:  # noqa: BLE001
+                        pass
+                    time.sleep(5)
+                    result = {"ok": True, "message": "登录成功，会话已导出"}
+                    break
             if not result["ok"]:
                 result = {"ok": False, "message": f"等待 {wait_seconds}s 未见登录成功（可重跑）"}
             cookies = context.cookies(VPN_URL)

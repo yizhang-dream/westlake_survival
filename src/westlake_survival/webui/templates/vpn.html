@@ -16,8 +16,8 @@
   </div>
   <div class="card reveal">
     <div class="card-head"><h2 class="section">为什么需要它</h2></div>
-    <div class="callout"><span>HPC 成果库（论文/专利/软件著作权）在 <code>172.16.75.35:8007</code>，只对 VPN/特定网段开放——校园 WiFi 直连被防火墙静默丢包（对照实验：eer.lab / OPAC / psc_yy 全通，唯独这台全端口 DROP）。登录 VPN 后源地址进入 VPN 地址池，即可达。</span></div>
-    <p style="margin-top:.6rem">登录后此页会列出 VPN 里发布的全部内网资源。</p>
+    <div class="callout"><span>HPC 成果库（论文/专利/软件著作权）在 <code>172.16.75.35:8007</code>，只对特定网段开放。2026-10-25 实测结论：校园 WiFi 直连被防火墙丢弃、VPN 隧道虽通但该主机<strong>未发布给学生账号</strong>（仅发布 .31/.69/.72/.200 等 7 台）——需学校侧发布或加公网反代才能接通。</span></div>
+    <p style="margin-top:.6rem">登录后此页列出隧道实际推送的内网主机路由（来自系统路由表）。</p>
   </div>
 </div>
 

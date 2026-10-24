@@ -1574,7 +1574,7 @@ def create_app() -> Flask:
 
         try:
             subprocess.Popen(
-                [sys.executable, "-m", "westlake_survival", "vpn", "login"],
+                [sys.executable, "-m", "westlake_survival", "vpn", "login", "--wait", "600"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
