@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import re as _re
 from datetime import date, datetime, time
 from enum import Enum
 from typing import Any
@@ -657,6 +658,27 @@ def _sis_context() -> dict:
 
         return importlib.import_module(f"westlake_survival.sis.{name}")
 
+    _TERM_ZH = {"Fall Term": "秋季学期", "Spring Term": "春季学期",
+                "Summer Term": "夏季学期", "Winter Term": "冬季学期"}
+
+    def _term_zh(term: str) -> str:
+        """学期名归一：会话语言漂移时英文 Term 与中文季混排，统一显示中文。"""
+        for en, zh in _TERM_ZH.items():
+            if en in str(term or ""):
+                return str(term).replace(en, zh)
+        return str(term or "")
+
+    def _clean_time(text: str) -> str:
+        """课表时间清洗：去秒位（08:00:00 → 08:00）。"""
+        return _re.sub(r"(\d{1,2}:\d{2}):\d{2}", "\\1", str(text or ""))
+
+    def _clean_room(text: str) -> str:
+        """地点清洗：逗号后补空格（E13-509,Yungu → E13-509, Yungu）。"""
+        out = str(text or "")
+        while ",," in out:
+            out = out.replace(",,", ",")
+        return out.replace(",", ", ")
+
     def _grades_with_stats():
         items = _sis_module("grades").grades()
         # GPA 估算：A=4.0 A-=3.7 B+=3.3 B=3.0 B-=2.7 C+=2.3 C=2.0 其余 0；仅统计有等级的课
@@ -673,7 +695,7 @@ def _sis_context() -> dict:
             except (TypeError, ValueError):
                 pass
             point = scale.get(grade)
-            term = g.term or "未知学期"
+            term = _term_zh(g.term) or "未知学期"
             bucket = by_term.setdefault(term, {"credits": 0.0, "points": 0.0, "count": 0})
             bucket["count"] += 1
             if point is not None and credits:
@@ -683,9 +705,21 @@ def _sis_context() -> dict:
                 total_points += point * credits
         for term, b in by_term.items():
             b["gpa"] = round(b["points"] / b["credits"], 2) if b["credits"] else None
+
+        def _term_order(term: str):
+            """学期时间序：学年起始年 + 季节序（秋→冬→春→夏）。"""
+            years = _re.findall(r"(\d{4})", str(term))
+            start_year = int(years[0]) if years else 0
+            season = next((rank for key, rank in
+                           (("秋季", 0), ("冬", 1), ("春", 2), ("夏", 3))
+                           if key in str(term)), 9)
+            return (start_year, season)
+
+        by_term = dict(sorted(by_term.items(), key=lambda kv: _term_order(kv[0])))
         return {
             "rows": [
-                {"term": g.term, "name": g.course_title, "grade": g.grade, "credits": g.credits}
+                {"term": _term_zh(g.term), "name": g.course_title,
+                 "grade": g.grade if str(g.grade or "").strip() else "—", "credits": g.credits}
                 for g in items
             ],
             "total_courses": len(items),
@@ -696,7 +730,7 @@ def _sis_context() -> dict:
             "gpa_estimated": round(total_points / total_credits, 2) if total_credits else None,
             "gpa_note": "按 A=4.0/A-=3.7/B+=3.3/B=3.0… 估算，非官方算法",
             "by_term": [
-                {"term": t, **b} for t, b in sorted(by_term.items())
+                {"term": t, **b} for t, b in by_term.items()  # 已按 _term_order 排好
             ],
         }
 
@@ -706,7 +740,7 @@ def _sis_context() -> dict:
         # 学业核心
         "schedule": lambda: [
             {"name": c.title, "teacher": c.teacher, "weekday": c.weekday,
-             "time": f"{c.start_time}-{c.end_time}", "location": c.room}
+             "time": _clean_time(f"{c.start_time}-{c.end_time}"), "location": _clean_room(c.room)}
             for c in _sis_module("client").get_schedule()
         ],
         "grades": _grades_with_stats,
@@ -716,7 +750,7 @@ def _sis_context() -> dict:
             for e in _sis_module("exams").exam_schedule()
         ],
         "evals": lambda: [
-            {"name": e.course_title, "term": e.term, "period": e.period_raw}
+            {"name": e.course_title, "term": _term_zh(e.term), "period": e.period_raw}
             for e in _sis_module("evals").pending_evaluations()
         ],
         # 学籍档案
@@ -808,20 +842,32 @@ def _canvas_context() -> dict:
 
 
 def _careers_context(keyword: str = "", category: str = "") -> dict:
-    """招聘页：岗位列表（公开数据）。"""
-    context: dict = {"rows": [], "error": None, "keyword": keyword, "category": category}
+    """招聘页：官网岗位 + 就业服务网三区块（公开数据）。"""
+    context: dict = {"rows": [], "error": None, "keyword": keyword, "category": category,
+                     "career_site": [], "career_site_error": None}
     module = _import_module("careers")
     if module is None or not hasattr(module, "positions"):
         context["error"] = "careers 模块不可用"
-        return context
-    try:
-        items = module.positions(category=category or None, keyword=keyword or None, limit=60)
-        context["rows"] = [
-            {"title": p.title, "department": p.department, "type": p.job_type, "url": p.url}
-            for p in items
-        ]
-    except Exception as exc:  # pragma: no cover
-        context["error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+    else:
+        try:
+            items = module.positions(category=category or None, keyword=keyword or None, limit=60)
+            context["rows"] = [
+                {"title": p.title, "department": p.department, "type": p.job_type, "url": p.url}
+                for p in items
+            ]
+        except Exception as exc:  # pragma: no cover
+            context["error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+    site = _import_module("careersite")
+    if site is not None and hasattr(site, "announcements"):
+        try:
+            context["career_site"] = [
+                {"kind": it.kind_label, "title": it.title, "date": it.date,
+                 "meta": " ".join(x for x in (it.status, it.time, it.venue) if x),
+                 "url": it.url}
+                for it in site.announcements(keyword=keyword or None)
+            ]
+        except Exception as exc:  # 就业网区块失败不拖垮官网岗位表
+            context["career_site_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
     return context
 
 
@@ -940,11 +986,21 @@ def _scholar_doi_context() -> dict:
 
 #: 服务注册表（2026-10-24 盘点；全部接入：mode=接入方式）。
 SERVICE_REGISTRY = (
+    ("2dmater", "二维材料与量子输运实验室", "入口卡+在线状态"),
+    ("aging-conference", "衰老生物学会议站（西湖×Cell Press）", "入口卡+在线状态"),
     ("ac", "无线控制器", "入口卡+在线状态"),
+    ("1x", "802.1x 网络认证（内网）", "状态卡（内网）"),
     ("alumni", "校友", "入口卡+在线状态"),
+    ("astro", "天文平台（SPA）", "入口卡+在线状态"),
+    ("audio", "李晓飞实验室", "入口卡+在线状态"),
     ("assets", "采购办公室", "入口卡+在线状态"),
+    ("bioinfo", "基因组学与生物信息学核心实验室", "入口卡+在线状态"),
     ("brcf", "生物医学实验技术中心", "入口卡+在线状态"),
     ("brcfen", "生物医学中心（英文）", "入口卡+在线状态"),
+    ("cap", "人工光合作用与太阳能燃料中心", "入口卡+在线状态"),
+    ("car", "智能交通平台（登录）", "入口卡+在线状态"),
+    ("career", "就业服务网（招聘公告/招聘会/宣讲会）", "内容页（三区块）"),
+    ("cbis", "CBIS（仅证书存在）", "状态卡"),
     ("chatbot", "门户 AI 助手后端", "入口卡+在线状态"),
     ("cms", "危化品管理系统", "入口卡+在线状态"),
     ("construction", "基本建设部", "入口卡+在线状态"),
@@ -952,6 +1008,7 @@ SERVICE_REGISTRY = (
     ("en", "英文主站", "入口卡+在线状态"),
     ("en-soe", "工学院英文站", "入口卡+在线状态"),
     ("energy", "能耗监控（第三方）", "入口卡+在线状态"),
+    ("eer.lab", "生态环境研究实验室（课题组站）", "入口卡+在线状态"),
     ("engineering", "工学院", "内容页（五院聚合）"),
     ("eniscps", "理化平台（英文）", "入口卡+在线状态"),
     ("exchange", "邮件（→heqdata）", "入口卡+在线状态"),
@@ -977,6 +1034,8 @@ SERVICE_REGISTRY = (
     ("medicine", "医学院", "内容页（五院聚合）"),
     ("my", "门户/办事大厅", "统一会话"),
     ("my-soe", "工学院信息管理系统", "入口卡+在线状态"),
+    ("mp", "微信平台后端（403）", "状态卡"),
+    ("pan", "校园网盘（登录）", "入口卡+在线状态"),
     ("mydisk", "个人网盘（内网）", "状态卡"),
     ("nanolab", "先进微纳加工与测试平台", "入口卡+在线状态"),
     ("oa", "办公自动化（→one）", "入口卡+在线状态"),
@@ -989,6 +1048,7 @@ SERVICE_REGISTRY = (
     ("osa", "学生事务部", "入口卡+在线状态"),
     ("payment", "支付（占位）", "状态卡"),
     ("procurement", "采购门户（CMS）", "入口卡+在线状态"),
+    ("report", "报表服务（Tomcat，404）", "状态卡"),
     ("qiushi", "求是西湖", "入口卡+在线状态"),
     ("remotework", "远程办公", "入口卡+在线状态"),
     ("science", "理学院", "内容页（五院聚合）"),
@@ -996,6 +1056,7 @@ SERVICE_REGISTRY = (
     ("share", "大型仪器共享管理系统", "入口卡+在线状态"),
     ("sls", "生命科学学院", "内容页（五院聚合）"),
     ("sso", "统一认证 CAS", "入口卡+在线状态"),
+    ("storage", "对象存储（403）", "状态卡"),
     ("supply", "采购管理系统（登录）", "入口卡+在线状态"),
     ("test", "智能DNS（基础设施）", "状态卡"),
     ("testrpm", "内部测试（内网）", "状态卡（内网）"),
@@ -1003,7 +1064,9 @@ SERVICE_REGISTRY = (
     ("ugadmission", "本科招生入口", "入口卡+在线状态"),
     ("ugadmissions", "本科招生网（英文）", "入口卡+在线状态"),
     ("ugapply", "本科申请系统", "入口卡+在线状态"),
+    ("visitor", "访客预约系统", "入口卡+在线状态"),
     ("webvpn", "WebVPN（内网）", "状态卡"),
+    ("webvpn2", "WebVPN 备用（内网）", "状态卡（内网）"),
     ("westlakefellows", "Westlake Fellows 项目", "入口卡+在线状态"),
     ("wudf", "发展基金会（捐赠）", "入口卡+在线状态"),
     ("www", "官网（新闻/讲座/教师/招聘/搜索）", "内容页"),
