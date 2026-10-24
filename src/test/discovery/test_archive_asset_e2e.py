@@ -25,7 +25,7 @@ def test_census_hosts_cover_sweep_batch_hits_offline() -> None:
 
 def test_registry_rows_match_new_services_offline() -> None:
     """清扫批新站全部登记进服务注册表（/services 一主机一行）。"""
-    source = Path(__file__).parents[2] / "westlake_survival" / "webui" / "app.py"
+    source = Path(__file__).parents[2] / "westlake_survival" / "discovery.py"
     rows = set(re.findall(r'\("([a-z0-9.-]+)",\s*"[^"]*",\s*"[^"]*"\)',
                           source.read_text(encoding="utf-8")))
     must = {

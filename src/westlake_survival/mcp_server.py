@@ -640,6 +640,17 @@ def _tool_career_latest(args: dict) -> Any:
     }
 
 
+def _tool_find_capability(args: dict) -> Any:
+    """运行时自发现：按需求关键词搜 CLI/MCP/网页/学术库/服务注册表。"""
+    from westlake_survival.capabilities import find_capabilities
+
+    query = _opt_str(args, "query")
+    if not query:
+        raise ValueError("参数 query 不能为空（如：作业 / 论文 / 班车 / 待办）")
+    result = find_capabilities(query)
+    return {k: (v[:20] if isinstance(v, list) else v) for k, v in result.items()}
+
+
 def _tool_scholar_databases(args: dict) -> Any:
     """学术数据库注册表（访问通道标注）。"""
     from westlake_survival.scholar import databases
@@ -1140,6 +1151,18 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             }
         ),
         "handler": _tool_career_latest,
+    },
+    {
+        "name": "find_capability",
+        "description": (
+            "需求→能力路由：不确定某需求归哪条命令/工具时先搜这个"
+            "（支持口语同义词，如「论文」匹配学术资源、「借书」匹配图书馆）。"
+        ),
+        "inputSchema": _schema(
+            {"query": _str_param("需求关键词，如：作业 / 论文 / 班车 / 待办 / 预约。")},
+            ["query"],
+        ),
+        "handler": _tool_find_capability,
     },
     {
         "name": "scholar_databases",

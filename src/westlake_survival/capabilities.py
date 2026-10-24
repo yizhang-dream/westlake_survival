@@ -171,6 +171,119 @@ def collect() -> list[Capability]:
     return _cli_capabilities() + _mcp_capabilities() + _web_capabilities()
 
 
+#: 需求同义词（用户口语 → 能力词汇）。find 的命中判定 = 原词 ∪ 同义词。
+SYNONYMS: dict[str, tuple[str, ...]] = {
+    "论文": ("文献", "doi", "学术", "全文", "scholar", "数据库"),
+    "文献": ("论文", "doi", "学术", "全文", "scholar"),
+    "下载": ("pdf", "全文", "doi"),
+    "作业": ("canvas", "assignments", "deadlines", "submit", "截止"),
+    "交作业": ("submit", "canvas"),
+    "截止": ("deadlines", "canvas", "作业"),
+    "成绩": ("grades", "gpa"),
+    "gpa": ("grades", "成绩"),
+    "课表": ("schedule", "课程", "上课"),
+    "考试": ("exams", "quiz", "测验"),
+    "评教": ("evals", "评估"),
+    "放假": ("calendar", "校历", "事件", "假期"),
+    "校历": ("calendar", "周次", "学期", "事件"),
+    "班车": ("transit", "校车", "shuttle"),
+    "校车": ("transit", "班车"),
+    "食堂": ("dining", "餐饮", "咖啡"),
+    "吃饭": ("dining", "食堂", "餐饮"),
+    "宿舍": ("dorm", "住宿", "housing", "公寓"),
+    "打印": ("pms", "文印"),
+    "借书": ("lib", "借阅", "书目", "loans"),
+    "图书馆": ("lib", "书目", "借阅", "opac"),
+    "待办": ("todo", "affairs", "办事"),
+    "办事": ("affairs", "todo", "流程"),
+    "报销": ("finance", "经费", "财务"),
+    "讲座": ("events", "宣讲", "活动"),
+    "宣讲": ("career", "就业", "宣讲会"),
+    "就业": ("career", "招聘", "岗位", "宣讲"),
+    "招聘": ("careers", "岗位", "就业"),
+    "导师": ("faculty", "教师", "老师"),
+    "老师": ("faculty", "教师", "导师"),
+    "地图": ("map", "全景", "校区"),
+    "邮件": ("mail", "邮箱", "outlook"),
+    "网盘": ("pan", "mydisk", "文件"),
+    "预约": ("booking", "visitor", "appointments", "share", "预约中心"),
+    "超算": ("hpc", "集群", "gpu"),
+    "集群": ("hpc", "队列", "gpu"),
+    "镜像": ("mirrors", "换源", "pip"),
+    "奖学金": ("aid", "资助", "贷款"),
+    "志愿": ("volunteer", "records", "时长"),
+    "培养方案": ("program", "课程体系", "学分"),
+    "选课": ("program", "course", "课程目录"),
+    "学籍": ("profile", "academic", "records"),
+}
+
+
+def find_capabilities(query: str) -> dict:
+    """按需求关键词搜全部能力：CLI 组/子命令、MCP 工具、Web 页、学术数据库、
+    全站服务注册表。
+
+    给 Agent 的运行时自发现入口（``westlake find <需求>``）——解决「装了
+    skill 却不知道某需求归它管」的路由问题。用户口语与能力词汇有鸿沟
+    （说「论文」而工具描述写「文献/DOI」），用 :data:`SYNONYMS` 扩展。
+    返回五组命中，每条带可执行的例子或 URL。
+    """
+    q = (query or "").strip().lower()
+    if not q:
+        return {"query": "", "hint": "给关键词，如：作业 / 论文 / 班车 / 待办 / 预约 / 打印", "cli": [],
+                "mcp": [], "web": [], "databases": [], "services": []}
+    terms = {q} | {t.lower() for t in SYNONYMS.get(q, ())}
+
+    def _hit(text: str) -> bool:
+        low = (text or "").lower()
+        return any(t in low for t in terms)
+
+    out: dict = {"query": query, "matched_terms": sorted(terms), "cli": [], "mcp": [],
+                 "web": [], "databases": [], "services": []}
+
+    for item in collect():
+        hit_commands = [
+            {"name": name, "summary": summary}
+            for name, summary in item.commands
+            if _hit(name) or _hit(summary)
+        ]
+        group_hit = _hit(item.name) or _hit(item.summary)
+        if not group_hit and not hit_commands:
+            continue
+        entry = {
+            "name": item.name,
+            "summary": item.summary,
+            "example": item.example,
+            "needs_auth": item.needs_auth,
+            "auth_hint": item.auth_hint,
+        }
+        if hit_commands:
+            entry["matched_commands"] = hit_commands
+        out[item.kind].append(entry)
+
+    try:  # 学术数据库注册表（scholar）
+        from westlake_survival.scholar import DATABASES
+
+        out["databases"] = [
+            {"key": db.key, "name": db.name, "access": db.access, "url": db.url}
+            for db in DATABASES
+            if any(_hit(x) for x in (db.key, db.name, db.category, db.vendor, db.note))
+        ]
+    except Exception:
+        pass
+
+    try:  # 全站服务注册表
+        from westlake_survival.discovery import SERVICE_REGISTRY
+
+        out["services"] = [
+            {"host": f"{host}.westlake.edu.cn", "name": name, "mode": mode}
+            for host, name, mode in SERVICE_REGISTRY
+            if _hit(host) or _hit(name) or _hit(mode)
+        ]
+    except Exception:
+        pass
+    return out
+
+
 def as_dict() -> dict:
     """转成可直接 JSON 化的结构（供 ``/api/capabilities``）。"""
     items = collect()
