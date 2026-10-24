@@ -210,9 +210,9 @@ def test_sis_grades_full_history_rendered(server: str) -> None:
     _, html = _get(server + "/sis")
     import re as _re
 
-    total = _re.search(r"总课程</div><div class=\"value\">(\d+)", html)
+    total = _re.search(r"总课程</div><div class=\"value\"[^>]*>(\d+)", html)
     assert total and int(total.group(1)) >= 30, total.group(0) if total else "no card"
-    credits = _re.search(r"总学分</div><div class=\"value\">([\d.]+)", html)
+    credits = _re.search(r"总学分</div><div class=\"value\"[^>]*>([\d.]+)", html)
     assert credits and float(credits.group(1)) > 50
     terms = set(_re.findall(
         r"(202\d-20\d\d [春夏秋冬]季学期|20\d\d-20\d\d (?:Fall|Spring|Winter|Summer) Term)",
@@ -248,6 +248,6 @@ def test_sis_all_blocks_render(server: str) -> None:
         "grade-filter",       # 成绩表筛选器
     ):
         assert marker in html, marker
-    # 志愿总时长实数值（24 HOUR）与学期注册缴费提示句
-    assert "24 HOUR" in html
+    # 志愿总时长实数值（24 HOUR 拆为值+单位两段）与学期注册缴费提示句
+    assert ">24</span>" in html and "<small>HOUR</small>" in html
     assert "currently not open" in html or "缴费" in html
