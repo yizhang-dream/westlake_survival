@@ -409,31 +409,32 @@
     <div class="brand"><span class="brand-mark"></span>西湖生存手册</div>
     <nav class="main">
       {% set here = request.path %}
-      <a href="/" class="{{ 'active' if here == '/' else '' }}">仪表盘</a>
-      <a href="/shuttle" class="{{ 'active' if here.startswith('/shuttle') else '' }}">班车</a>
-      <a href="/calendar" class="{{ 'active' if here.startswith('/calendar') else '' }}">校历</a>
-      <a href="/sis" class="{{ 'active' if here.startswith('/sis') else '' }}">学业</a>
-      <a href="/canvas" class="{{ 'active' if here.startswith('/canvas') else '' }}">Canvas</a>
-      <a href="/events" class="{{ 'active' if here.startswith('/events') else '' }}">讲座活动</a>
-      <a href="/careers" class="{{ 'active' if here.startswith('/careers') else '' }}">招聘</a>
-      <a href="/faculty" class="{{ 'active' if here.startswith('/faculty') else '' }}">教师</a>
-      <a href="/news" class="{{ 'active' if here.startswith('/news') else '' }}">新闻</a>
-      <a href="/program" class="{{ 'active' if here.startswith('/program') else '' }}">培养方案</a>
-      <a href="/courses" class="{{ 'active' if here.startswith('/courses') else '' }}">通识课程</a>
-      <a href="/map" class="{{ 'active' if here.startswith('/map') else '' }}">地图</a>
-      <a href="/affairs" class="{{ 'active' if here.startswith('/affairs') else '' }}">办事</a>
-      <a href="/hpc" class="{{ 'active' if here.startswith('/hpc') else '' }}">集群</a>
-      <a href="/finance" class="{{ 'active' if here.startswith('/finance') else '' }}">财务</a>
-      <a href="/mirrors" class="{{ 'active' if here.startswith('/mirrors') else '' }}">镜像</a>
-      <a href="/schools" class="{{ 'active' if here.startswith('/institute') or here.startswith('/schools') else '' }}">学院</a>
-      <a href="/sites" class="{{ 'active' if here.startswith('/sites') else '' }}">全站</a>
-      <a href="/vpn" class="{{ 'active' if here.startswith('/vpn') else '' }}">VPN</a>
-      <a href="/scholar" class="{{ 'active' if here.startswith('/scholar') else '' }}">学术</a>
-      <a href="/capabilities" class="{{ 'active' if here.startswith('/capabilities') else '' }}">能力</a>
-      <a href="/services" class="{{ 'active' if here.startswith('/services') else '' }}">服务</a>
-      <a href="/dining" class="{{ 'active' if here.startswith('/dining') else '' }}">餐饮</a>
-      <a href="/search" class="{{ 'active' if here.startswith('/search') else '' }}">搜索</a>
-      <a href="/setup" class="{{ 'active' if here.startswith('/setup') else '' }}">设置</a>
+      <!-- 顺序 = 使用频率分层（2026-10-25 用户裁定重排）：日常高频 → 信息浏览 → 办事工具 → 科研工具 → 系统 -->
+      <a href="/" data-nav="home" class="{{ 'active' if here == '/' else '' }}">仪表盘</a>
+      <a href="/sis" data-nav="sis" class="{{ 'active' if here.startswith('/sis') else '' }}">学业</a>
+      <a href="/canvas" data-nav="canvas" class="{{ 'active' if here.startswith('/canvas') else '' }}">Canvas</a>
+      <a href="/calendar" data-nav="calendar" class="{{ 'active' if here.startswith('/calendar') else '' }}">校历</a>
+      <a href="/shuttle" data-nav="shuttle" class="{{ 'active' if here.startswith('/shuttle') else '' }}">班车</a>
+      <a href="/events" data-nav="events" class="{{ 'active' if here.startswith('/events') else '' }}">讲座活动</a>
+      <a href="/careers" data-nav="careers" class="{{ 'active' if here.startswith('/careers') else '' }}">招聘</a>
+      <a href="/news" data-nav="news" class="{{ 'active' if here.startswith('/news') else '' }}">新闻</a>
+      <a href="/faculty" data-nav="faculty" class="{{ 'active' if here.startswith('/faculty') else '' }}">教师</a>
+      <a href="/program" data-nav="program" class="{{ 'active' if here.startswith('/program') else '' }}">培养方案</a>
+      <a href="/courses" data-nav="courses" class="{{ 'active' if here.startswith('/courses') else '' }}">通识课程</a>
+      <a href="/schools" data-nav="schools" class="{{ 'active' if here.startswith('/institute') or here.startswith('/schools') else '' }}">学院</a>
+      <a href="/sites" data-nav="sites" class="{{ 'active' if here.startswith('/sites') else '' }}">全站</a>
+      <a href="/affairs" data-nav="affairs" class="{{ 'active' if here.startswith('/affairs') else '' }}">办事</a>
+      <a href="/map" data-nav="map" class="{{ 'active' if here.startswith('/map') else '' }}">地图</a>
+      <a href="/dining" data-nav="dining" class="{{ 'active' if here.startswith('/dining') else '' }}">餐饮</a>
+      <a href="/scholar" data-nav="scholar" class="{{ 'active' if here.startswith('/scholar') else '' }}">学术</a>
+      <a href="/hpc" data-nav="hpc" class="{{ 'active' if here.startswith('/hpc') else '' }}">集群</a>
+      <a href="/vpn" data-nav="vpn" class="{{ 'active' if here.startswith('/vpn') else '' }}">VPN</a>
+      <a href="/finance" data-nav="finance" class="{{ 'active' if here.startswith('/finance') else '' }}">财务</a>
+      <a href="/mirrors" data-nav="mirrors" class="{{ 'active' if here.startswith('/mirrors') else '' }}">镜像</a>
+      <a href="/search" data-nav="search" class="{{ 'active' if here.startswith('/search') else '' }}">搜索</a>
+      <a href="/capabilities" data-nav="capabilities" class="{{ 'active' if here.startswith('/capabilities') else '' }}">能力</a>
+      <a href="/services" data-nav="services" class="{{ 'active' if here.startswith('/services') else '' }}">服务</a>
+      <a href="/setup" data-nav="setup" class="{{ 'active' if here.startswith('/setup') else '' }}">设置</a>
     </nav>
     <button id="themeToggle" type="button" aria-label="切换明暗主题">☾ 暗色</button>
   </div>
@@ -510,6 +511,20 @@
       }
       fit();
       window.addEventListener('resize', fit);
+    })();
+  </script>
+  <script>
+    // 导航显隐开关（2026-10-25 用户裁定）：设置页勾选控制哪些模块上导航；
+    // 只影响展示，后端/接口数据始终全量。键=wl-nav-hidden（JSON 数组）。
+    (function () {
+      var hidden = [];
+      try { hidden = JSON.parse(localStorage.getItem('wl-nav-hidden') || '[]'); } catch (e) {}
+      if (!Array.isArray(hidden) || !hidden.length) return;
+      var keep = {};
+      hidden.forEach(function (k) { keep[k] = 1; });
+      document.querySelectorAll('nav.main a[data-nav]').forEach(function (a) {
+        if (keep[a.getAttribute('data-nav')]) a.style.display = 'none';
+      });
     })();
   </script>
 </body>

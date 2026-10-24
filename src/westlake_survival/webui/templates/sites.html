@@ -65,8 +65,14 @@
             var atts = (d.attachments || []).map(function (a) {
               return '<a class="chip outlink" href="' + a.url + '" target="_blank" rel="noopener">📎 ' + a.name + '</a>';
             }).join(' ');
+            var tables = (d.tables || []).map(function (tb) {
+              return '<table class="data detail-table"><tbody>' + tb.map(function (row) {
+                return '<tr>' + row.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+              }).join('') + '</tbody></table>';
+            }).join('');
             sub.innerHTML = '<td></td><td colspan="2"><div class="callout"><span>' +
               (d.excerpt || '（无正文摘要）') + '</span></div>' +
+              (tables || '') +
               (atts ? '<div class="chip-cloud" style="margin-top:.4rem">' + atts + '</div>' : '') + '</td>';
             tr.after(sub);
           })

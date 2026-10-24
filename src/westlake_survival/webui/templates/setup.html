@@ -40,6 +40,62 @@
 
 <div id="result" style="display:none;margin-top:1.4rem"></div>
 
+<section class="card" style="margin-top:1.8rem">
+  <div class="card-head"><h2 class="section">导航模块显隐</h2></div>
+  <div class="callout"><span>只控制导航栏显示哪些模块（本浏览器记忆）。后端数据与各页面 URL 始终全量可用——关掉只是不占导航位，直接访问地址照常打开。</span></div>
+  <div id="navToggles" class="chip-cloud" style="margin-top:.9rem;flex-wrap:wrap;gap:.45rem"></div>
+  <p class="muted" style="font-size:.82rem;margin-top:.6rem">勾选=显示在导航。改动即时生效。</p>
+</section>
+
+<script>
+(function () {
+  // 导航开关：渲染所有模块 chip，点选切换，写 localStorage wl-nav-hidden
+  var MODULES = [
+    ['home', '仪表盘'], ['sis', '学业'], ['canvas', 'Canvas'], ['calendar', '校历'],
+    ['shuttle', '班车'], ['events', '讲座活动'], ['careers', '招聘'], ['news', '新闻'],
+    ['faculty', '教师'], ['program', '培养方案'], ['courses', '通识课程'],
+    ['schools', '学院'], ['sites', '全站'], ['affairs', '办事'], ['map', '地图'],
+    ['dining', '餐饮'], ['scholar', '学术'], ['hpc', '集群'], ['vpn', 'VPN'],
+    ['finance', '财务'], ['mirrors', '镜像'], ['search', '搜索'],
+    ['capabilities', '能力'], ['services', '服务'], ['setup', '设置'],
+  ];
+  var box = document.getElementById('navToggles');
+  if (!box) return;
+  function load() {
+    try { return JSON.parse(localStorage.getItem('wl-nav-hidden') || '[]'); } catch (e) { return []; }
+  }
+  function render() {
+    var hidden = load();
+    box.innerHTML = '';
+    MODULES.forEach(function (m) {
+      var on = hidden.indexOf(m[0]) === -1;
+      var a = document.createElement('button');
+      a.type = 'button';
+      a.className = 'chip' + (on ? ' ok' : ' plain');
+      a.textContent = (on ? '✓ ' : '✕ ') + m[1];
+      a.addEventListener('click', function () {
+        var cur = load();
+        var i = cur.indexOf(m[0]);
+        if (i === -1) cur.push(m[0]); else cur.splice(i, 1);
+        try { localStorage.setItem('wl-nav-hidden', JSON.stringify(cur)); } catch (e) {}
+        render();
+        applyNav();
+      });
+      box.appendChild(a);
+    });
+  }
+  function applyNav() {
+    var hidden = load();
+    var keep = {};
+    hidden.forEach(function (k) { keep[k] = 1; });
+    document.querySelectorAll('nav.main a[data-nav]').forEach(function (a) {
+      a.style.display = keep[a.getAttribute('data-nav')] ? 'none' : '';
+    });
+  }
+  render();
+})();
+</script>
+
 <script>
 (function () {
   var revealBtn = document.getElementById('revealBtn');

@@ -128,6 +128,9 @@ BAIDA_SITES: dict = {
     "iscms_intro": None,  # 占位删除
     "info": {"name": "信息技术中心（IT 服务台）", "group": "部门机构",
              "cols": {"规章制度": "gzzd.htm"}},
+    "brcfen": {"name": "生物医学实验技术中心（EN）", "group": "科研平台",
+               "cols": {"通知公告": "index/tzgg.htm", "新闻资讯": "index/xwzx.htm",
+                        "亮点服务": "index/ldfw.htm"}},
     "ore": {"name": "科技合作部", "group": "部门机构",
             "cols": {}},  # 办事型站点，无新闻栏；见 INTRO 兜底
 }
@@ -170,6 +173,15 @@ INTRO_SITES: dict = {
                "intro": "求是西湖项目（活动信息 / 求是学者），静态站。"},
     "wudf": {"name": "发展基金会（捐赠）", "group": "招生与基金",
              "intro": "捐赠项目与校友基金（官网同款 TRS，首页无列表数据）。"},
+    # 英文镜像子站（2026-10-25 补）：内容主体已在双语模块/中文站，此处给入口。
+    "eniscps": {"name": "物质科学公共实验平台（EN）", "group": "科研平台",
+                "intro": "iscps 英文镜像（自研模板，info 链接为仪器目录非新闻）。"},
+    "en": {"name": "英文主站", "group": "其他",
+           "intro": "en.westlake.edu.cn；新闻/活动等双语内容走 news/events 的英文模式。"},
+    "lifesciences": {"name": "生命科学学院（EN）", "group": "其他",
+                     "intro": "sls 英文镜像（homePage 变体，列表结构与中文站不同）。"},
+    "en-soe": {"name": "工学院（EN）", "group": "其他",
+               "intro": "engineering 英文镜像（空壳状态，官网现状）。"},
 }
 
 #: 页面分组顺序。
@@ -601,6 +613,28 @@ def _strip_html(fragment: str) -> str:
     return _WS_COLLAPSE_RE.sub("", _TAG_RE.sub("", fragment).replace("&nbsp;", " ")).strip()
 
 
+#: 详情页里的表格（名单公示 / 课表 / 补贴表——正文之外的硬数据）。
+_TABLE_BLOCK_RE = re.compile(r"<table[\s\S]{30,12000}?</table>", re.I)
+_TR_RE = re.compile(r"<tr[^>]*>([\s\S]*?)</tr>", re.I)
+_TD_RE = re.compile(r"<t[hd][^>]*>([\s\S]*?)</t[hd]>", re.I)
+
+
+def _extract_tables(html: str, limit: int = 3) -> list[list[list[str]]]:
+    """抽详情页数据表：≥2 行且 ≥2 列才算（滤掉布局表格），每表至多 12 行。"""
+    tables: list[list[list[str]]] = []
+    for tm in _TABLE_BLOCK_RE.finditer(html):
+        rows: list[list[str]] = []
+        for rm in _TR_RE.finditer(tm.group(0)):
+            cells = [_strip_html(c)[:48] for c in _TD_RE.findall(rm.group(1))]
+            if any(cells):
+                rows.append(cells[:10])
+        if len(rows) >= 2 and max(len(r) for r in rows) >= 2:
+            tables.append(rows[:12])
+        if len(tables) >= limit:
+            break
+    return tables
+
+
 def site_detail(url: str) -> dict:
     """抓一条站内页面的详情：标题 / 正文摘要 / 附件下载。
 
@@ -642,7 +676,8 @@ def site_detail(url: str) -> dict:
     for href, name in _ATTACHMENT_RE.findall(html):
         name = name.strip() or href.rsplit("/", 1)[-1]
         attachments.append({"name": name[:60], "url": urljoin(url, href)})
-    data = {"url": url, "title": title, "excerpt": excerpt, "attachments": attachments[:8]}
+    data = {"url": url, "title": title, "excerpt": excerpt,
+            "attachments": attachments[:8], "tables": _extract_tables(html)}
     if len(_detail_cache) > 300:
         _detail_cache.clear()
     _detail_cache[url] = (now, data)
@@ -796,11 +831,15 @@ def sites_site(key: str, limit: int) -> None:
 @cli_group.command(name="detail")
 @click.argument("url")
 def sites_detail(url: str) -> None:
-    """抓一条站内页面详情：标题 / 正文摘要 / 附件下载。"""
+    """抓一条站内页面详情：标题 / 正文摘要 / 表格 / 附件下载。"""
     data = site_detail(url)
     click.echo(data["title"] or data["url"])
     if data["excerpt"]:
         click.echo(f"摘要：{data['excerpt']}")
+    for ti, table in enumerate(data.get("tables") or [], 1):
+        click.echo(f"表格{ti}（{len(table)} 行）：")
+        for row in table:
+            click.echo("  " + " | ".join(row))
     if data["attachments"]:
         click.echo("附件：")
         for att in data["attachments"]:
