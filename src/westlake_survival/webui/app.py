@@ -811,13 +811,24 @@ def _canvas_context() -> dict:
 
         client = CanvasClient()
         courses = client.list_courses()
-        name_by_id = {c.id: (c.name or "") for c in courses}
+
+        def _clean_name(text: str) -> str:
+            """课程名清洗：「|」分隔改「·」；中英边界补空格；压空白。"""
+            out = str(text or "").replace("|", " · ")
+            out = _re.sub(r"([A-Za-z])([一-鿿（])", r"\1 \2", out)
+            out = _re.sub(r"([A-Za-z])([一-鿿（])", r"\1 \2", out)
+            return " ".join(out.split())
+
+        name_by_id = {c.id: _clean_name(c.name) for c in courses}
         context["courses"] = [
-            {"name": c.name, "code": getattr(c, "code", ""), "id": c.id} for c in courses
+            {"name": _clean_name(c.name), "code": getattr(c, "code", ""), "id": c.id} for c in courses
         ]
         # 课程成绩（老师未发布时为 None，页面如实显示）
         try:
-            context["grades"] = client.course_grades()
+            context["grades"] = [
+                {**row, "name": _clean_name(row.get("name", ""))}
+                for row in client.course_grades()
+            ]
         except Exception:
             context["grades"] = []
         # 每门课最新一条公告（并行抓，限前 6 门）
@@ -1034,6 +1045,16 @@ def _services_context() -> dict:
     }
 
 
+def _clean_affair_name(text) -> str:
+    """办事应用名清洗：中英边界补空格、压空白（源数据常中英连写）。"""
+    import re as _re2
+
+    out = str(text or "")
+    out = _re2.sub(r"([一-鿿）])([A-Za-z])", r"\1 \2", out)
+    out = _re2.sub(r"([A-Za-z])([一-鿿（])", r"\1 \2", out)
+    return " ".join(out.split())
+
+
 def _affairs_context() -> dict:
     """办事页上下文：我的待办/进行中 + 应用目录 + 常用入口；各块独立降级。"""
     context: dict = {
@@ -1057,7 +1078,8 @@ def _affairs_context() -> dict:
     if module is not None and hasattr(module, "app_directory"):
         try:
             context["apps"] = [
-                {"name": a.name, "department": a.department, "description": a.description}
+                {"name": _clean_affair_name(a.name),
+                 "department": a.department, "description": a.description}
                 for a in module.app_directory()
             ]
         except Exception as exc:  # pragma: no cover - 数据源异常时降级

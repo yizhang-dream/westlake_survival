@@ -7,12 +7,27 @@
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
 
 {% if has_data %}
+<nav class="anchor-nav">
+  <a href="#pg-goal">培养目标</a>
+  <a href="#pg-features">培养特色</a>
+  <a href="#pg-structure">课程结构</a>
+  <a href="#pg-plans">专业培养方案</a>
+  <a href="#pg-majors">本科专业</a>
+</nav>
+<div class="stats">
+  <div class="stat"><div class="label">本科专业</div><div class="value" data-count="{{ plans | length if plans else 0 }}">{{ plans | length if plans else 0 }}</div></div>
+  <div class="stat"><div class="label">课程结构</div><div class="value">{{ sections | length if sections else 0 }}<small> 块</small></div></div>
+  <div class="stat"><div class="label">培养特色</div><div class="value">{{ features | length if features else 0 }}<small> 项</small></div></div>
+</div>
+<section id="pg-goal" class="reveal">
   <div class="card">
     <div class="label">培养目标</div>
     <p>{{ goal or '—' }}</p>
   </div>
+</section>
 
-  {% if features %}
+{% if features %}
+<section id="pg-features" class="reveal">
   <h2 class="section">培养特色</h2>
   <div class="grid cols-2">
     {% for f in features %}
@@ -22,9 +37,11 @@
     </div>
     {% endfor %}
   </div>
-  {% endif %}
+</section>
+{% endif %}
 
-  {% for s in sections %}
+<section id="pg-structure" class="reveal">
+{% for s in sections %}
   <h2 class="section">{{ s.title }}</h2>
   {% if s.text %}<p>{{ s.text }}</p>{% endif %}
   {% if s.table %}
@@ -102,4 +119,31 @@
 {% else %}
   <div class="empty">暂无培养方案数据。</div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var nav = document.querySelector('.anchor-nav');
+  if (!nav || !('IntersectionObserver' in window)) return;
+  var links = Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]'));
+  if (!links.length) return;
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove('active'); });
+        var a = map[e.target.id];
+        if (a) a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-25% 0px -65% 0px' });
+  document.querySelectorAll('section[id]').forEach(function (sec) {
+    if (map[sec.id]) spy.observe(sec);
+  });
+  var first = links[0];
+  if (first) first.classList.add('active');
+})();
+</script>
 {% endblock %}
