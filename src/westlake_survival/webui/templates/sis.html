@@ -2,9 +2,10 @@
 {% block title %}学业 · 西湖生存手册{% endblock %}
 {% block content %}
 <h1 class="page">学业（SIS）</h1>
+
 {% set sched = blocks.get('schedule') %}
 {% if sched and not sched.error %}
-<h2 class="section">本学期课表</h2>
+<h2 class="section">本学期课表（{{ sched | length }} 节）</h2>
 <table class="data">
   <thead><tr><th>课程</th><th>教师</th><th>星期</th><th>时间</th><th>地点</th></tr></thead>
   <tbody>{% for c in sched %}<tr><td>{{ c.name }}</td><td>{{ c.teacher }}</td><td>{{ c.weekday }}</td><td class="time">{{ c.time }}</td><td>{{ c.location }}</td></tr>{% endfor %}</tbody>
@@ -12,16 +13,33 @@
 {% else %}<div class="note">课表不可用：{{ sched.error if sched else '未加载' }}（需教务凭据与校园网/VPN）</div>{% endif %}
 
 {% set gr = blocks.get('grades') %}
-{% if gr and not gr.error and gr %}
-<h2 class="section">成绩（最近）</h2>
+{% if gr and not gr.error %}
+<h2 class="section">成绩与 GPA 估算</h2>
+{% if gr.rows %}
+<div class="grid cols-4">
+  <div class="card"><div class="label">总课程</div><div class="value">{{ gr.total_courses }}</div></div>
+  <div class="card"><div class="label">总学分</div><div class="value">{{ gr.total_credits }}</div></div>
+  <div class="card"><div class="label">GPA（估算）</div><div class="value">{{ gr.gpa_estimated or '—' }}</div><div class="dim" style="font-size:.72rem">{{ gr.gpa_note }}</div></div>
+</div>
+{% if gr.by_term %}
+<h3 class="section">按学期</h3>
+<table class="data">
+  <thead><tr><th>学期</th><th>课程数</th><th>计入学分</th><th>学期 GPA</th></tr></thead>
+  <tbody>{% for b in gr.by_term %}<tr><td>{{ b.term }}</td><td>{{ b.count }}</td><td>{{ b.credits }}</td><td>{{ b.gpa or '—' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+<h3 class="section">全部成绩（最近 60）</h3>
 <table class="data">
   <thead><tr><th>学期</th><th>课程</th><th>等级</th><th>学分</th></tr></thead>
-  <tbody>{% for g in gr %}<tr><td>{{ g.term }}</td><td>{{ g.name }}</td><td>{{ g.grade }}</td><td>{{ g.credits }}</td></tr>{% endfor %}</tbody>
+  <tbody>{% for g in gr.rows[-60:] %}<tr><td>{{ g.term }}</td><td>{{ g.name }}</td><td>{{ g.grade }}</td><td>{{ g.credits }}</td></tr>{% endfor %}</tbody>
 </table>
+{% else %}
+<p class="muted">成绩记录为空（可能尚未出分）。</p>
+{% endif %}
 {% elif gr and gr.error %}<div class="note">成绩不可用：{{ gr.error }}</div>{% endif %}
 
 {% set ex = blocks.get('exams') %}
-{% if ex and not ex.error %}
+{% if ex is not none and not (ex and ex.error) %}
 <h2 class="section">考试安排</h2>
 {% if ex %}<table class="data">
   <thead><tr><th>课程</th><th>日期</th><th>时间</th><th>类型</th><th>考场</th><th>座位</th></tr></thead>
@@ -34,5 +52,55 @@
 <h2 class="section">待评教</h2>
 {% if ev and not ev.error and ev %}<ul>{% for e in ev %}<li>{{ e.name }}（{{ e.term }}，{{ e.period }}）</li>{% endfor %}</ul>
 {% elif not (ev and ev.error) %}<p class="muted">暂无待评教任务。</p>{% else %}<div class="note">评教不可用：{{ ev.error }}</div>{% endif %}
+{% endif %}
+
+{% set pf = blocks.get('profile') %}
+{% if pf and not pf.error %}
+<h2 class="section">个人信息（{{ pf | length }} 项）</h2>
+<div class="grid cols-2">
+  {% for k, v in pf.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+</div>
+{% endif %}
+
+{% set ac = blocks.get('academic') %}
+{% if ac and not ac.error %}
+<h2 class="section">学籍信息</h2>
+<div class="grid cols-2">
+  {% for k, v in ac.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+</div>
+{% endif %}
+
+{% set dorm = blocks.get('dorm') %}
+{% if dorm and not dorm.error %}
+<h2 class="section">住宿</h2>
+<p>宿舍地址：{{ dorm.get('address') or dorm.get('宿舍地址') or '—' }}</p>
+{% if dorm.get('applications') %}
+<table class="data">
+  <thead><tr><th>申请号</th><th>类型</th><th>状态</th><th>时间</th></tr></thead>
+  <tbody>{% for a in dorm.get('applications', [])[:8] %}<tr><td>{{ a.get('申请号') or a.get('application') or '—' }}</td><td>{{ a.get('类型') or a.get('type') or '—' }}</td><td>{{ a.get('状态') or a.get('status') or '—' }}</td><td>{{ a.get('时间') or a.get('time') or '—' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+{% endif %}
+
+{% set honors = blocks.get('honors') %}
+{% if honors is not none %}
+<h2 class="section">荣誉记录</h2>
+{% if honors and not honors.error and honors %}
+<table class="data">
+  <thead><tr><th>名称</th><th>级别</th><th>年度</th></tr></thead>
+  <tbody>{% for h in honors[:10] %}<tr><td>{{ h.get('name') or h.get('荣誉名称') or '—' }}</td><td>{{ h.get('level') or h.get('级别') or '—' }}</td><td>{{ h.get('year') or h.get('年度') or '—' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% elif not (honors and honors.error) %}<p class="muted">暂无荣誉记录。</p>{% else %}<div class="note">荣誉不可用：{{ honors.error }}</div>{% endif %}
+{% endif %}
+
+{% set vol = blocks.get('volunteer') %}
+{% if vol is not none %}
+<h2 class="section">志愿服务</h2>
+{% if vol and not vol.error and vol %}
+<table class="data">
+  <thead><tr><th>活动</th><th>时长</th><th>日期</th></tr></thead>
+  <tbody>{% for v in vol[:10] %}<tr><td>{{ v.get('activity') or v.get('活动名称') or '—' }}</td><td>{{ v.get('hours') or v.get('时长') or '—' }}</td><td>{{ v.get('date') or v.get('日期') or '—' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% elif not (vol and vol.error) %}<p class="muted">暂无志愿记录。</p>{% else %}<div class="note">志愿不可用：{{ vol.error }}</div>{% endif %}
 {% endif %}
 {% endblock %}

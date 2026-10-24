@@ -645,7 +645,7 @@ def _setup_context() -> dict:
 
 
 def _sis_context() -> dict:
-    """学业页：课表 / 成绩 / 考试 / 待评教（需教务凭据与校园网，失败逐块降级）。"""
+    """学业页：课表 / 成绩(GPA) / 考试 / 待评教 / 个人信息 / 学籍 / 宿舍 / 荣誉 / 志愿 / 资助。"""
     context: dict = {"blocks": {}}
 
     def _guard(key: str, loader) -> None:
@@ -654,15 +654,57 @@ def _sis_context() -> dict:
         except Exception as exc:  # 每块独立降级
             context["blocks"][key] = {"error": f"{exc.__class__.__name__}: {exc}"[:120]}
 
+    def _grades_with_stats():
+        import importlib
+
+        items = importlib.import_module("westlake_survival.sis.grades").grades()
+        # GPA 估算：A=4.0 A-=3.7 B+=3.3 B=3.0 B-=2.7 C+=2.3 C=2.0 其余 0；仅统计有等级的课
+        scale = {"A": 4.0, "A-": 3.7, "B+": 3.3, "B": 3.0, "B-": 2.7,
+                 "C+": 2.3, "C": 2.0, "C-": 1.7, "D": 1.0, "F": 0.0, "P": None, "NP": None}
+        total_credits = 0.0
+        total_points = 0.0
+        by_term: dict[str, dict] = {}
+        for g in items:
+            grade = str(g.grade or "").strip()
+            credits = 0.0
+            try:
+                credits = float(g.credits)
+            except (TypeError, ValueError):
+                pass
+            point = scale.get(grade)
+            term = g.term or "未知学期"
+            bucket = by_term.setdefault(term, {"credits": 0.0, "points": 0.0, "count": 0})
+            bucket["count"] += 1
+            if point is not None and credits:
+                bucket["credits"] += credits
+                bucket["points"] += point * credits
+                total_credits += credits
+                total_points += point * credits
+        for term, b in by_term.items():
+            b["gpa"] = round(b["points"] / b["credits"], 2) if b["credits"] else None
+        return {
+            "rows": [
+                {"term": g.term, "name": g.course_title, "grade": g.grade, "credits": g.credits}
+                for g in items
+            ],
+            "total_courses": len(items),
+            "total_credits": round(sum(
+                float(g.credits) for g in items
+                if str(g.credits or "").replace(".", "").isdigit()
+            ), 1),
+            "gpa_estimated": round(total_points / total_credits, 2) if total_credits else None,
+            "gpa_note": "按 A=4.0/A-=3.7/B+=3.3/B=3.0… 估算，非官方算法",
+            "by_term": [
+                {"term": t, **b} for t, b in sorted(by_term.items())
+            ],
+        }
+
     _guard("schedule", lambda: [
         {"name": c.title, "teacher": c.teacher, "weekday": c.weekday,
          "time": f"{c.start_time}-{c.end_time}", "location": c.room}
         for c in __import__("westlake_survival.sis", fromlist=["client"]).client.get_schedule()
     ])
-    _guard("grades", lambda: [
-        {"term": g.term, "name": g.course_title, "grade": g.grade, "credits": g.credits}
-        for g in __import__("westlake_survival.sis", fromlist=["grades"]).grades.grades()
-    ][-60:])
+    _guard("grades", lambda: _grades_with_stats())
     _guard("exams", lambda: [
         {"course": e.course_title, "date": e.date, "time": e.time, "kind": e.exam_type,
          "room": e.venue, "seat": e.seat}
@@ -672,6 +714,11 @@ def _sis_context() -> dict:
         {"name": e.course_title, "term": e.term, "period": e.period_raw}
         for e in __import__("westlake_survival.sis", fromlist=["evals"]).evals.pending_evaluations()
     ])
+    _guard("profile", lambda: __import__("westlake_survival.sis", fromlist=["profile"]).profile.personal_info())
+    _guard("academic", lambda: __import__("westlake_survival.sis", fromlist=["profile"]).profile.academic_record())
+    _guard("dorm", lambda: __import__("westlake_survival.sis", fromlist=["records"]).records.dormitory().to_dict())
+    _guard("honors", lambda: [h.to_dict() for h in __import__("westlake_survival.sis", fromlist=["records"]).records.honors()])
+    _guard("volunteer", lambda: [v.to_dict() for v in __import__("westlake_survival.sis", fromlist=["records"]).records.volunteer_records()])
     return context
 
 
