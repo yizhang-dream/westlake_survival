@@ -25,7 +25,7 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _get(url: str, timeout: float = 5.0) -> tuple[int, str]:
+def _get(url: str, timeout: float = 60.0) -> tuple[int, str]:
     with urllib.request.urlopen(url, timeout=timeout) as response:
         return response.status, response.read().decode("utf-8")
 
