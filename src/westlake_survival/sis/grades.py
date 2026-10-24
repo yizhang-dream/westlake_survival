@@ -61,15 +61,36 @@ class Grade:
             "credits": self.credits,
         }
 
+    #: 表头双语文备（2026-10-24 实测：登录语言为中文时网格表头是中文列名，
+    #: 旧实现只匹配英文表头导致 38 行全部被当空行跳过——grades() 返回空）。
+    _COLUMNS = {
+        "course_code": ("Course Code", "课程代码"),
+        "course_title": ("Course Title", "课程名称"),
+        "term": ("Term", "学期"),
+        "grade": ("Grade", "成绩"),
+        "credits": ("Credits", "学分"),
+    }
+
     @classmethod
     def from_row(cls, row: dict) -> "Grade":
-        """从 :func:`~westlake_survival.sis.pages.parse_fluid_grid` 的行字典构造。"""
+        """从 :func:`~westlake_survival.sis.pages.parse_fluid_grid` 的行字典构造。
+
+        网格表头语言随账号登录语言（实测有英文与中文两套列名），逐列取
+        第一个命中的语言键。
+        """
+        def pick(*names: str) -> str:
+            for name in names:
+                value = row.get(name)
+                if value:
+                    return str(value).strip()
+            return ""
+
         return cls(
-            course_code=(row.get("Course Code") or "").strip(),
-            course_title=(row.get("Course Title") or "").strip(),
-            term=(row.get("Term") or "").strip(),
-            grade=(row.get("Grade") or "").strip(),
-            credits=(row.get("Credits") or "").strip(),
+            course_code=pick(*cls._COLUMNS["course_code"]),
+            course_title=pick(*cls._COLUMNS["course_title"]),
+            term=pick(*cls._COLUMNS["term"]),
+            grade=pick(*cls._COLUMNS["grade"]),
+            credits=pick(*cls._COLUMNS["credits"]),
         )
 
 

@@ -201,3 +201,16 @@ def test_canvas_and_affairs_blocks_thick(server: str) -> None:
     # 待办为 0 是真实态：空态文案也算渲染到位
     assert ("我的待办" in affairs_html) or ("没有待办任务" in affairs_html)
     assert "我发起的流程" in affairs_html
+
+
+def test_sis_grades_full_history_rendered(server: str) -> None:
+    """成绩历史全量渲染：≥30 门课、跨 ≥3 学期、总学分卡片有数值。"""
+    _, html = _get(server + "/sis")
+    import re as _re
+
+    total = _re.search(r"总课程</div><div class=\"value\">(\d+)", html)
+    assert total and int(total.group(1)) >= 30, total.group(0) if total else "no card"
+    credits = _re.search(r"总学分</div><div class=\"value\">([\d.]+)", html)
+    assert credits and float(credits.group(1)) > 50
+    terms = set(_re.findall(r"(202\d-20\d\d [春夏秋冬]季学期)", html))
+    assert len(terms) >= 3, terms
