@@ -1,0 +1,3212 @@
+{
+ "fetched": "2026-10-24",
+ "source": "https://www.carsi.edu.cn/SPlist.html",
+ "note": "CARSI 联盟服务提供商目录公开快照；westlake scholar carsi --refresh 在线更新",
+ "count": 356,
+ "sps": [
+  {
+   "production": "美国化学学会期刊全文数据库",
+   "searchStr": "ACS PUBLICATIONS-美国化学学会期刊全文数据库-ACS PUBLICATIONS-ACS Publications-HTTPS://PUBS.ACS.ORG",
+   "url": "https://pubs.acs.org",
+   "vendor_name": "ACS Publications",
+   "step": "https://mgmt.carsi.edu.cn/member_files/pubs.acs.org/美国化学学会期刊全文数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/pubs.acs.org/美国化学学会期刊全文数据库.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "化学化工新闻",
+   "searchStr": "CHEMICAL & ENGINEERING NEWS-化学化工新闻-ACS PUBLICATIONS-ACS Publications-HTTPS://CEN.ACS.ORG",
+   "url": "https://cen.acs.org",
+   "vendor_name": "ACS Publications",
+   "step": "https://mgmt.carsi.edu.cn/member_files/pubs.acs.org/化学化工新闻.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/pubs.acs.org/化学化工新闻.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "AIPP Publications",
+   "searchStr": "AIPP PUBLICATIONS-AIPP Publications-AIP PUBLISHING LLC-AIP Publishing LLC-HTTPS://PUBS.AIP.ORG",
+   "url": "https://pubs.aip.org",
+   "vendor_name": "AIP Publishing LLC",
+   "step": "https://mgmt.carsi.edu.cn/member_files/pubs.aip.org/AIPPPublications.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/pubs.aip.org/AIPPPublications.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ASCE专业期刊",
+   "searchStr": "ASCE JOURNALS-ASCE专业期刊-AMERICAN SOCIETY OF CIVIL ENGINEERS-American Society of Civil Engineers-HTTPS://ASCELIBRARY.ORG/",
+   "url": "https://ascelibrary.org/",
+   "vendor_name": "American Society of Civil Engineers",
+   "step": "https://mgmt.carsi.edu.cn/member_files/asce.org/ASCE专业期刊.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/asce.org/ASCE专业期刊.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ASCE会议录",
+   "searchStr": "ASCE PROCEEDINGS-ASCE会议录-AMERICAN SOCIETY OF CIVIL ENGINEERS-American Society of Civil Engineers-HTTPS://ASCELIBRARY.ORG/",
+   "url": "https://ascelibrary.org/",
+   "vendor_name": "American Society of Civil Engineers",
+   "step": "https://mgmt.carsi.edu.cn/member_files/asce.org/ASCE会议录.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/asce.org/ASCE会议录.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ASCE电子书",
+   "searchStr": "ASCE E-BOOKS-ASCE电子书-AMERICAN SOCIETY OF CIVIL ENGINEERS-American Society of Civil Engineers-HTTPS://ASCELIBRARY.ORG/",
+   "url": "https://ascelibrary.org/",
+   "vendor_name": "American Society of Civil Engineers",
+   "step": "https://mgmt.carsi.edu.cn/member_files/asce.org/ASCE电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/asce.org/ASCE电子书.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "土木工程杂志",
+   "searchStr": "CIVIL ENGINEERING MAGAZINE-土木工程杂志-AMERICAN SOCIETY OF CIVIL ENGINEERS-American Society of Civil Engineers-HTTPS://ASCELIBRARY.ORG/",
+   "url": "https://ascelibrary.org/",
+   "vendor_name": "American Society of Civil Engineers",
+   "step": "https://mgmt.carsi.edu.cn/member_files/asce.org/土木工程杂志.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/asce.org/土木工程杂志.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "月旦知识库",
+   "searchStr": "LAWDATA-月旦知识库-ANGLE PUBLISHING-元照出版有限公司-HTTPS://WWW.LAWDATA01.COM.CN",
+   "url": "https://www.lawdata01.com.cn",
+   "vendor_name": "元照出版有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/com.tw/月旦知识库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/com.tw/月旦知识库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "智通达纸电全链一体化平台",
+   "searchStr": "PAPER ELECTRONIC BOOK FULL CHAIN INTEGRATED PLATFORM-智通达纸电全链一体化平台-ANHUI ZHITONGDA INFORMATION TECHNOLOGY CO., LTD-安徽智通达信息科技有限公司-HTTPS://PCIP.ZHITONGDA.CN/",
+   "url": "https://pcip.zhitongda.cn/",
+   "vendor_name": "安徽智通达信息科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zhitongda.cn/智通达纸电全链一体化平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zhitongda.cn/智通达纸电全链一体化平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Annual Reviews",
+   "searchStr": "ANNUAL REVIEWS-Annual Reviews-ANNUAL REVIEWS-Annual Reviews-HTTPS://WWW.ANNUALREVIEWS.ORG",
+   "url": "https://www.annualreviews.org",
+   "vendor_name": "Annual Reviews",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.annualreviews.org/AnnualReviews.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.annualreviews.org/AnnualReviews.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "环球英语多媒体资源库",
+   "searchStr": "GLOBAL ENGLISH MULTIMEDIA DATABASE-环球英语多媒体资源库-ANYADA-北京安雅达教育科技有限公司-HTTPS://WWW.ENGLIBRARY.COM/INDEX.HTM",
+   "url": "https://www.englibrary.com/index.htm",
+   "vendor_name": "北京安雅达教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/englibrary.com/环球英语多媒体资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/englibrary.com/环球英语多媒体资源库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ACM Digital Library",
+   "searchStr": "ACM DIGITAL LIBRARY-ACM Digital Library-ASSOCIATION FOR COMPUTING MACHINERY-Association for Computing Machinery-HTTPS://DL.ACM.ORG",
+   "url": "https://dl.acm.org",
+   "vendor_name": "Association for Computing Machinery",
+   "step": "https://mgmt.carsi.edu.cn/member_files/acm.org/ACMDigitalLibrary.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/acm.org/ACMDigitalLibrary.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Begell eBook Platform",
+   "searchStr": "BEGELL EBOOK PLATFORM-Begell eBook Platform-BEGELL HOUSE INC-Begell House Inc-HTTPS://WWW.DL.BEGELLHOUSE.COM/",
+   "url": "https://www.dl.begellhouse.com/",
+   "vendor_name": "Begell House Inc",
+   "step": "https://mgmt.carsi.edu.cn/member_files/dl.begellhouse.com/BegelleBookPlatform.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/dl.begellhouse.com/BegelleBookPlatform.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "航空航天虚拟仿真课程平台",
+   "searchStr": "AEROSPACE VIRTUAL SIMULATION COURSE PLATFORM-航空航天虚拟仿真课程平台-BEIHANG UNIVERSITY-北京航空航天大学-HTTPS://AERO.BUAA.EDU.CN",
+   "url": "https://aero.buaa.edu.cn",
+   "vendor_name": "北京航空航天大学",
+   "step": "https://mgmt.carsi.edu.cn/member_files/buaa.edu.cn/航空航天虚拟仿真课程平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/buaa.edu.cn/航空航天虚拟仿真课程平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "青提学术",
+   "searchStr": "NOTEEXPRESS WEB-青提学术-BEIJING AEGEANSOFTWARE COMPANY LIMITED-北京爱琴海乐之技术有限公司-HTTP://WWW.INOTEEXPRESS.COM/AEGEAN/INDEX.PHP/HOME/QT/INDEX.HTML",
+   "url": "http://www.inoteexpress.com/aegean/index.php/home/qt/index.html",
+   "vendor_name": "北京爱琴海乐之技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/inoteexpress.com/青提学术.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/inoteexpress.com/青提学术.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "网上报告厅",
+   "searchStr": "WSBGT-网上报告厅-BEIJING AIDIKESEN JIAOYU KEJI GUFEN YOUXIANGGONGSI-北京爱迪科森教育科技股份有限公司-HTTPS://WB.BJADKS.COM",
+   "url": "https://wb.bjadks.com",
+   "vendor_name": "北京爱迪科森教育科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bjadks.com/网上报告厅.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bjadks.com/网上报告厅.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "全球仿真应用技能资源库",
+   "searchStr": "GLOBAL SIM-全球仿真应用技能资源库-BEIJING AIDIKESEN JIAOYU KEJI GUFEN YOUXIANGGONGSI-北京爱迪科森教育科技股份有限公司-HTTPS://CESHIBK.CHINAFANGZHENEDU.COM/SIGN.HTML",
+   "url": "https://ceshibk.chinafangzhenedu.com/sign.html",
+   "vendor_name": "北京爱迪科森教育科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bjadks.com/全球仿真应用技能资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bjadks.com/全球仿真应用技能资源库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "百度教育内容资源解决方案文库（高校版）",
+   "searchStr": "BAIDU EDUCATION CONTENT RESOURCE SOLUTION（COLLEGE EDITION）-百度教育内容资源解决方案文库（高校版）-BEIJING BAIDU NETCOM SCIENCE TECHNOLOGY CO., LTD.-北京百度网讯科技有限公司-HTTPS://EDUAI.BAIDU.COM/",
+   "url": "https://eduai.baidu.com/",
+   "vendor_name": "北京百度网讯科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/eduai.baidu.com/百度教育内容资源解决方案文库高校版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/eduai.baidu.com/百度教育内容资源解决方案文库高校版.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "超星发现",
+   "searchStr": "无-超星发现-BEIJING CENTURY SUPER STAR INFORMATION TECHNOLOGY DEVELOPMENT CO LTD-北京世纪超星信息技术发展有限责任公司-HTTPS://FSSO.ZHIZHEN.COM/",
+   "url": "https://fsso.zhizhen.com/",
+   "vendor_name": "北京世纪超星信息技术发展有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/超星发现.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/超星发现.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "读秀",
+   "searchStr": "无-读秀-BEIJING CENTURY SUPER STAR INFORMATION TECHNOLOGY DEVELOPMENT CO LTD-北京世纪超星信息技术发展有限责任公司-HTTPS://WWW.DUXIU.COM",
+   "url": "https://www.duxiu.com",
+   "vendor_name": "北京世纪超星信息技术发展有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/读秀.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/读秀.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "汇雅电子书",
+   "searchStr": "无-汇雅电子书-BEIJING CENTURY SUPER STAR INFORMATION TECHNOLOGY DEVELOPMENT CO LTD-北京世纪超星信息技术发展有限责任公司-HTTPS://WWW.SSLIBRARY.COM",
+   "url": "https://www.sslibrary.com",
+   "vendor_name": "北京世纪超星信息技术发展有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/汇雅电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/汇雅电子书.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "百链",
+   "searchStr": "无-百链-BEIJING CENTURY SUPER STAR INFORMATION TECHNOLOGY DEVELOPMENT CO LTD-北京世纪超星信息技术发展有限责任公司-HTTPS://WWW.BLYUN.COM",
+   "url": "https://www.blyun.com",
+   "vendor_name": "北京世纪超星信息技术发展有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/百链.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/百链.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "超星名师讲坛",
+   "searchStr": "无-超星名师讲坛-BEIJING CENTURY SUPER STAR INFORMATION TECHNOLOGY DEVELOPMENT CO LTD-北京世纪超星信息技术发展有限责任公司-HTTPS://SSVIDEO.SUPERLIB.COM",
+   "url": "https://ssvideo.superlib.com",
+   "vendor_name": "北京世纪超星信息技术发展有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/超星名师讲坛.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chaoxing.com/超星名师讲坛.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "畅想之星电子书",
+   "searchStr": "CXSTAR-畅想之星电子书-BEIJING CHANGXIANG STAR-北京畅想之星信息技术有限公司-HTTP://WWW.CXSTAR.COM",
+   "url": "http://www.cxstar.com",
+   "vendor_name": "北京畅想之星信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cxstar.com/畅想之星电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cxstar.com/畅想之星电子书.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "橙艺艺术在线",
+   "searchStr": "CHENGYIART-橙艺艺术在线-BEIJING CHENGYI TECHNOLOGY CO., LTD.-北京橙艺科技有限公司-HTTPS://WWW.CHENGYIART.CN/",
+   "url": "https://www.chengyiart.cn/",
+   "vendor_name": "北京橙艺科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chengyiart.cn/橙艺艺术在线.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chengyiart.cn/橙艺艺术在线.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "大为全球专利检索分析系统",
+   "searchStr": "DAWEI PATENT DATABASE-大为全球专利检索分析系统-BEIJING DAWEISOFT CO., LTD.-北京大为知创科技有限公司-HTTPS://PAT.DAWEISOFT.COM/",
+   "url": "https://pat.daweisoft.com/",
+   "vendor_name": "北京大为知创科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/pat.daweisoft.com/大为全球专利检索分析系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/pat.daweisoft.com/大为全球专利检索分析系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "隐身侠电脑加密助手（教育版）",
+   "searchStr": "YINSHENXIA-隐身侠电脑加密助手（教育版）-BEIJING ECHANCE INFORMATION SECURITY INC.-北京意畅科技股份有限公司-HTTPS://WWW.YINSHENXIA.COM/EDU.HTML",
+   "url": "https://www.yinshenxia.com/edu.html",
+   "vendor_name": "北京意畅科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yinshenxia.com/隐身侠电脑加密助手教育版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yinshenxia.com/隐身侠电脑加密助手教育版.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国法律资源库",
+   "searchStr": "DATA LAWYEE-中国法律资源库-BEIJING FAYE TECHNOLOGY CO., LTD.-北京法意科技有限公司-HTTPS://DATA.LAWYEE.NET/",
+   "url": "https://data.lawyee.net/",
+   "vendor_name": "北京法意科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/lawyee.com/中国法律资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/lawyee.com/中国法律资源库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "EPS数据平台",
+   "searchStr": "EPS CHINA DATA-EPS数据平台-BEIJING FORECASTING INFORMATION TECHNOLOGY COMPANY LIMITED-北京福卡斯特信息技术有限公司-HTTPS://WWW.EPSNET.COM.CN",
+   "url": "https://www.epsnet.com.cn",
+   "vendor_name": "北京福卡斯特信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/epsnet.com.cn/EPS数据平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/epsnet.com.cn/EPS数据平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "专利管理运营平台",
+   "searchStr": "PATENT MANAGEMENT AND OPERATION PLATFORM-专利管理运营平台-BEIJING GAOZHIHUI TECHNOLOGY CO. LTD-北京高智汇科技有限公司-HTTPS://MZIPATENT.COM:81",
+   "url": "https://mzipatent.com:81",
+   "vendor_name": "北京高智汇科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cnpat.com.cn/专利管理运营平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cnpat.com.cn/专利管理运营平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "RESSET金融研究数据库",
+   "searchStr": "RESSET/DB-RESSET金融研究数据库-BEIJING GILDATA RESSET DATATECH COMPANY LIMITED-北京聚源锐思数据科技有限公司-HTTPS://DB.RESSET.COM/",
+   "url": "https://db.resset.com/",
+   "vendor_name": "北京聚源锐思数据科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/db.resset.com/RESSET金融研究数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/db.resset.com/RESSET金融研究数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "道琼斯全球财经资讯平台",
+   "searchStr": "DOWJONES NEWSWIRES GLOBAL FINANCIAL INFORMATION PLATFORM-道琼斯全球财经资讯平台-BEIJING GILDATA RESSET DATATECH COMPANY LIMITED-北京聚源锐思数据科技有限公司-HTTP://UNI.RESSET.COM/",
+   "url": "http://uni.resset.com/",
+   "vendor_name": "北京聚源锐思数据科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/db.resset.com/道琼斯全球财经资讯平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/db.resset.com/道琼斯全球财经资讯平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "RESSET财经文本智能分析平台",
+   "searchStr": "FINANCIAL TEXT INTELLIGENT ANALYSIS PLATFORM-RESSET财经文本智能分析平台-BEIJING GILDATA RESSET DATATECH COMPANY LIMITED-北京聚源锐思数据科技有限公司-HTTPS://RTAS.RESSET.COM",
+   "url": "https://rtas.resset.com",
+   "vendor_name": "北京聚源锐思数据科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/db.resset.com/RESSET财经文本智能分析平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/db.resset.com/RESSET财经文本智能分析平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "RESSET中国企业大数据平台",
+   "searchStr": "RESSET CHINESE ENTERPRISE BIG DATA PLATFORM-RESSET中国企业大数据平台-BEIJING GILDATA RESSET DATATECH COMPANY LIMITED-北京聚源锐思数据科技有限公司-HTTPS://EDP.RESSET.COM",
+   "url": "https://edp.resset.com",
+   "vendor_name": "北京聚源锐思数据科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/db.resset.com/RESSET中国企业大数据平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/db.resset.com/RESSET中国企业大数据平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "外文学术资源整合服务系统",
+   "searchStr": "FARS-外文学术资源整合服务系统-BEIJING GUYANG TECHNOLOGY CO., LTD-北京古扬科技有限公司-HTTPS://FARS.GYTEC.NET",
+   "url": "https://fars.gytec.net",
+   "vendor_name": "北京古扬科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/gytec.net/外文学术资源整合服务系统.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/gytec.net/外文学术资源整合服务系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中外文期刊投稿分析系统",
+   "searchStr": "AOJC-中外文期刊投稿分析系统-BEIJING GUYANG TECHNOLOGY CO., LTD-北京古扬科技有限公司-HTTPS://AOJC.GYTEC.NET",
+   "url": "https://aojc.gytec.net",
+   "vendor_name": "北京古扬科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/gytec.net/中外文期刊投稿分析系统.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/gytec.net/中外文期刊投稿分析系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Mirror（米乐）心理资源服务平台",
+   "searchStr": "MIRRORPSY-Mirror（米乐）心理资源服务平台-BEIJING HUANYU HECHUANG TECHNOLOGY CO., LTD-北京环宇合创科技有限公司-HTTPS://WWW.MIRRORPSY.CN/",
+   "url": "https://www.mirrorpsy.cn/",
+   "vendor_name": "北京环宇合创科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/mirrorpsy.cn/Mirror米乐心理资源服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/mirrorpsy.cn/Mirror米乐心理资源服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "worldlib人工智能在线咨询平台",
+   "searchStr": "WORLDLIBAI-worldlib人工智能在线咨询平台-BEIJING HUAYU XINGHANG INTERNATIONAL EDUCATION TECHNOLOGY CO., LTD.-北京华宇星航国际教育科技有限公司-HTTPS://WORLDLIB.NET/WXPCINDEX.ASPX",
+   "url": "https://worldlib.net/wxpcindex.aspx",
+   "vendor_name": "北京华宇星航国际教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/worldlib.net/worldlib人工智能在线咨询平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/worldlib.net/worldlib人工智能在线咨询平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "worldlib国外文献整合平台",
+   "searchStr": "WORLDLIBNET-worldlib国外文献整合平台-BEIJING HUAYU XINGHANG INTERNATIONAL EDUCATION TECHNOLOGY CO., LTD.-北京华宇星航国际教育科技有限公司-HTTPS://WORLDLIB.NET/INDEX.ASPX",
+   "url": "https://worldlib.net/index.aspx",
+   "vendor_name": "北京华宇星航国际教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/worldlib.net/worldlib国外文献整合平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/worldlib.net/worldlib国外文献整合平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "incoPat全球专利数据库",
+   "searchStr": "INCOPAT GLOBAL PATENT DATABASE-incoPat全球专利数据库-BEIJING INCOPAT CO., LTD.-北京合享智慧科技有限公司-HTTPS://WWW.INCOPAT.COM/",
+   "url": "https://www.incopat.com/",
+   "vendor_name": "北京合享智慧科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/incopat.com/incoPat全球专利数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/incopat.com/incoPat全球专利数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "京东读书专业版",
+   "searchStr": "JDREAD-京东读书专业版-BEIJING JINGDONG 360 DEGREE ELECTRIC COMMERCE CO., LTD.-北京京东叁佰陆拾度电子商务有限公司-HTTPS://M-TOB.JD.COM/",
+   "url": "https://m-tob.jd.com/",
+   "vendor_name": "北京京东叁佰陆拾度电子商务有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/m-tob.jd.com/京东读书专业版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/m-tob.jd.com/京东读书专业版.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "研知科研支持数据库",
+   "searchStr": "NEOSCI-研知科研支持数据库-BEIJING JINTU CHUANGLIAN SCIENCE AND TECHNOLOGY CO.,LTD.-北京金图创联国际科技有限公司-HTTPS://YANZHI.KINGBOOKS.COM.CN/",
+   "url": "https://yanzhi.kingbooks.com.cn/",
+   "vendor_name": "北京金图创联国际科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/kingbook.com.cn/研知科研支持数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/kingbook.com.cn/研知科研支持数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "寻知学术文献数据检索平台",
+   "searchStr": "SEEKING KNOWLEDGE: RETRIEVAL PLATFORM OF ACADEMIC RESOURCES-寻知学术文献数据检索平台-BEIJING JINTU CHUANGLIAN SCIENCE AND TECHNOLOGY CO.,LTD.-北京金图创联国际科技有限公司-HTTPS://XUNZHI.KINGBOOKS.COM.CN",
+   "url": "https://xunzhi.kingbooks.com.cn",
+   "vendor_name": "北京金图创联国际科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/kingbook.com.cn/寻知学术文献数据检索平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/kingbook.com.cn/寻知学术文献数据检索平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "AMiner AI科研助手",
+   "searchStr": "AMINER AI RESEARCH ASSISTANT-AMiner AI科研助手-BEIJING KNOWLEDGE ATLAS TECHNOLOGY JOINT STOCK COMPANY LIMITED-北京智谱华章科技股份有限公司-HTTPS://WWW.AMINER.CN",
+   "url": "https://www.aminer.cn",
+   "vendor_name": "北京智谱华章科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/aminer.cn/AMinerAI科研助手.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/aminer.cn/AMinerAI科研助手.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "库客音乐图书馆机构版",
+   "searchStr": "KUKE MUSIC LIBRARY-库客音乐图书馆机构版-BEIJING KUKE MUSIC CO., LTD.-北京库客音乐股份有限公司-HTTPS://WWW.KUKE.COM/",
+   "url": "https://www.kuke.com/",
+   "vendor_name": "北京库客音乐股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/kuke.com/库客音乐图书馆机构版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/kuke.com/库客音乐图书馆机构版.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "易学术",
+   "searchStr": "EASY ACADEMIC-易学术-BEIJING LANBOTU TECHNOLOGY CO., LTD-北京蓝博图科技有限公司-HTTPS://XUESHU.LIBTOOLS.COM.CN/",
+   "url": "https://xueshu.libtools.com.cn/",
+   "vendor_name": "北京蓝博图科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/libtools.com.cn/易学术.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/libtools.com.cn/易学术.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "元阅读精品电子书有声书数据库",
+   "searchStr": "METAREADER-元阅读精品电子书有声书数据库-BEIJING METAREADER TECHNOLOGY DEVELOPMENT COMPANY LIMITED-北京元阅科技发展有限公司-HTTPS://H5.METAREADER.CN/",
+   "url": "https://h5.metareader.cn/",
+   "vendor_name": "北京元阅科技发展有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/imetareader.com/元阅读精品电子书有声书数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/imetareader.com/元阅读精品电子书有声书数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "北京市政交通一卡通系统",
+   "searchStr": "BEIJING MUNICIPAL TRANSPORTATION ONE CARD SYSTEM-北京市政交通一卡通系统-BEIJING MUNICIPAL ADMINISTRATION&COMMUNICATION CARD CO.,LTD.-北京市政交通一卡通有限公司-HTTPS://A.APP.QQ.COM/O/SIMPLE.JSP?PKGNAME=CN.COM.BMAC.NFC",
+   "url": "https://a.app.qq.com/o/simple.jsp?pkgname=cn.com.bmac.nfc",
+   "vendor_name": "北京市政交通一卡通有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bmac.com.cn/北京市政交通一卡通系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bmac.com.cn/北京市政交通一卡通系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "相干光量子计算云平台",
+   "searchStr": "QBOSN-相干光量子计算云平台-BEIJING QBOSON QUANTUM TECHNOLOGY CO., LTD.-北京玻色量子科技有限公司-HTTPS://PLATFORM.QBOSON.COM/",
+   "url": "https://platform.qboson.com/",
+   "vendor_name": "北京玻色量子科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/qboson.com/玻色量子云平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/qboson.com/玻色量子云平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "爱读宝电子数据库(高校版)",
+   "searchStr": "ADB ELECTRONIC DATABASE (UNIVERSITY EDITION)-爱读宝电子数据库(高校版)-BEIJING WANZHANG YINGKE TECHNOLOGY CO., LTD.-北京万章盈科科技有限公司-HTTPS://WEB.591ADB.CN/ADBDZSJKGXB.HTML",
+   "url": "https://web.591adb.cn/adbdzsjkgxb.html",
+   "vendor_name": "北京万章盈科科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/591adb.cn/爱读宝电子数据库高校版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/591adb.cn/爱读宝电子数据库高校版.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "“选题宝”科研大数据分析服务系统",
+   "searchStr": "XUANTIBAO-“选题宝”科研大数据分析服务系统-BEIJING WENYING TECHNOLOGY CO., LTD-北京问影科技有限公司-HTTPS://WWW.XUANTIBAO.CN/",
+   "url": "https://www.xuantibao.cn/",
+   "vendor_name": "北京问影科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/xuantibao.com/选题宝科研大数据分析服务系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/xuantibao.com/选题宝科研大数据分析服务系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "“可立研”科研培训服务平台",
+   "searchStr": "KELIYAN-“可立研”科研培训服务平台-BEIJING WENYING TECHNOLOGY CO., LTD-北京问影科技有限公司-HTTPS://WWW.KELIYAN.NET.CN/",
+   "url": "https://www.keliyan.net.cn/",
+   "vendor_name": "北京问影科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/xuantibao.com/可立研科研培训服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/xuantibao.com/可立研科研培训服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "银符考试题库",
+   "searchStr": "YINFU TEST QUESTION BANK-银符考试题库-BEIJING YINFU INFORMATION TECHNOLOGY CO., LTD-北京银符信息技术有限公司-HTTPS://WWW.YFZXMN.COM",
+   "url": "https://www.yfzxmn.com",
+   "vendor_name": "北京银符信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yfzxmn.com/银符考试题库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yfzxmn.com/银符考试题库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "起点考试网",
+   "searchStr": "QDEXAM-起点考试网-BEIJING ZHILIANQIDIAN-北京智联起点信息技术有限公司-HTTPS://WWW.QDEXAM.COM",
+   "url": "https://www.qdexam.com",
+   "vendor_name": "北京智联起点信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yjsexam.com/起点考试网.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yjsexam.com/起点考试网.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "起点考研网",
+   "searchStr": "YJSEXAM-起点考研网-BEIJING ZHILIANQIDIAN-北京智联起点信息技术有限公司-HTTPS://WWW.YJSEXAM.COM/",
+   "url": "https://www.yjsexam.com/",
+   "vendor_name": "北京智联起点信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yjsexam.com/起点考研网.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yjsexam.com/起点考研网.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "国际教育系列全文资源库-资源服务平台",
+   "searchStr": "INTERNATIONAL EDUCATION SERIES FULL TEXT RESOURCE LIBRARY RESOURCE SERVICE PLATFORM-国际教育系列全文资源库-资源服务平台-BEIJING ZHONGJI WEIYE SCIENCE AND TECHNOLOGY DEVELOPMENT CENTRE-北京中基伟业科技发展中心-HTTPS://WWW.IESLIB.COM",
+   "url": "https://www.ieslib.com",
+   "vendor_name": "北京中基伟业科技发展中心",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ecsooo.com/国际教育系列全文资源库-资源服务平台.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ecsooo.com/国际教育系列全文资源库-资源服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中科进出口-PQDT学位论文全文检索服务平台",
+   "searchStr": "PQDT-中科进出口-PQDT学位论文全文检索服务平台-BEIJING ZHONGKE IMPORT  EXPORT COMPANY-北京中科进出口有限责任公司-HTTPS://WWW.PQDTCN.COM/ ",
+   "url": "https://www.pqdtcn.com/ ",
+   "vendor_name": "北京中科进出口有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bjzhongke.com.cn/中科进出口-PQDT学位论文全文检索服务平台.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bjzhongke.com.cn/中科进出口-PQDT学位论文全文检索服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "汉籍典藏域外古籍数据库",
+   "searchStr": "HANJIDIANCANG-汉籍典藏域外古籍数据库-BEIJING ZHONGKE XINGTU INFORMATION TECHNOLOGY CO., LTD.-北京中科兴图信息技术有限公司-HTTPS://WWW.HDIAN.NET/",
+   "url": "https://www.hdian.net/",
+   "vendor_name": "北京中科兴图信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/hdian.net/汉籍典藏域外古籍数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/hdian.net/汉籍典藏域外古籍数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "高校信息素养教育数据库",
+   "searchStr": "INFORMATION LITERACY TUTORIALS DATABASE FOR HIGHER EDUCATION-高校信息素养教育数据库-BEIJINGZHIXINSHUTUKEJIYOUXIANGONGSI-北京智信数图科技有限公司-HTTPS://SUYANG.ZXHNZQ.COM/",
+   "url": "https://suyang.zxhnzq.com/",
+   "vendor_name": "北京智信数图科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zhixinst.com/高校信息素养教育数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zhixinst.com/高校信息素养教育数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Bentham Science 电子期刊全文数据库",
+   "searchStr": "BENTHAM SCIENCE EJOURNAL COLLECTION-Bentham Science 电子期刊全文数据库-BENTHAM SCIENCE PUBLISHERS-Bentham Science Publishers-HTTPS://WWW.EUREKASELECT.NET/",
+   "url": "https://www.eurekaselect.net/",
+   "vendor_name": "Bentham Science Publishers",
+   "step": "https://mgmt.carsi.edu.cn/member_files/benthamscience.com/BenthamScience电子期刊全文数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/benthamscience.com/BenthamScience电子期刊全文数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Bloomsbury Digital Resources",
+   "searchStr": "BLOOMSBURY DIGITAL RESOURCES-Bloomsbury Digital Resources-BLOOMSBURY DIGITAL RESOURCES-Bloomsbury Digital Resources-HTTPS://WWW.BLOOMSBURYCOLLECTIONS.COM",
+   "url": "https://www.bloomsburycollections.com",
+   "vendor_name": "Bloomsbury Digital Resources",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bloomsburycollections.com/BloomsburyDigitalResources.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bloomsburycollections.com/BloomsburyDigitalResources.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "BMJ 临床实践",
+   "searchStr": "BMJ BEST PRACTICE-BMJ 临床实践-BMJ-BMJ-HTTPS://BESTPRACTICE.BMJ.COM/",
+   "url": "https://bestpractice.bmj.com/",
+   "vendor_name": "BMJ",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.bmj.com/BMJ临床实践.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.bmj.com/BMJ临床实践.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "BankFocus-全球银行与金融机构分析库",
+   "searchStr": "BANKFOCUS-BankFocus-全球银行与金融机构分析库-BUREAU VAN DIJK ELECTRONIC PUBLISHING (BEIJING) LTD.-毕威迪信息咨询服务（北京）有限公司-HTTPS://BANKFOCUS.BVDINFO.COM/SSO/EDUGAIN",
+   "url": "https://bankfocus.bvdinfo.com/sso/edugain",
+   "vendor_name": "毕威迪信息咨询服务（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/BankFocus-全球银行与金融机构分析库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/BankFocus-全球银行与金融机构分析库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Orbis Intellectual Property－全球知识产权数据库",
+   "searchStr": "ORBIS INTELLECTUAL PROPERTY-Orbis Intellectual Property－全球知识产权数据库-BUREAU VAN DIJK ELECTRONIC PUBLISHING (BEIJING) LTD.-毕威迪信息咨询服务（北京）有限公司-HTTPS://ORBISIP.BVDINFO.COM/SSO/EDUGAIN",
+   "url": "https://orbisip.bvdinfo.com/sso/edugain",
+   "vendor_name": "毕威迪信息咨询服务（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/OrbisIntellectualProperty全球知识产权数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/OrbisIntellectualProperty全球知识产权数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Orbis Crossborder Investment－全球跨境投资数据库",
+   "searchStr": "ORBIS CROSSBORDER INVESTMENT-Orbis Crossborder Investment－全球跨境投资数据库-BUREAU VAN DIJK ELECTRONIC PUBLISHING (BEIJING) LTD.-毕威迪信息咨询服务（北京）有限公司-HTTPS://ORBISCI.BVDINFO.COM/SSO/EDUGAIN",
+   "url": "https://orbisci.bvdinfo.com/sso/edugain",
+   "vendor_name": "毕威迪信息咨询服务（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/OrbisCrossborderInvestment全球跨境投资数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/OrbisCrossborderInvestment全球跨境投资数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Orbis M&A－全球并购交易分析库",
+   "searchStr": "ORBIS M&A-Orbis M&A－全球并购交易分析库-BUREAU VAN DIJK ELECTRONIC PUBLISHING (BEIJING) LTD.-毕威迪信息咨询服务（北京）有限公司-HTTPS://ORBISMANDA.BVDINFO.COM/SSO/EDUGAIN",
+   "url": "https://orbismanda.bvdinfo.com/sso/edugain",
+   "vendor_name": "毕威迪信息咨询服务（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/OrbisMA全球并购交易分析库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/OrbisMA全球并购交易分析库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "InsuranceFocus－全球保险公司财务分析库",
+   "searchStr": "INSURANCEFOCUS-InsuranceFocus－全球保险公司财务分析库-BUREAU VAN DIJK ELECTRONIC PUBLISHING (BEIJING) LTD.-毕威迪信息咨询服务（北京）有限公司-HTTPS://INSURANCEFOCUS.BVDINFO.COM/SSO/EDUGAIN",
+   "url": "https://insurancefocus.bvdinfo.com/sso/edugain",
+   "vendor_name": "毕威迪信息咨询服务（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/InsuranceFocus全球保险公司财务分析库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/InsuranceFocus全球保险公司财务分析库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Osiris－全球上市公司分析库",
+   "searchStr": "OSIRIS-Osiris－全球上市公司分析库-BUREAU VAN DIJK ELECTRONIC PUBLISHING (BEIJING) LTD.-毕威迪信息咨询服务（北京）有限公司-HTTPS://OSIRIS.BVDINFO.COM/SSO.ASPX?PATH=EDUGAIN",
+   "url": "https://osiris.bvdinfo.com/sso.aspx?path=edugain",
+   "vendor_name": "毕威迪信息咨询服务（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/Osiris全球上市公司分析库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/Osiris全球上市公司分析库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ORBIS-全球企业数据库",
+   "searchStr": " ORBIS-ORBIS-全球企业数据库-BUREAU VAN DIJK ELECTRONIC PUBLISHING (BEIJING) LTD.-毕威迪信息咨询服务（北京）有限公司-HTTPS://ORBIS.BVDINFO.COM/SSO/EDUGAIN",
+   "url": "https://orbis.bvdinfo.com/sso/edugain",
+   "vendor_name": "毕威迪信息咨询服务（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/ORBIS-全球企业数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bvdinfo.com/ORBIS-全球企业数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "CALIS智慧服务平台",
+   "searchStr": "CALIS  SMART SERVICES PLATFORM-CALIS智慧服务平台-CALIS-中国高等教育文献保障系统管理中心-HTTPS://SMART.CALIS.EDU.CN/",
+   "url": "https://smart.calis.edu.cn/",
+   "vendor_name": "中国高等教育文献保障系统管理中心",
+   "step": "https://mgmt.carsi.edu.cn/member_files/calis.edu.cn/CALIS智慧服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/calis.edu.cn/CALIS智慧服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Cambridge Core",
+   "searchStr": "CAMBRIDGE CORE-Cambridge Core-CAMBRIDGE UNIVERSITY PRESS & ASSESSMENT-Cambridge University Press and Assessment-HTTPS://WWW.CAMBRIDGE.ORG/CORE/",
+   "url": "https://www.cambridge.org/core/",
+   "vendor_name": "Cambridge University Press and Assessment",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cambridge.org/CambridgeCore.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cambridge.org/CambridgeCore.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "CAS SciFinder",
+   "searchStr": "CAS SCIFINDER-CAS SciFinder-CAS-CAS-HTTPS://SCIFINDER.CAS.ORG",
+   "url": "https://scifinder.cas.org",
+   "vendor_name": "CAS",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cas.org/CASSciFinder.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cas.org/CASSciFinder.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "全球科研项目数据库",
+   "searchStr": "PROJECTGATE-全球科研项目数据库-CASWIZ-兰州中科维智信息咨询有限公司-HTTP://PROJECT.LLAS.AC.CN/",
+   "url": "http://project.llas.ac.cn/",
+   "vendor_name": "兰州中科维智信息咨询有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/caswiz.com/全球科研项目数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/caswiz.com/全球科研项目数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中经专网",
+   "searchStr": "INTRANET BUSINESS EXPRESS-中经专网-CEINET DATA CO.,LTD-中经网数据有限公司-HTTPS://IBENEW.CEI.CN/",
+   "url": "https://ibenew.cei.cn/",
+   "vendor_name": "中经网数据有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经专网.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经专网.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中经网统计数据库",
+   "searchStr": "CEINET STATISTICS DATABASE-中经网统计数据库-CEINET DATA CO.,LTD-中经网数据有限公司-HTTPS://DB.CEI.CN/",
+   "url": "https://db.cei.cn/",
+   "vendor_name": "中经网数据有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网统计数据库.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网统计数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中经网产业数据库",
+   "searchStr": "CEINET INDUSTRY DATABASE-中经网产业数据库-CEINET DATA CO.,LTD-中经网数据有限公司-HTTPS://CYK.CEI.CN",
+   "url": "https://cyk.cei.cn",
+   "vendor_name": "中经网数据有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网产业数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网产业数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中经网一带一路统计数据库",
+   "searchStr": "DATABASE FOR THE BELT AND ROAD-中经网一带一路统计数据库-CEINET DATA CO.,LTD-中经网数据有限公司-HTTPS://YDYL.CEI.CN",
+   "url": "https://ydyl.cei.cn",
+   "vendor_name": "中经网数据有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网一带一路统计数据库.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网一带一路统计数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中经网微观数据库系列",
+   "searchStr": "MICROSCOPIC DATABASE-中经网微观数据库系列-CEINET DATA CO.,LTD-中经网数据有限公司-HTTPS://CEIDATA.CEI.CN",
+   "url": "https://ceidata.cei.cn",
+   "vendor_name": "中经网数据有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网微观数据库系列.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网微观数据库系列.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中经网重点区域数据库",
+   "searchStr": "PRIORITY REGIONS DATABASE-中经网重点区域数据库-CEINET DATA CO.,LTD-中经网数据有限公司-HTTPS://CEIDATA.CEI.CN",
+   "url": "https://ceidata.cei.cn",
+   "vendor_name": "中经网数据有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网重点区域数据库.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经网重点区域数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中经数据",
+   "searchStr": "CEIDATA DATABASE-中经数据-CEINET DATA CO.,LTD-中经网数据有限公司-HTTPS://CEIDATA.CEI.CN",
+   "url": "https://ceidata.cei.cn",
+   "vendor_name": "中经网数据有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经数据.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cei.cn/中经数据.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "GALE数据库",
+   "searchStr": "GALE DATABASES-GALE数据库-CENGAGE LEARNING ASIA PTE LTD-Cengage Learning Asia Pte Ltd-HTTPS://LINK.GALE.COM/APPS/MENU",
+   "url": "https://link.gale.com/apps/menu",
+   "vendor_name": "Cengage Learning Asia Pte Ltd",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cengageasia.com/GALE数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cengageasia.com/GALE数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "赛尔网络下一代互联网视频课程",
+   "searchStr": "CERNET NEXT GENERATION INTERNET COURSE -赛尔网络下一代互联网视频课程-CERNET CORPORATION-赛尔网络有限公司-HTTPS://WWW.CTRUNK.CN/CARSI",
+   "url": "https://www.ctrunk.cn/carsi",
+   "vendor_name": "赛尔网络有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cernet.com/赛尔网络下一代互联网视频课程.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cernet.com/赛尔网络下一代互联网视频课程.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "赛尔AIGC文字检测服务",
+   "searchStr": "AIGC TEXT DETECTION-赛尔AIGC文字检测服务-CERNET CORPORATION-赛尔网络有限公司-HTTPS://TEXT.SEC.CERNET.COM/",
+   "url": "https://text.sec.cernet.com/",
+   "vendor_name": "赛尔网络有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cernet.com/赛尔AIGC文字检测服务.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cernet.com/赛尔AIGC文字检测服务.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "CCER经济金融数据库",
+   "searchStr": "CCERDATA-CCER经济金融数据库-CHENGDU SINOFIN INFORMATION TECHNOLOGY CO., LTD.-成都色诺芬信息技术有限责任公司-HTTP://WWW.CCERDATA.CN",
+   "url": "http://www.ccerdata.cn",
+   "vendor_name": "成都色诺芬信息技术有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ccerdata.cn/CCER经济金融数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ccerdata.cn/CCER经济金融数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "智云服务平台",
+   "searchStr": "ZCLOUDLIB-智云服务平台-CHENGDU ZHIYI SCIENCE&TECHNOLOGY CO.LTD-成都智益科技有限公司-HTTP://ZCLOUDLIB.COM/",
+   "url": "http://zcloudlib.com/",
+   "vendor_name": "成都智益科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zcloudlib.com/智云服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zcloudlib.com/智云服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "创课之星-全球大学生创新创业与就业升学视频资源平台",
+   "searchStr": "CKZX-创课之星-全球大学生创新创业与就业升学视频资源平台-CHENXINCHUANGTOU-北京晨星创投科技有限公司-HTTP://WWW.CHINACXC.ORG",
+   "url": "http://www.chinacxc.org",
+   "vendor_name": "北京晨星创投科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chinacxc.org/创课之星-全球大学生创新创业与就业升学视频资源平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chinacxc.org/创课之星-全球大学生创新创业与就业升学视频资源平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "考研阅览室学习资源平台",
+   "searchStr": "无-考研阅览室学习资源平台-CHENXINCHUANGTOU-北京晨星创投科技有限公司-HTTPS://WWW.51YANTU.CN",
+   "url": "https://www.51yantu.cn",
+   "vendor_name": "北京晨星创投科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chinacxc.org/考研阅览室学习资源平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chinacxc.org/考研阅览室学习资源平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国建筑数字图书馆",
+   "searchStr": "CHINA ARCHITECTURE DIGITAL LIBRARY-中国建筑数字图书馆-CHINA ARCHITECTURE PUBLISHING AND MEDIA LIMITED CORPORATION-中国建筑出版传媒有限公司-HTTPS://DLIB.CABPLINK.COM/",
+   "url": "https://dlib.cabplink.com/",
+   "vendor_name": "中国建筑出版传媒有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cabp.com.cn/中国建筑数字图书馆.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cabp.com.cn/中国建筑数字图书馆.univ_file.doc",
+   "sptype": "2"
+  },
+  {
+   "production": "爱教材",
+   "searchStr": "ITEXT-爱教材-CHINA EDUCATIONAL PUBLICATION IMPORT AND EXPORT CORPORATION-中国教育图书进出口有限公司-HTTP://WWW.ITEXTBOOK.CN",
+   "url": "http://www.itextbook.cn",
+   "vendor_name": "中国教育图书进出口有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/爱教材.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/爱教材.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "爱学术",
+   "searchStr": "IRESEARCH-爱学术-CHINA EDUCATIONAL PUBLICATION IMPORT AND EXPORT CORPORATION-中国教育图书进出口有限公司-HTTPS://WWW.IRESEARCHBOOK.CN/F",
+   "url": "https://www.iresearchbook.cn/f",
+   "vendor_name": "中国教育图书进出口有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/爱学术.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/爱学术.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "华艺电子书数据库",
+   "searchStr": "华艺电子书数据库-华艺电子书数据库-CHINA EDUCATIONAL PUBLICATION IMPORT AND EXPORT CORPORATION-中国教育图书进出口有限公司-HTTPS://EBOOKS.AIRITILIBRARY.CN",
+   "url": "https://ebooks.airitilibrary.cn",
+   "vendor_name": "中国教育图书进出口有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/华艺电子书数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/华艺电子书数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "TWS台湾学术期刊在线数据库",
+   "searchStr": "TWS台湾学术期刊在线数据库-TWS台湾学术期刊在线数据库-CHINA EDUCATIONAL PUBLICATION IMPORT AND EXPORT CORPORATION-中国教育图书进出口有限公司-HTTP://WWW.TWSCHOLAR.COM/",
+   "url": "http://www.twscholar.com/",
+   "vendor_name": "中国教育图书进出口有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/TWS台湾学术期刊在线数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/TWS台湾学术期刊在线数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "TWB台湾学术书籍数据库",
+   "searchStr": "TWB台湾学术书籍数据库-TWB台湾学术书籍数据库-CHINA EDUCATIONAL PUBLICATION IMPORT AND EXPORT CORPORATION-中国教育图书进出口有限公司-HTTP://BOOKS.TWSCHOLAR.COM/",
+   "url": "http://books.twscholar.com/",
+   "vendor_name": "中国教育图书进出口有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/TWB台湾学术书籍数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/TWB台湾学术书籍数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "华艺学术文献数据库",
+   "searchStr": "华艺学术文献数据库-华艺学术文献数据库-CHINA EDUCATIONAL PUBLICATION IMPORT AND EXPORT CORPORATION-中国教育图书进出口有限公司-HTTPS://WWW.AIRITILIBRARY.CN",
+   "url": "https://www.airitilibrary.cn",
+   "vendor_name": "中国教育图书进出口有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/华艺学术文献数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cepiec.com.cn/华艺学术文献数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "政眼通政策大数据分析服务系统·智库版",
+   "searchStr": "ZHENGYANTONG-政眼通政策大数据分析服务系统·智库版-CHINA KNOWLEDGE NETWORK(BEIJING)TECHNOLOGY CO., LTD-中知知识互联（北京）科技有限公司-HTTPS://WWW.ZYTDATA.COM/LOGINZK",
+   "url": "https://www.zytdata.com/loginzk",
+   "vendor_name": "中知知识互联（北京）科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zytdata.com/政眼通政策大数据分析服务系统智库版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zytdata.com/政眼通政策大数据分析服务系统智库版.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "工程科技数字图书馆",
+   "searchStr": "ENGINEERING SCI&TECH DIGITAL LIBRARY-工程科技数字图书馆-CHINA MACHINE PRESS-机械工业出版社-HTTP://EBOOKS.CMPBOOK.COM",
+   "url": "http://ebooks.cmpbook.com",
+   "vendor_name": "机械工业出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cmpbook.com/工程科技数字图书馆.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cmpbook.com/工程科技数字图书馆.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国移动云盘",
+   "searchStr": "CHINA MOBILE-中国移动云盘-CHINA MOBILE COMMUNICATIONS GROUP BEIJING CO., LTD.-中国移动通信集团北京有限公司-HTTPS://ANDMARKET.BMCC.COM.CN/STATIC/PAGES/VGOP/CARSI/#/INDEX",
+   "url": "https://andmarket.bmcc.com.cn/static/pages/vgop/carsi/#/index",
+   "vendor_name": "中国移动通信集团北京有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bj.10086.cn/中国移动云盘.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bj.10086.cn/中国移动云盘.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "国家基因库生命大数据平台",
+   "searchStr": "CHINA NATIONAL GENEBANK DATABASE-国家基因库生命大数据平台-CHINA NATIONAL GENEBANK-深圳华大生命科学研究院（深圳国家基因库)-HTTPS://DB.CNGB.CN/",
+   "url": "https://db.cngb.cn/",
+   "vendor_name": "深圳华大生命科学研究院（深圳国家基因库)",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cngb.org/国家基因库生命大数据平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cngb.org/国家基因库生命大数据平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "易阅通",
+   "searchStr": "CNPEREADING-易阅通-CHINA NATIONAL PUBLICATIONS IMPORT AND EXPORT CORP-中国图书进出口(集团)总公司-HTTPS://WWW.CNPEREADING.COM/",
+   "url": "https://www.cnpereading.com/",
+   "vendor_name": "中国图书进出口(集团)总公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cnpiec.com.cn/易阅通.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cnpiec.com.cn/易阅通.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中医数字图书馆",
+   "searchStr": "中医数字图书馆-中医数字图书馆-CHINA PRESS OF TRADITIONAL CHINESE MEDICINE-中国中医药出版社有限公司-HTTP://LIBTCM.CPTCM.COM/DOCZHONGYI/PC/INDEX.JSPX",
+   "url": "http://libtcm.cptcm.com/docZhongyi/pc/index.jspx",
+   "vendor_name": "中国中医药出版社有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cptcm.com/中医数字图书馆.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cptcm.com/中医数字图书馆.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国生物志库",
+   "searchStr": "CHINA SPECIES LIBRARY-中国生物志库-CHINA SCIENCE PUBLISHING & MEDIA LTD.(CSPM)-中国科技出版传媒股份有限公司-HTTPS://SPECIES.SCIENCEREADING.CN/",
+   "url": "https://species.sciencereading.cn/",
+   "vendor_name": "中国科技出版传媒股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sciencep.com/中国生物志库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sciencep.com/中国生物志库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "科学文库",
+   "searchStr": "SCIENCE READING-科学文库-CHINA SCIENCE PUBLISHING & MEDIA LTD.(CSPM)-中国科技出版传媒股份有限公司-HTTPS://BOOK.SCIENCEREADING.CN/",
+   "url": "https://book.sciencereading.cn/",
+   "vendor_name": "中国科技出版传媒股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sciencep.com/科学文库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sciencep.com/科学文库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "科学智库",
+   "searchStr": "SCIENCE THINK TANK-科学智库-CHINA SCIENCE PUBLISHING & MEDIA LTD.(CSPM)-中国科技出版传媒股份有限公司-HTTPS://THINKTANK.SCIENCEREADING.CN/",
+   "url": "https://thinktank.sciencereading.cn/",
+   "vendor_name": "中国科技出版传媒股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sciencep.com/科学智库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sciencep.com/科学智库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国古生物地层知识库",
+   "searchStr": "CHINA PALAEONTOLOGY STRATIGRAPHY LIBRARY-中国古生物地层知识库-CHINA SCIENCE PUBLISHING & MEDIA LTD.(CSPM)-中国科技出版传媒股份有限公司-HTTPS://CPSL.SCIENCEREADING.CN/",
+   "url": "https://cpsl.sciencereading.cn/",
+   "vendor_name": "中国科技出版传媒股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sciencep.com/中国古生物地层知识库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sciencep.com/中国古生物地层知识库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国社会科学文库",
+   "searchStr": "CHINA SOCIAL SCIENCES LIBRARY-中国社会科学文库-CHINA SOCIAL SCIENCES PRESS-中国社会科学出版社-HTTP://WWW.SKLIB.CN/",
+   "url": "http://www.sklib.cn/",
+   "vendor_name": "中国社会科学出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.csspw.cn/中国社会科学文库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.csspw.cn/中国社会科学文库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国近代影像资料库",
+   "searchStr": "CHINESE HISTORICAL  IMAGES DATEBASE-中国近代影像资料库-CHINA SOCIAL SCIENCES PRESS-中国社会科学出版社-HTTP://WWW.LZP360.COM",
+   "url": "http://www.lzp360.com",
+   "vendor_name": "中国社会科学出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.csspw.cn/中国近代影像资料库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.csspw.cn/中国近代影像资料库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国社会科学年鉴数据库",
+   "searchStr": "CHINESE ACADEMIC ALMANAC-中国社会科学年鉴数据库-CHINA SOCIAL SCIENCES PRESS-中国社会科学出版社-HTTPS://WWW.EYEARBOOK.CN",
+   "url": "https://www.eyearbook.cn",
+   "vendor_name": "中国社会科学出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.csspw.cn/中国社会科学年鉴数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.csspw.cn/中国社会科学年鉴数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国联通5G随行专网产品服务",
+   "searchStr": "CHINA UNICOM'S 5G PORTABLE PRIVATE NETWORK-中国联通5G随行专网产品服务-CHINA UNITED NETWORK COMMUNICATIONS GROUP CO.LTD-中国联合网络通信有限公司-HTTPS://A.APP.QQ.COM/O/SIMPLE.JSP?PKGNAME=COM.SINOVATECH.UNICOM.UI&G_F=991653",
+   "url": "https://a.app.qq.com/o/simple.jsp?pkgname=com.sinovatech.unicom.ui&g_f=991653",
+   "vendor_name": "中国联合网络通信有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/unicom.cn/中国联通5G随行专网产品服务.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/unicom.cn/中国联通5G随行专网产品服务.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "北大法宝",
+   "searchStr": "PKULAW-北大法宝-CHINALAWINFO CO., LTD.-北京北大英华科技有限公司-HTTPS://WWW.PKULAW.COM/",
+   "url": "https://www.pkulaw.com/",
+   "vendor_name": "北京北大英华科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/pkulaw.com/北大法宝.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/pkulaw.com/北大法宝.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "公图艺术资源O2O服务平台",
+   "searchStr": "GTART-公图艺术资源O2O服务平台-CHONGQING GONGTU NETWORK TECHNOLOGY CO., LTD.-重庆公图网络科技有限公司-HTTPS://GTART.GONGTUEDU.CN",
+   "url": "https://gtart.gongtuedu.cn",
+   "vendor_name": "重庆公图网络科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/gongtuedu.cn/公图艺术资源O2O服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/gongtuedu.cn/公图艺术资源O2O服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "大学生思政资源服务平台",
+   "searchStr": "GTSZ-大学生思政资源服务平台-CHONGQING GONGTU NETWORK TECHNOLOGY CO., LTD.-重庆公图网络科技有限公司-HTTP://SZ.GONGTUEDU.CN",
+   "url": "http://sz.gongtuedu.cn",
+   "vendor_name": "重庆公图网络科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/gongtuedu.cn/大学生思政资源服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/gongtuedu.cn/大学生思政资源服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "尚唯产品样本数据库",
+   "searchStr": "SUNWAY-GPD-尚唯产品样本数据库-CHONGQING SUNWAY INFO-重庆尚唯信息技术有限公司-HTTPS://GPD.SUNWAYINFO.COM.CN/",
+   "url": "https://gpd.sunwayinfo.com.cn/",
+   "vendor_name": "重庆尚唯信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sunwayinfo.com.cn/尚唯产品样本数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sunwayinfo.com.cn/尚唯产品样本数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "尚唯科技报告资源服务系统",
+   "searchStr": "SUNWAY_TECHREPORT-尚唯科技报告资源服务系统-CHONGQING SUNWAY INFO-重庆尚唯信息技术有限公司-HTTPS://BG.SUNWAYINFO.COM.CN/",
+   "url": "https://bg.sunwayinfo.com.cn/",
+   "vendor_name": "重庆尚唯信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sunwayinfo.com.cn/尚唯科技报告资源服务系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sunwayinfo.com.cn/尚唯科技报告资源服务系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "尚唯军用标准信息服务平台",
+   "searchStr": "SUNWAY MILITARY STANDARD INFORMATION SERVICE PLATFORM-尚唯军用标准信息服务平台-CHONGQING SUNWAY INFO-重庆尚唯信息技术有限公司-HTTP://GWBZ.SUNWAYINFO.COM.CN",
+   "url": "http://gwbz.sunwayinfo.com.cn",
+   "vendor_name": "重庆尚唯信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sunwayinfo.com.cn/尚唯军用标准信息服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sunwayinfo.com.cn/尚唯军用标准信息服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "CIDP制造业数字资源平台",
+   "searchStr": "CIDP MANUFACTURING INDUSTRY KNOWLEDGE RESOURCES PLATFORM-CIDP制造业数字资源平台-CIDP DIGITAL TECHNOLOGIES CO., LTD.-海枣数字科技（北京）有限公司-HTTPS://WWW.CIDP.COM.CN",
+   "url": "https://www.cidp.com.cn",
+   "vendor_name": "海枣数字科技（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cidp.com.cn/CIDP制造业数字资源平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cidp.com.cn/CIDP制造业数字资源平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Web of Science",
+   "searchStr": "WEB OF SCIENCE-Web of Science-CLARIVATE-科睿唯安-WWW.WEBOFSCIENCE.COM",
+   "url": "www.webofscience.com",
+   "vendor_name": "科睿唯安",
+   "step": "https://mgmt.carsi.edu.cn/member_files/clarivate.com/WebofScience.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/clarivate.com/WebofScience.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "基本科学指标数据库",
+   "searchStr": "ESSENTIAL SCIENCE INDICATORS-基本科学指标数据库-CLARIVATE-科睿唯安-HTTPS://ESI.CLARIVATE.COM",
+   "url": "https://esi.clarivate.com",
+   "vendor_name": "科睿唯安",
+   "step": "https://mgmt.carsi.edu.cn/member_files/clarivate.com/基本科学指标数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/clarivate.com/基本科学指标数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "INCITES 数据库",
+   "searchStr": "INCITES-INCITES 数据库-CLARIVATE-科睿唯安-HTTPS://INCITES.CLARIVATE.COM/",
+   "url": "https://incites.clarivate.com/",
+   "vendor_name": "科睿唯安",
+   "step": "https://mgmt.carsi.edu.cn/member_files/clarivate.com/INCITES数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/clarivate.com/INCITES数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "期刊引用报告网络版",
+   "searchStr": "JOURNAL CITATION REPORTS-期刊引用报告网络版-CLARIVATE-科睿唯安-HTTPS://JCR.CLARIVATE.COM/",
+   "url": "https://jcr.clarivate.com/",
+   "vendor_name": "科睿唯安",
+   "step": "https://mgmt.carsi.edu.cn/member_files/clarivate.com/期刊引用报告网络版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/clarivate.com/期刊引用报告网络版.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中科VIPExam考试学习资源数据库",
+   "searchStr": "CNSCI VIPEXAM LEARNING RESOURCES DATABASE-中科VIPExam考试学习资源数据库-CNSCI SOFT EDUCATIONAL TECHNOLOGY (BEIJING) CORP-中科软股教育科技（北京）股份有限公司-HTTPS://WWW.VIPEXAM.CN",
+   "url": "https://www.vipexam.cn",
+   "vendor_name": "中科软股教育科技（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/中科VIPExam考试学习资源数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/中科VIPExam考试学习资源数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中科UMajor专业课学习资源数据库",
+   "searchStr": "CNSCI UMAJOR MAJOR COURSE LEARNING RESOURCES DATABASE-中科UMajor专业课学习资源数据库-CNSCI SOFT EDUCATIONAL TECHNOLOGY (BEIJING) CORP-中科软股教育科技（北京）股份有限公司-HTTPS://WWW.UMAJOR.NET/",
+   "url": "https://www.umajor.net/",
+   "vendor_name": "中科软股教育科技（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/中科UMajor专业课学习资源数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/中科UMajor专业课学习资源数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中科JobLib就业与创业创新知识总库",
+   "searchStr": "CNSCI JOBLIB EMPLOYMENT & STARTUP & INNOVATION DATABASE-中科JobLib就业与创业创新知识总库-CNSCI SOFT EDUCATIONAL TECHNOLOGY (BEIJING) CORP-中科软股教育科技（北京）股份有限公司-HTTPS://WWW.JOBLIB.CN",
+   "url": "https://www.joblib.cn",
+   "vendor_name": "中科软股教育科技（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/中科JobLib就业与创业创新知识总库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/中科JobLib就业与创业创新知识总库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "新时代中国特色社会主义思想政治课程数据库",
+   "searchStr": "SOCIALISM WITH CHINESE CHARACTERISTICS IN THE NEW ERA IDEOLOGICAL & POLITICAL COURSES DATABASE-新时代中国特色社会主义思想政治课程数据库-CNSCI SOFT EDUCATIONAL TECHNOLOGY (BEIJING) CORP-中科软股教育科技（北京）股份有限公司-HTTPS://WWW.SIZHENGKE.NET",
+   "url": "https://www.sizhengke.net",
+   "vendor_name": "中科软股教育科技（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/新时代中国特色社会主义思想政治课程数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/新时代中国特色社会主义思想政治课程数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "新时代中国特色社会主义思政教育视频数据库（面向全体师生）",
+   "searchStr": "SOCIALISM WITH CHINESE CHARACTERISTICS IN THE NEW ERA IDEOLOGICAL & POLITICAL EDUCATION VIDEO DATABASE-新时代中国特色社会主义思政教育视频数据库（面向全体师生）-CNSCI SOFT EDUCATIONAL TECHNOLOGY (BEIJING) CORP-中科软股教育科技（北京）股份有限公司-HTTPS://WWW.REDCLASS.NET/",
+   "url": "https://www.redclass.net/",
+   "vendor_name": "中科软股教育科技（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/新时代中国特色社会主义思政教育视频数据库面向全体师生.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/新时代中国特色社会主义思政教育视频数据库面向全体师生.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "新时代高校课程思政数据库（面向任课教师）",
+   "searchStr": "IDEOLOGICAL AND POLITICAL EDUCATION IN COLLEGES IN THE NEW ERA DATABASE-新时代高校课程思政数据库（面向任课教师）-CNSCI SOFT EDUCATIONAL TECHNOLOGY (BEIJING) CORP-中科软股教育科技（北京）股份有限公司-HTTPS://KECHENGSIZHENG.CN/",
+   "url": "https://kechengsizheng.cn/",
+   "vendor_name": "中科软股教育科技（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/新时代高校课程思政数据库面向任课教师.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/新时代高校课程思政数据库面向任课教师.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "上岸考公网",
+   "searchStr": "SHANGANKAOGONG CIVIL SERVICE EXAM PLATFORM-上岸考公网-CNSCI SOFT EDUCATIONAL TECHNOLOGY (BEIJING) CORP-中科软股教育科技（北京）股份有限公司-HTTPS://WWW.SHANGANKAOGONG.NET",
+   "url": "https://www.shangankaogong.net",
+   "vendor_name": "中科软股教育科技（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/上岸考公网.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/上岸考公网.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "上岸考研网",
+   "searchStr": "SHANGANKAOYAN POSTGRADUATE ENTRANCE EXAMINATION PLATFORM-上岸考研网-CNSCI SOFT EDUCATIONAL TECHNOLOGY (BEIJING) CORP-中科软股教育科技（北京）股份有限公司-HTTPS://WWW.SHANGANKAOYAN.NET",
+   "url": "https://www.shangankaoyan.net",
+   "vendor_name": "中科软股教育科技（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/上岸考研网.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipexam.cn/上岸考研网.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "书香中国",
+   "searchStr": "CHINESEALL-书香中国-COL-湖北中文在线数字出版有限公司-HTTPS://CARSI.CHINESEALL.CN",
+   "url": "https://carsi.chineseall.cn",
+   "vendor_name": "湖北中文在线数字出版有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/chineseall.cn/书香中国.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/chineseall.cn/书香中国.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "维普中文期刊服务平台",
+   "searchStr": "VIP-CSTJ-维普中文期刊服务平台-CQVIPINFO-重庆维普资讯有限公司-HTTP://QIKAN.CQVIP.COM/INDEX.HTML",
+   "url": "http://qikan.cqvip.com/index.html",
+   "vendor_name": "重庆维普资讯有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/qikan.cqvip.com/维普中文期刊服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/qikan.cqvip.com/维普中文期刊服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "维普考试服务平台",
+   "searchStr": "VIP EXAM SERVICE PLATFORM-维普考试服务平台-CQVIPINFO-重庆维普资讯有限公司-HTTPS://VERS.CQVIP.COM/",
+   "url": "https://vers.cqvip.com/",
+   "vendor_name": "重庆维普资讯有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/qikan.cqvip.com/维普考试服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/qikan.cqvip.com/维普考试服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "畅想之星简易寻外文学术资源数据库系统软件V1.0",
+   "searchStr": "JYX MULTILINGUAL SCHOLARSHIP-畅想之星简易寻外文学术资源数据库系统软件V1.0-CXSTAR-江苏畅想之星信息技术有限公司-HTTPS://CXAI.CXSTAR.CN",
+   "url": "https://cxai.cxstar.cn",
+   "vendor_name": "江苏畅想之星信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cxstar.cn/畅想之星简易寻外文学术资源数据库系统软件V10.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cxstar.cn/畅想之星简易寻外文学术资源数据库系统软件V10.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "玻尔科研空间站",
+   "searchStr": "BOHRIUM-玻尔科研空间站-DP TECHNOLOGY-北京深势科技有限公司-HTTPS://WWW.BOHRIUM.COM/",
+   "url": "https://www.bohrium.com/",
+   "vendor_name": "北京深势科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/dp.tech/玻尔科研空间站.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/dp.tech/玻尔科研空间站.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "龙源电子阅览室",
+   "searchStr": "DRAGONSOURCE E- JOURNAL READING ROOM-龙源电子阅览室-DRAGONSOURCEINNOVATIONDIGITALMEDIA(BEIJING)CO., LTD.-龙源创新数字传媒（北京）股份有限公司-HTTPS://DPS.QIKAN.CN/CARSI-ENTER.HTML",
+   "url": "https://dps.qikan.cn/carsi-enter.html",
+   "vendor_name": "龙源创新数字传媒（北京）股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/qikan.com/龙源电子阅览室.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/qikan.com/龙源电子阅览室.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "国研网数据库",
+   "searchStr": "DRCNET DATABASE-国研网数据库-DRCNET CO.,LTD-北京国研网信息股份有限公司-HTTPS://WWW.DRCNET.COM.CN",
+   "url": "https://www.drcnet.com.cn",
+   "vendor_name": "北京国研网信息股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/drcnet.com.cn/国研网数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/drcnet.com.cn/国研网数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "EBSCO",
+   "searchStr": "EBSCO-EBSCO-EBSCO INFORMATION SERVICES-EBSCO INFORMATION SERVICES-HTTP://SEARCH.EBSCOHOST.COM/",
+   "url": "http://search.ebscohost.com/",
+   "vendor_name": "EBSCO INFORMATION SERVICES",
+   "step": "https://mgmt.carsi.edu.cn/member_files/WWW.EBSCO.COM/EBSCO.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/WWW.EBSCO.COM/EBSCO.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "SCIENCEDIRECT",
+   "searchStr": "SCIENCEDIRECT-SCIENCEDIRECT-ELSEVIER-Elsevier-HTTPS://WWW.SCIENCEDIRECT.COM/",
+   "url": "https://www.sciencedirect.com/",
+   "vendor_name": "Elsevier",
+   "step": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/SCIENCEDIRECT.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/SCIENCEDIRECT.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ENGINEERING VILLAGE COMPENDEX",
+   "searchStr": "ENGINEERING VILLAGE  COMPENDEX-ENGINEERING VILLAGE COMPENDEX-ELSEVIER-Elsevier-HTTPS://WWW.ENGINEERINGVILLAGE.COM/",
+   "url": "https://www.engineeringvillage.com/",
+   "vendor_name": "Elsevier",
+   "step": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/ENGINEERINGVILLAGECOMPENDEX.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/ENGINEERINGVILLAGECOMPENDEX.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "SCOPUS",
+   "searchStr": "SCOPUS-SCOPUS-ELSEVIER-Elsevier-HTTPS://WWW.SCOPUS.COM/",
+   "url": "https://www.scopus.com/",
+   "vendor_name": "Elsevier",
+   "step": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/SCOPUS.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/SCOPUS.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "SCIVAL",
+   "searchStr": "SCIVAL-SCIVAL-ELSEVIER-Elsevier-HTTPS://WWW.SCIVAL.COM/",
+   "url": "https://www.scival.com/",
+   "vendor_name": "Elsevier",
+   "step": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/SCIVAL.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/SCIVAL.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "REAXYS",
+   "searchStr": "REAXYS-REAXYS-ELSEVIER-Elsevier-HTTPS://WWW.REAXYS.COM/",
+   "url": "https://www.reaxys.com/",
+   "vendor_name": "Elsevier",
+   "step": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/REAXYS.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/REAXYS.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "EMBASE",
+   "searchStr": "EMBASE-EMBASE-ELSEVIER-Elsevier-HTTPS://WWW.EMBASE.COM/",
+   "url": "https://www.embase.com/",
+   "vendor_name": "Elsevier",
+   "step": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/EMBASE.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/EMBASE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "CLINICALKEY",
+   "searchStr": "CLINICALKEY-CLINICALKEY-ELSEVIER-Elsevier-HTTPS://WWW.CLINICALKEY.COM/",
+   "url": "https://www.clinicalkey.com/",
+   "vendor_name": "Elsevier",
+   "step": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/CLINICALKEY.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/elsevier.com/CLINICALKEY.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "EMERALD INSIGHT",
+   "searchStr": "EMERALD INSIGHT-EMERALD INSIGHT-EMERALD PUBLISHING LIMITED-爱墨瑞得（北京）信息科技有限公司-HTTPS://WWW.EMERALD.COM",
+   "url": "https://www.emerald.com",
+   "vendor_name": "爱墨瑞得（北京）信息科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.emerald.com/EMERALDINSIGHT.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.emerald.com/EMERALDINSIGHT.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "大英百科学术版",
+   "searchStr": "BRITANNICA ACADEMIC -大英百科学术版-ENCYCLOPAEDIA BRITANNICA AUSTRALIA LTD-Encyclopaedia Britannica Australia Ltd-HTTPS://SHIBBOLETH.EB.COM/EDUGATE/BOL",
+   "url": "https://shibboleth.eb.com/edugate/bol",
+   "vendor_name": "Encyclopaedia Britannica Australia Ltd",
+   "step": "https://mgmt.carsi.edu.cn/member_files/academic.eb.com/大英百科学术版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/academic.eb.com/大英百科学术版.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "EMBO Press",
+   "searchStr": "EMBO PRESS-EMBO Press-EUROPEAN MOLECULAR BIOLOGY ORGANIZATION (EMBO)-European Molecular Biology Organization (EMBO)-HTTPS://WWW.EMBOPRESS.ORG",
+   "url": "https://www.embopress.org",
+   "vendor_name": "European Molecular Biology Organization (EMBO)",
+   "step": "https://mgmt.carsi.edu.cn/member_files/embo.org/EMBOPress.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/embo.org/EMBOPress.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "福昕高级PDF编辑器",
+   "searchStr": "FOXIT PHANTOMPDF-福昕高级PDF编辑器-FOXIT SOFTWARE-福建福昕软件开发股份有限公司-HTTPS://ONLINE.FOXITSOFTWARE.CN/",
+   "url": "https://online.foxitsoftware.cn/",
+   "vendor_name": "福建福昕软件开发股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/foxitsoftware.cn/福昕高级PDF编辑器.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/foxitsoftware.cn/福昕高级PDF编辑器.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Global Science Press学术期刊平台",
+   "searchStr": "GLOBAL SCIENCE ELECTRONIC DATABASE-Global Science Press学术期刊平台-GLOBAL SCIENCE PRESS-环球科学出版社-HTTPS://WWW.GLOBAL-SCI.COM",
+   "url": "https://www.global-sci.com",
+   "vendor_name": "环球科学出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global-sci.com/GlobalSciencePress学术期刊平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global-sci.com/GlobalSciencePress学术期刊平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "翼狐设计学习库",
+   "searchStr": "YHSJXXK-翼狐设计学习库-GOYOR NETWORK TECHNOLOGY-广州冠岳网络科技有限公司-HTTPS://LIB.YIIHUU.COM/",
+   "url": "https://lib.yiihuu.com/",
+   "vendor_name": "广州冠岳网络科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/goyor.com/翼狐设计学习库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/goyor.com/翼狐设计学习库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "广益多媒体外语学习平台",
+   "searchStr": "GUANGYI MULTIMEDIA FOREIGN LANGUAGE LEARNING PLATFORM-广益多媒体外语学习平台-GUANGZHOU KUOTUO INFORMATION TECHNOLOGY CO., LTD-广州阔拓信息科技有限公司-HTTP://ENGLISH.LMCKI.NET/",
+   "url": "http://english.lmcki.net/",
+   "vendor_name": "广州阔拓信息科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/lmcki.net/广益多媒体外语学习平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/lmcki.net/广益多媒体外语学习平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Artlib世界艺术鉴赏库",
+   "searchStr": "ARTLIB-Artlib世界艺术鉴赏库-HANGZHOU HONGYA TECHNOLOGY CO., LTD-杭州弘雅科技有限公司-HTTPS://ARTLIB.CN/LOGIN",
+   "url": "https://artlib.cn/login",
+   "vendor_name": "杭州弘雅科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/artlib.cn/Artlib世界艺术鉴赏库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/artlib.cn/Artlib世界艺术鉴赏库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "杰程公考云课堂",
+   "searchStr": "JIECHENG PUBLIC EXAMINATION CLOUD CLASSROOM-杰程公考云课堂-HANGZHOUJIECEDU-杭州杰程教育科技有限公司-HTTPS://KG.JIECEDU.NET/WEB/USER/LOGIN",
+   "url": "https://kg.jiecedu.net/web/user/login",
+   "vendor_name": "杭州杰程教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/jiecedu.net/杰程公考云课堂.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/jiecedu.net/杰程公考云课堂.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "杰程专升本云课堂",
+   "searchStr": "JIECHENG CLOUD CLASSROOM FOR UNDERGRADUATE TO GRADUATE EDUCATION-杰程专升本云课堂-HANGZHOUJIECEDU-杭州杰程教育科技有限公司-HTTPS://WWW.JIECEDU.NET/WEB/USER/LOGIN",
+   "url": "https://www.jiecedu.net/web/user/login",
+   "vendor_name": "杭州杰程教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/jiecedu.net/杰程专升本云课堂.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/jiecedu.net/杰程专升本云课堂.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN数据库平台",
+   "searchStr": "HBN DATABASE PLATFORM-HBN数据库平台-HBN-北京嘉博环球教育科技有限公司-HTTP://DATA.HARBORN.CN/LOGIN",
+   "url": "http://data.harborn.cn/login",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN数据库平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN数据库平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN生物医学平台",
+   "searchStr": "HBN BIOMEDICAL PLATFORM-HBN生物医学平台-HBN-北京嘉博环球教育科技有限公司-HTTP://BME.HARBORN.CN/LOGIN",
+   "url": "http://bme.harborn.cn/login",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN生物医学平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN生物医学平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN黄河流域发展大数据平台",
+   "searchStr": "HBN YELLOW RIVER BASIN DEVELOPMENT BIG DATA PLATFORM-HBN黄河流域发展大数据平台-HBN-北京嘉博环球教育科技有限公司-HTTP://YRB.HARBORN.CN/LOGIN",
+   "url": "http://yrb.harborn.cn/login",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN黄河流域发展大数据平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN黄河流域发展大数据平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN环球农业大数据平台",
+   "searchStr": "HBN GLOBAL AGRICULTURAL BIG DATA PLATFORM-HBN环球农业大数据平台-HBN-北京嘉博环球教育科技有限公司-HTTP://AG.HARBORN.CN/LOGIN",
+   "url": "http://ag.harborn.cn/login",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN环球农业大数据平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN环球农业大数据平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN环球财经数据平台",
+   "searchStr": "HBN GLOBAL FINANCIAL DATA PLATFORM-HBN环球财经数据平台-HBN-北京嘉博环球教育科技有限公司-HTTP://GF.HARBORN.CN/LOGIN",
+   "url": "http://gf.harborn.cn/login",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN环球财经数据平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN环球财经数据平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN环球物流数据库平台",
+   "searchStr": "HBN GLOBAL LOGISTICS DATABASE PLATFORM-HBN环球物流数据库平台-HBN-北京嘉博环球教育科技有限公司-HTTP://TMC.HARBORN.CN/LOGIN",
+   "url": "http://tmc.harborn.cn/login",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN环球物流数据库平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN环球物流数据库平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN航空经济与管理数据库平台",
+   "searchStr": "HBN AVIATION ECONOMY AND MANAGEMENT DATABASE PLATFORM-HBN航空经济与管理数据库平台-HBN-北京嘉博环球教育科技有限公司-HTTPS://AEM.HARBORN.CN/LOGIN",
+   "url": "https://aem.harborn.cn/login",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN航空经济与管理数据库平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN航空经济与管理数据库平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN中国社会科学研究数据库",
+   "searchStr": "HBN CHINA SOCIAL SCIENCE RESEARCH DATABASE-HBN中国社会科学研究数据库-HBN-北京嘉博环球教育科技有限公司-HTTPS://SSD.HARBORN.CN/LOGIN",
+   "url": "https://ssd.harborn.cn/login",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN中国社会科学研究数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN中国社会科学研究数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN枢纽经济数据库",
+   "searchStr": "HBN HUB ECONOMIC DATABASE-HBN枢纽经济数据库-HBN-北京嘉博环球教育科技有限公司-HTTPS://SNJJ.HARBORN.CN",
+   "url": "https://snjj.harborn.cn",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN枢纽经济数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN枢纽经济数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "HBN低空经济数据库",
+   "searchStr": "HBN LOW ALTITUDE ECONOMY DATABASE-HBN低空经济数据库-HBN-北京嘉博环球教育科技有限公司-HTTPS://XYDK.HARBORN.CN",
+   "url": "https://xydk.harborn.cn",
+   "vendor_name": "北京嘉博环球教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN低空经济数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/harborn.cn/HBN低空经济数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "高教书苑（馆配版）",
+   "searchStr": "HEP EBOOK-高教书苑（馆配版）-HIGHER EDUCATION PRESS-高等教育出版社有限公司-HTTPS://EBOOK.HEP.COM.CN/LIB/INDEX",
+   "url": "https://ebook.hep.com.cn/lib/index",
+   "vendor_name": "高等教育出版社有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/hep.com.cn/高教书苑馆配版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/hep.com.cn/高教书苑馆配版.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国学术前沿期刊网",
+   "searchStr": "FRONTIERS JOURNALS-中国学术前沿期刊网-HIGHER EDUCATION PRESS-高等教育出版社有限公司-HTTPS://JOURNAL.HEP.COM.CN",
+   "url": "https://journal.hep.com.cn",
+   "vendor_name": "高等教育出版社有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/hep.com.cn/中国学术前沿期刊网.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/hep.com.cn/中国学术前沿期刊网.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "METEL教学资源平台",
+   "searchStr": "MULTIMEDIA ETEACHING & ELEARNING-METEL教学资源平台-HIWAY-北京中加国道科技有限责任公司-HTTPS://FSSO.GUODAO.CN/",
+   "url": "https://fsso.guodao.cn/",
+   "vendor_name": "北京中加国道科技有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/metel.cn/METEL教学资源平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/metel.cn/METEL教学资源平台.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "SpecialSci国道特色专题数据库",
+   "searchStr": "SPECIAL SCIENCE DATABASE SYSTEM-SpecialSci国道特色专题数据库-HIWAY-北京中加国道科技有限责任公司-HTTPS://FSSO.GUODAO.CN/PRODUCTS/SSDBS",
+   "url": "https://fsso.guodao.cn/products/ssdbs",
+   "vendor_name": "北京中加国道科技有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/metel.cn/SpecialSci国道特色专题数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/metel.cn/SpecialSci国道特色专题数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "学位论文集成发现系统",
+   "searchStr": "DISSERTATION DISCOVERY SYSTEM-学位论文集成发现系统-HIWAY-北京中加国道科技有限责任公司-HTTPS://FSSO.GUODAO.CN/PRODUCTS/OADDS",
+   "url": "https://fsso.guodao.cn/products/oadds",
+   "vendor_name": "北京中加国道科技有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/metel.cn/学位论文集成发现系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/metel.cn/学位论文集成发现系统.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中国音网",
+   "searchStr": "CHINA DATABASE FOR TRADITIONAL MUSIC-中国音网-HUAYUN CULTURE AND TECHNOLOGY CO. LTD-华韵文化科技有限公司-HTTP://WWW.CHINA1901.COM/#/",
+   "url": "http://www.china1901.com/#/",
+   "vendor_name": "华韵文化科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/china1901.com/中国音网.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/china1901.com/中国音网.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "优秀传统文化视频资源库",
+   "searchStr": "YOUXIUCHUANTONGWENHUASHIPINZIYUANKU-优秀传统文化视频资源库-HUAZHIJIE-河南华之杰文化传播有限公司-HTTPS://WWW.HNHZJCM.COM/",
+   "url": "https://www.hnhzjcm.com/",
+   "vendor_name": "河南华之杰文化传播有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/hnhzjcm.com/优秀传统文化视频资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/hnhzjcm.com/优秀传统文化视频资源库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "全球案例发现系统",
+   "searchStr": "GCDS-全球案例发现系统-HWATU NEW WORLD-北京华图新天科技有限公司-WWW.HTCASES.COM.CN",
+   "url": "www.htcases.com.cn",
+   "vendor_name": "北京华图新天科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/htcases.com.cn/全球案例发现系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/htcases.com.cn/全球案例发现系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "IEEE-IET ELECTRONIC LIBRARY-美国电气电子工程师学会数据库",
+   "searchStr": "IEEE IET ELECTRONIC LIBRARY-IEEE-IET ELECTRONIC LIBRARY-美国电气电子工程师学会数据库-IEEE-IEEE-HTTPS://IEEEXPLORE.IEEE.ORG/XPLORE/HOME.JSP",
+   "url": "https://ieeexplore.ieee.org/Xplore/home.jsp",
+   "vendor_name": "IEEE",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ieeexplore.ieee.org/IEEE-IETELECTRONICLIBRARY-美国电气电子工程师学会数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ieeexplore.ieee.org/IEEE-IETELECTRONICLIBRARY-美国电气电子工程师学会数据库.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "IEEE-WILEY EBOOKS LIBRARY",
+   "searchStr": "IEEE WILEY EBOOKS LIBRARY-IEEE-WILEY EBOOKS LIBRARY-IEEE-IEEE-HTTPS://IEEEXPLORE.IEEE.ORG/XPL/WILEYIEEEPRESS",
+   "url": "https://ieeexplore.ieee.org/xpl/wileyieeepress",
+   "vendor_name": "IEEE",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ieeexplore.ieee.org/IEEE-WILEYEBOOKSLIBRARY.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ieeexplore.ieee.org/IEEE-WILEYEBOOKSLIBRARY.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "FiF外语学习资源库",
+   "searchStr": "FIFEDU-FiF外语学习资源库-IFLYHED-北京科大讯飞教育科技有限公司-HTTPS://LIB.FIFEDU.COM/",
+   "url": "https://lib.fifedu.com/",
+   "vendor_name": "北京科大讯飞教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/fifedu.com/FiF外语学习资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/fifedu.com/FiF外语学习资源库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "长煦书馆",
+   "searchStr": "IGLIBRARY-长煦书馆-IGROUP-长煦信息技术咨询（上海）有限公司-HTTPS://PORTAL.IGPUBLISH.COM.CN/",
+   "url": "https://portal.igpublish.com.cn/",
+   "vendor_name": "长煦信息技术咨询（上海）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/igroup.com.cn/长煦书馆.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/igroup.com.cn/长煦书馆.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "智课教育云学习服务平台",
+   "searchStr": "SMARTSTUDY-智课教育云学习服务平台-INOOBUDDY-北京创新伙伴科技有限公司-HTTPS://SLS.SMARTSTUDY.COM/SMARTSTUDY_INNOBUDDY",
+   "url": "https://sls.smartstudy.com/smartstudy_innobuddy",
+   "vendor_name": "北京创新伙伴科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/smartstudy.com/智课教育云学习服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/smartstudy.com/智课教育云学习服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "英国物理学会出版社",
+   "searchStr": "IOP PUBLISHING-英国物理学会出版社-IOP PUBLISHING-IOP Publishing-HTTPS://IOPSCIENCE.IOP.ORG",
+   "url": "https://iopscience.iop.org",
+   "vendor_name": "IOP Publishing",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ioppublishing.org/英国物理学会出版社.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ioppublishing.org/英国物理学会出版社.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "JMP学生版",
+   "searchStr": "JMP STUDENT EDITION-JMP学生版-JMP STATISTICAL DISCOVERY LLC-JMP Statistical Discovery LLC-HTTPS://WWW.JMP.COM/EN/ACADEMIC/JMP-STUDENT-EDITION",
+   "url": "https://www.jmp.com/en/academic/jmp-student-edition",
+   "vendor_name": "JMP Statistical Discovery LLC",
+   "step": "https://mgmt.carsi.edu.cn/member_files/jmp.com/JMP学生版.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/jmp.com/JMP学生版.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "JOVE实验视频期刊",
+   "searchStr": "JOURNAL OF VISUALIZED EXPERIMENTS-JOVE实验视频期刊-JOURNAL OF VISUALIZED EXPERIMENTS-JoVE 实验视频期刊-HTTPS://WWW.JOVE.COM/",
+   "url": "https://www.jove.com/",
+   "vendor_name": "JoVE 实验视频期刊",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.jove.com/JOVE实验视频期刊.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.jove.com/JOVE实验视频期刊.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "学术资源地图",
+   "searchStr": "ACADEMIC RESOURCE MAP-学术资源地图-KCIDEA-南京昆虫软件有限公司-HTTP://WWW.RESOURCEMAP.COM.CN",
+   "url": "http://www.resourcemap.com.cn",
+   "vendor_name": "南京昆虫软件有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ers.addup.com.cn/学术资源地图.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ers.addup.com.cn/学术资源地图.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "未来学堂-教育资源库及案例系统",
+   "searchStr": "WLXT-未来学堂-教育资源库及案例系统-KEQIANUOSI-北京科恰喏斯文化传播有限公司-HTTPS://KQ.WLXT.CN/#/HOME",
+   "url": "https://kq.wlxt.cn/#/home",
+   "vendor_name": "北京科恰喏斯文化传播有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wlxt.cn/未来学堂-教育资源库及案例系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wlxt.cn/未来学堂-教育资源库及案例系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "软件通",
+   "searchStr": "RJT-软件通-KINGCHANNEL-中新金桥信息技术（北京）有限公司-HTTPS://RJT.SOFTTONE.CN",
+   "url": "https://rjt.softtone.cn",
+   "vendor_name": "中新金桥信息技术（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/78zhu.cn/软件通.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/78zhu.cn/软件通.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "可知平台",
+   "searchStr": "KELEDGE-可知平台-KINGCHANNELS-中新金桥数字科技（北京）有限公司-HTTPS://WWW.KELEDGE.COM",
+   "url": "https://www.keledge.com",
+   "vendor_name": "中新金桥数字科技（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.kingchannels.com/可知平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.kingchannels.com/可知网.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Brill原始文献",
+   "searchStr": "PRIMARY SOURCES-Brill原始文献-KONINKLIJKE BRILL NV-博睿学术出版社-HTTPS://PRIMARYSOURCES.BRILLONLINE.COM/SUBJECTS",
+   "url": "https://primarysources.brillonline.com/subjects",
+   "vendor_name": "博睿学术出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/brill.com/Brill原始文献.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/brill.com/Brill原始文献.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "Brill参考书目",
+   "searchStr": "BIBLIOGRAPHIES-Brill参考书目-KONINKLIJKE BRILL NV-博睿学术出版社-HTTPS://BIBLIOGRAPHIES.BRILLONLINE.COM/",
+   "url": "https://bibliographies.brillonline.com/",
+   "vendor_name": "博睿学术出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/brill.com/Brill参考书目.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/brill.com/Brill参考书目.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "Brill学术参考文献在线",
+   "searchStr": "REFERENCE WORKS-Brill学术参考文献在线-KONINKLIJKE BRILL NV-博睿学术出版社-HTTPS://REFERENCEWORKS.BRILLONLINE.COM/SUBJECTS",
+   "url": "https://referenceworks.brillonline.com/subjects",
+   "vendor_name": "博睿学术出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/brill.com/Brill学术参考文献在线.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/brill.com/Brill学术参考文献在线.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "新东方多媒体学习库",
+   "searchStr": "XDFZX-LIBRARY-新东方多媒体学习库-KOOLEARN TECHNOLOGY HOLDING LTD-北京新东方迅程网络科技股份有限公司-HTTP://LIBRARY.KOOLEARN.COM",
+   "url": "http://library.koolearn.com",
+   "vendor_name": "北京新东方迅程网络科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/koolearn.com/新东方多媒体学习库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/koolearn.com/新东方多媒体学习库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "纬度CRS核心论文库",
+   "searchStr": "LATITUDE CRS CORE PAPER LIBRARY-纬度CRS核心论文库-LATITUDE INFORMATION-湖南纬度信息科技有限公司-HTTPS://CRS.HNLAT.COM",
+   "url": "https://crs.hnlat.com",
+   "vendor_name": "湖南纬度信息科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/hnwdkj.com/纬度CRS核心论文库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/hnwdkj.com/纬度CRS核心论文库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "纬度SPIS学术资源在线",
+   "searchStr": "SPISCHOLAR-纬度SPIS学术资源在线-LATITUDE INFORMATION-湖南纬度信息科技有限公司-HTTPS://SPIS.HNLAT.COM",
+   "url": "https://spis.hnlat.com",
+   "vendor_name": "湖南纬度信息科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/hnwdkj.com/纬度SPIS学术资源在线.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/hnwdkj.com/纬度SPIS学术资源在线.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "学科服务平台",
+   "searchStr": "SUBJECT SERVICE PLATFORM-学科服务平台-LATITUDE INFORMATION-湖南纬度信息科技有限公司-HTTPS://FSSO.HNLAT.COM/",
+   "url": "https://fsso.hnlat.com/",
+   "vendor_name": "湖南纬度信息科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/hnwdkj.com/学科服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/hnwdkj.com/学科服务平台.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "The New England Journal of Medicine",
+   "searchStr": "THE NEW ENGLAND JOURNAL OF MEDICINE-The New England Journal of Medicine-MASSACHUSETTS MEDICAL SOCIETY-Massachusetts Medical Society-HTTPS://WWW.NEJM.ORG",
+   "url": "https://www.nejm.org",
+   "vendor_name": "Massachusetts Medical Society",
+   "step": "https://mgmt.carsi.edu.cn/member_files/nejm.org/TheNewEnglandJournalofMedicine.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/nejm.org/TheNewEnglandJournalofMedicine.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "NEJM Evidence",
+   "searchStr": "NEJM EVIDENCE-NEJM Evidence-MASSACHUSETTS MEDICAL SOCIETY-Massachusetts Medical Society-HTTPS://EVIDENCE.NEJM.ORG",
+   "url": "https://evidence.nejm.org",
+   "vendor_name": "Massachusetts Medical Society",
+   "step": "https://mgmt.carsi.edu.cn/member_files/nejm.org/NEJMEvidence.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/nejm.org/NEJMEvidence.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "NEJM Catalyst",
+   "searchStr": "NEJM CATALYST-NEJM Catalyst-MASSACHUSETTS MEDICAL SOCIETY-Massachusetts Medical Society- HTTPS://CATALYST.NEJM.ORG",
+   "url": " https://catalyst.nejm.org",
+   "vendor_name": "Massachusetts Medical Society",
+   "step": "https://mgmt.carsi.edu.cn/member_files/nejm.org/NEJMCatalyst.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/nejm.org/NEJMCatalyst.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "NEJM AI",
+   "searchStr": "NEJM AI-NEJM AI-MASSACHUSETTS MEDICAL SOCIETY-Massachusetts Medical Society-HTTPS://AI.NEJM.ORG",
+   "url": "https://ai.nejm.org",
+   "vendor_name": "Massachusetts Medical Society",
+   "step": "https://mgmt.carsi.edu.cn/member_files/nejm.org/NEJMAI.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/nejm.org/NEJMAI.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "锐研科研创新数据服务平台",
+   "searchStr": "RINGDATA-锐研科研创新数据服务平台-MONETWARE INC-上海萌泰数据科技股份有限公司-HTTPS://WWW.RINGDATA.COM",
+   "url": "https://www.ringdata.com",
+   "vendor_name": "上海萌泰数据科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/monetware.com/锐研科研创新数据服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/monetware.com/锐研科研创新数据服务平台.univ_file.doc",
+   "sptype": "2"
+  },
+  {
+   "production": "中国科学院文献情报中心期刊分区表",
+   "searchStr": "CAS JOURNAL RANKING SYSTEM-中国科学院文献情报中心期刊分区表-NATIONAL SCIENCE LIBRARY CHINESE ACADEMY OF SCIENCES-中国科学院文献情报中心-HTTPS://WWW.FENQUBIAO.COM",
+   "url": "https://www.fenqubiao.com",
+   "vendor_name": "中国科学院文献情报中心",
+   "step": "https://mgmt.carsi.edu.cn/member_files/las.ac.cn/中国科学院文献情报中心期刊分区表.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/las.ac.cn/中国科学院文献情报中心期刊分区表.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "壹专利Patyee",
+   "searchStr": "PATYEE-壹专利Patyee-OURCHEM INFORMATION CONSULTING CO., LTD.-广州奥凯信息咨询有限公司-HTTPS://PATYEE.COM/",
+   "url": "https://patyee.com/",
+   "vendor_name": "广州奥凯信息咨询有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ourchem.com/壹专利Patyee.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ourchem.com/壹专利Patyee.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD JOURNALS",
+   "searchStr": "OXFORD JOURNALS-OXFORD JOURNALS-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/JOURNALS",
+   "url": "https://academic.oup.com/journals",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDJOURNALS.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDJOURNALS.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD ENGLISH DICTIONARY",
+   "searchStr": "OXFORD ENGLISH DICTIONARY-OXFORD ENGLISH DICTIONARY-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OED.COM/",
+   "url": "https://www.oed.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDENGLISHDICTIONARY.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDENGLISHDICTIONARY.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "UNIVERSITY PRESS SCHOLARSHIP ONLINE",
+   "searchStr": "UNIVERSITY PRESS SCHOLARSHIP ONLINE-UNIVERSITY PRESS SCHOLARSHIP ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/BOOKS",
+   "url": "https://academic.oup.com/books",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/UNIVERSITYPRESSSCHOLARSHIPONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/UNIVERSITYPRESSSCHOLARSHIPONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD SCHOLARSHIP ONLINE",
+   "searchStr": "OXFORD SCHOLARSHIP ONLINE-OXFORD SCHOLARSHIP ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/BOOKS",
+   "url": "https://academic.oup.com/books",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDSCHOLARSHIPONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDSCHOLARSHIPONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "VERY SHORT INTRODUCTIONS",
+   "searchStr": "VERY SHORT INTRODUCTIONS-VERY SHORT INTRODUCTIONS-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/BOOKS",
+   "url": "https://academic.oup.com/books",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/VERYSHORTINTRODUCTIONS.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/VERYSHORTINTRODUCTIONS.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD HANDBOOKS ONLINE",
+   "searchStr": "OXFORD HANDBOOKS ONLINE-OXFORD HANDBOOKS ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/BOOKS",
+   "url": "https://academic.oup.com/books",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDHANDBOOKSONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDHANDBOOKSONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD MEDICINE ONLINE",
+   "searchStr": "OXFORD MEDICINE ONLINE-OXFORD MEDICINE ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/BOOKS",
+   "url": "https://academic.oup.com/books",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDMEDICINEONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDMEDICINEONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "AMA MANUAL OF STYLE(美国医学会在线论文撰写指导手册)",
+   "searchStr": "AMA MANUAL OF STYLE-AMA MANUAL OF STYLE(美国医学会在线论文撰写指导手册)-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/BOOKS",
+   "url": "https://academic.oup.com/books",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/AMAMANUALOFSTYLE美国医学会在线论文撰写指导手册.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/AMAMANUALOFSTYLE美国医学会在线论文撰写指导手册.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD CLINICAL PSYCHOLOGY",
+   "searchStr": "OXFORD CLINICAL PSYCHOLOGY-OXFORD CLINICAL PSYCHOLOGY-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/BOOKS",
+   "url": "https://academic.oup.com/books",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDCLINICALPSYCHOLOGY.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDCLINICALPSYCHOLOGY.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "GROVE ART ONLINE",
+   "searchStr": "GROVE ART ONLINE-GROVE ART ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OXFORDARTONLINE.COM/",
+   "url": "https://www.oxfordartonline.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/GROVEARTONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/GROVEARTONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "BENEZIT DICTIONARY OF ARTISTS",
+   "searchStr": "BENEZIT DICTIONARY OF ARTISTS-BENEZIT DICTIONARY OF ARTISTS-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OXFORDARTONLINE.COM/BENEZIT",
+   "url": "https://www.oxfordartonline.com/benezit",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/BENEZITDICTIONARYOFARTISTS.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/BENEZITDICTIONARYOFARTISTS.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "GROVE MUSIC ONLINE",
+   "searchStr": "GROVE MUSIC ONLINE-GROVE MUSIC ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OXFORDMUSICONLINE.COM/",
+   "url": "https://www.oxfordmusiconline.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/GROVEMUSICONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/GROVEMUSICONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD DICTIONARY OF NATIONAL BIOGRAPHY",
+   "searchStr": "OXFORD DICTIONARY OF NATIONAL BIOGRAPHY-OXFORD DICTIONARY OF NATIONAL BIOGRAPHY-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OXFORDDNB.COM/",
+   "url": "https://www.oxforddnb.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDDICTIONARYOFNATIONALBIOGRAPHY.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDDICTIONARYOFNATIONALBIOGRAPHY.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD REFERENCE",
+   "searchStr": "OXFORD REFERENCE-OXFORD REFERENCE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OXFORDREFERENCE.COM/",
+   "url": "https://www.oxfordreference.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDREFERENCE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDREFERENCE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "AMERICAN NATIONAL BIOGRAPHY ONLINE",
+   "searchStr": "AMERICAN NATIONAL BIOGRAPHY ONLINE-AMERICAN NATIONAL BIOGRAPHY ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.ANB.ORG/",
+   "url": "https://www.anb.org/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/AMERICANNATIONALBIOGRAPHYONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/AMERICANNATIONALBIOGRAPHYONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "WHO'S WHO AND WHO WAS WHO",
+   "searchStr": "WHO'S WHO AND WHO WAS WHO-WHO'S WHO AND WHO WAS WHO-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.UKWHOSWHO.COM/",
+   "url": "https://www.ukwhoswho.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/WHOSWHOANDWHOWASWHO.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/WHOSWHOANDWHOWASWHO.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD AFRICAN AMERICAN STUDIES CENTER",
+   "searchStr": "OXFORD AFRICAN AMERICAN STUDIES CENTER-OXFORD AFRICAN AMERICAN STUDIES CENTER-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://OXFORDAASC.COM/",
+   "url": "https://oxfordaasc.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDAFRICANAMERICANSTUDIESCENTER.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDAFRICANAMERICANSTUDIESCENTER.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD BIBLIOGRAPHIES",
+   "searchStr": "OXFORD BIBLIOGRAPHIES-OXFORD BIBLIOGRAPHIES-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OXFORDBIBLIOGRAPHIES.COM/",
+   "url": "https://www.oxfordbibliographies.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDBIBLIOGRAPHIES.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDBIBLIOGRAPHIES.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ELECTRONIC ENLIGHTENMENT",
+   "searchStr": "ELECTRONIC ENLIGHTENMENT-ELECTRONIC ENLIGHTENMENT-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.E-ENLIGHTENMENT.COM/",
+   "url": "https://www.e-enlightenment.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/ELECTRONICENLIGHTENMENT.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/ELECTRONICENLIGHTENMENT.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD DICTIONARIES PREMIUM",
+   "searchStr": "OXFORD DICTIONARIES PREMIUM-OXFORD DICTIONARIES PREMIUM-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://PREMIUM.OXFORDDICTIONARIES.COM/",
+   "url": "https://premium.oxforddictionaries.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDDICTIONARIESPREMIUM.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDDICTIONARIESPREMIUM.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD SCHOLARLY EDITIONS ONLINE",
+   "searchStr": "OXFORD SCHOLARLY EDITIONS ONLINE-OXFORD SCHOLARLY EDITIONS ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OXFORDSCHOLARLYEDITIONS.COM/",
+   "url": "https://www.oxfordscholarlyeditions.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDSCHOLARLYEDITIONSONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDSCHOLARLYEDITIONSONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD PUBLIC INTERNATIONAL LAW",
+   "searchStr": "OXFORD PUBLIC INTERNATIONAL LAW-OXFORD PUBLIC INTERNATIONAL LAW-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://OPIL.OUPLAW.COM/",
+   "url": "https://opil.ouplaw.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDPUBLICINTERNATIONALLAW.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDPUBLICINTERNATIONALLAW.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD CONSTITUTIONAL LAW",
+   "searchStr": "OXFORD CONSTITUTIONAL LAW-OXFORD CONSTITUTIONAL LAW-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://OXCON.OUPLAW.COM/",
+   "url": "https://oxcon.ouplaw.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDCONSTITUTIONALLAW.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDCONSTITUTIONALLAW.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD COMPETITION LAW",
+   "searchStr": "OXFORD COMPETITION LAW-OXFORD COMPETITION LAW-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/BOOKS",
+   "url": "https://academic.oup.com/books",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDCOMPETITIONLAW.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDCOMPETITIONLAW.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Oxford Law Pro",
+   "searchStr": "HTTPS://ACADEMIC.OUP.COM/OXFORD-LAW-PRO-Oxford Law Pro-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/OXFORD-LAW-PRO",
+   "url": "https://academic.oup.com/oxford-law-pro",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDLEGALRESEARCHLIBRARY.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDLEGALRESEARCHLIBRARY.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "INVESTMENT CLAIMS （牛津国际投资仲裁数据库）",
+   "searchStr": "INVESTMENT CLAIMS-INVESTMENT CLAIMS （牛津国际投资仲裁数据库）-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/INVESTMENT-CLAIMS",
+   "url": "https://academic.oup.com/investment-claims",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/INVESTMENTCLAIMS牛津国际投资仲裁数据库.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/INVESTMENTCLAIMS牛津国际投资仲裁数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD HISTORY OF WESTERN MUSIC",
+   "searchStr": "OXFORD HISTORY OF WESTERN MUSIC-OXFORD HISTORY OF WESTERN MUSIC-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/",
+   "url": "https://academic.oup.com/",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDHISTORYOFWESTERNMUSIC.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDHISTORYOFWESTERNMUSIC.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OXFORD RESEARCH ENCYCLOPEDIAS",
+   "searchStr": "OXFORD RESEARCH ENCYCLOPEDIAS-OXFORD RESEARCH ENCYCLOPEDIAS-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://ACADEMIC.OUP.COM/OXFORD-RESEARCH-ENCYCLOPEDIAS",
+   "url": "https://academic.oup.com/oxford-research-encyclopedias",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDRESEARCHENCYCLOPEDIAS.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/OXFORDRESEARCHENCYCLOPEDIAS.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "THE NEW OXFORD SHAKESPEARE ONLINE",
+   "searchStr": "THE NEW OXFORD SHAKESPEARE ONLINE-THE NEW OXFORD SHAKESPEARE ONLINE-OXFORD UNIVERSITY PRESS-Oxford University Press-HTTPS://WWW.OXFORDSCHOLARLYEDITIONS.COM/NOS",
+   "url": "https://www.oxfordscholarlyeditions.com/nos",
+   "vendor_name": "Oxford University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/THENEWOXFORDSHAKESPEAREONLINE.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/global.oup.com/THENEWOXFORDSHAKESPEAREONLINE.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Parallels Desktop for Mac",
+   "searchStr": "PARALLELS DESKTOP FOR MAC-Parallels Desktop for Mac-PARALLELS INTERNATIONAL GMBH-Parallels International GmbH-HTTPS://WWW.PARALLELS.CN/LANDINGPAGE/PD/EDUCATION/",
+   "url": "https://www.parallels.cn/landingpage/pd/education/",
+   "vendor_name": "Parallels International GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/parallels.cn/ParallelsDesktopforMac.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/parallels.cn/ParallelsDesktopforMac.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "并行®超算云服务",
+   "searchStr": "PARACLOUD®-并行®超算云服务-PARATERA-北京并行科技股份有限公司-HTTPS://CLOUD.PARATERA.COM/",
+   "url": "https://cloud.paratera.com/",
+   "vendor_name": "北京并行科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/paratera.com/并行超算云服务.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/paratera.com/并行超算云服务.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "智慧芽全球专利信息数据库",
+   "searchStr": "智慧芽全球专利信息数据库-智慧芽全球专利信息数据库-PATSNAP-智慧芽信息科技（苏州）有限公司-HTTPS://PASSPORT.ZHIHUIYA.COM",
+   "url": "https://passport.zhihuiya.com",
+   "vendor_name": "智慧芽信息科技（苏州）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zhihuiya.com/智慧芽全球专利信息数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zhihuiya.com/智慧芽全球专利信息数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "芯经典阅读平台",
+   "searchStr": "XJD READING PLATFORM-芯经典阅读平台-PEKING XINZHISHI TECHNOLOGY CO.,LTD-北京芯知识科技有限公司-HTTPS://WWW.XJDREAD.COM/",
+   "url": "https://www.xjdread.com/",
+   "vendor_name": "北京芯知识科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/xjdread.com/芯经典阅读平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/xjdread.com/芯经典阅读平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "药渡经纬全球药物信息平台系统",
+   "searchStr": "PHARMACODIA ELECTRONIC DATABASE-药渡经纬全球药物信息平台系统-PHARMACODIA (BEIJING) DATA CO., LTD-药渡经纬信息科技（北京）有限公司-HTTPS://DATA.PHARMACODIA.COM",
+   "url": "https://data.pharmacodia.com",
+   "vendor_name": "药渡经纬信息科技（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/pharmacodia.com/药渡经纬全球药物信息平台系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/pharmacodia.com/药渡经纬全球药物信息平台系统.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "米兰理工联合课程资源在线",
+   "searchStr": "COLLABORATIVE CLASSES -米兰理工联合课程资源在线-POLYTECHNIC UNIVERSITY OF MILAN-Polytechnic University of Milan-HTTPS://WWW.POLIMI.IT",
+   "url": "https://www.polimi.it",
+   "vendor_name": "Polytechnic University of Milan",
+   "step": "https://mgmt.carsi.edu.cn/member_files/polimi.it/米兰理工联合课程资源在线.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/polimi.it/米兰理工联合课程资源在线.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "人民邮电出版社电子书平台",
+   "searchStr": "POSTS & TELECOM PRESS E-BOOK PLATFORM-人民邮电出版社电子书平台-POST&TELECOM PRESS-人民邮电出版社-HTTPS://RYEBOOK.PTPRESS.CN/",
+   "url": "https://ryebook.ptpress.cn/",
+   "vendor_name": "人民邮电出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ptpress.com.cn/人民邮电出版社电子书平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ptpress.com.cn/人民邮电出版社电子书平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "人工智能知识服务平台",
+   "searchStr": "ARTIFICIAL INTELLIGENCE KNOWLEDGE SERVICE PLATFORM-人工智能知识服务平台-POST&TELECOM PRESS-人民邮电出版社-HTTPS://WWW.NICKSP.CN/",
+   "url": "https://www.nicksp.cn/",
+   "vendor_name": "人民邮电出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ptpress.com.cn/人工智能知识服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ptpress.com.cn/人工智能知识服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Project MUSE电子期刊",
+   "searchStr": "PROJECT MUSE EJOURNAL COLLECTIONS-Project MUSE电子期刊-PROJECT MUSE AT JHUP-Project MUSE at JHUP-HTTPS://MUSE.JHU.EDU/",
+   "url": "https://muse.jhu.edu/",
+   "vendor_name": "Project MUSE at JHUP",
+   "step": "https://mgmt.carsi.edu.cn/member_files/muse.jhu.edu/ProjectMUSE电子期刊.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/muse.jhu.edu/ProjectMUSE电子期刊.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Project MUSE电子书",
+   "searchStr": "PROJECT MUSE EBOOK COLLECTIONS-Project MUSE电子书-PROJECT MUSE AT JHUP-Project MUSE at JHUP-HTTPS://MUSE.JHU.EDU/",
+   "url": "https://muse.jhu.edu/",
+   "vendor_name": "Project MUSE at JHUP",
+   "step": "https://mgmt.carsi.edu.cn/member_files/muse.jhu.edu/ProjectMUSE电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/muse.jhu.edu/ProjectMUSE电子书.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ProQuest英美政府档案平台",
+   "searchStr": "PROQUEST CONGRESSIONAL-ProQuest英美政府档案平台-PROQUEST-ProQuest-HTTPS://WWW.PROQUEST.COM/CONGRESSIONAL",
+   "url": "https://www.proquest.com/congressional",
+   "vendor_name": "ProQuest",
+   "step": "https://mgmt.carsi.edu.cn/member_files/proquest.com/ProQuest英美政府档案平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/proquest.com/ProQuest英美政府档案平台.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "Alexander Street音视频资源平台",
+   "searchStr": "ALEXANDER STREET PLATFORM-Alexander Street音视频资源平台-PROQUEST-ProQuest-HTTPS://SEARCH.ALEXANDERSTREET.COM",
+   "url": "https://search.alexanderstreet.com",
+   "vendor_name": "ProQuest",
+   "step": "https://mgmt.carsi.edu.cn/member_files/proquest.com/AlexanderStreet音视频资源平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/proquest.com/AlexanderStreet音视频资源平台.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "ProQuest Ebook Central电子书平台",
+   "searchStr": "PROQUEST EBOOK CENTRAL-ProQuest Ebook Central电子书平台-PROQUEST-ProQuest-HTTPS://EBOOKCENTRAL.PROQUEST.COM/LIB/CARSI",
+   "url": "https://ebookcentral.proquest.com/lib/carsi",
+   "vendor_name": "ProQuest",
+   "step": "https://mgmt.carsi.edu.cn/member_files/proquest.com/ProQuestEbookCentral电子书平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/proquest.com/ProQuestEbookCentral电子书平台.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "ProQuest学术平台",
+   "searchStr": "PROQUEST ACADEMIC PLATFORM-ProQuest学术平台-PROQUEST-ProQuest-HTTPS://WWW.PROQUEST.COM",
+   "url": "https://www.proquest.com",
+   "vendor_name": "ProQuest",
+   "step": "https://mgmt.carsi.edu.cn/member_files/proquest.com/ProQuest学术平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/proquest.com/ProQuest学术平台.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "悦读电子书",
+   "searchStr": "YUEDU EBOOK-悦读电子书-PUBLISHING HOUSE OF ELECTRONICS INDUSTRY-电子工业出版社有限公司-HTTPS://YD.51ZHY.CN/",
+   "url": "https://yd.51zhy.cn/",
+   "vendor_name": "电子工业出版社有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/phei.com.cn/悦读电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/phei.com.cn/悦读电子书.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "企研·社科大数据平台（机构版）",
+   "searchStr": "QIYAN CHINA BIG DATA PLATFORM FOR SOCIAL-SCIENCE-企研·社科大数据平台（机构版）-QIYAN DATA TECHNOLOGY(HANGZHOU)CO.,LTD.-企研数据科技（杭州）有限公司-HTTPS://R.QIYANDATA.COM",
+   "url": "https://r.qiyandata.com",
+   "vendor_name": "企研数据科技（杭州）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/qiyandata.com/企研社科大数据平台机构版.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/qiyandata.com/企研社科大数据平台机构版.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Rockefeller University Press",
+   "searchStr": "ROCKEFELLER UNIVERSITY PRESS-Rockefeller University Press-ROCKEFELLER UNIVERSITY PRESS-Rockefeller University Press-HTTPS://RUPRESS.ORG",
+   "url": "https://rupress.org",
+   "vendor_name": "Rockefeller University Press",
+   "step": "https://mgmt.carsi.edu.cn/member_files/rupress.org/RockefellerUniversityPress.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/rupress.org/RockefellerUniversityPress.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "ROYAL SOCIETY OF CHEMISTRY PUBLICATIONS ONLINE",
+   "searchStr": "ROYAL SOCIETY OF CHEMISTRY PUBLICATIONS ONLINE-ROYAL SOCIETY OF CHEMISTRY PUBLICATIONS ONLINE-ROYAL SOCIETY OF CHEMISTRY-Royal Society of Chemistry-HTTPS://PUBS.RSC.ORG/",
+   "url": "https://pubs.rsc.org/",
+   "vendor_name": "Royal Society of Chemistry",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.rsc.org/ROYALSOCIETYOFCHEMISTRYPUBLICATIONSONLINE.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.rsc.org/ROYALSOCIETYOFCHEMISTRYPUBLICATIONSONLINE.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "人大复印报刊资料库",
+   "searchStr": "COPIES OF NEWSPAPERS AND PERIODICALS-人大复印报刊资料库-RUC DIGITAL MEDIA TECHNOLOGY (BEIJING) CO LTD-人大数媒科技（北京）有限公司-HTTPS://WWW.RDFYBK.COM",
+   "url": "https://www.rdfybk.com",
+   "vendor_name": "人大数媒科技（北京）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/dmr.cn/人大复印报刊资料库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/dmr.cn/人大复印报刊资料库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国思想与文化名家数据库",
+   "searchStr": "CHINESE INTELLECTUAL AND CULTURAL FIGURES DATABASE-中国思想与文化名家数据库-RUCDIGIT-北京人大数字科技有限公司-HTTP://WWW.CNTHINKERS.COM",
+   "url": "http://www.cnthinkers.com",
+   "vendor_name": "北京人大数字科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/rucdigit.com/中国思想与文化名家数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/rucdigit.com/中国思想与文化名家数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "芸窗思政学习平台",
+   "searchStr": "HOTPOT-芸窗思政学习平台-RUCDIGIT-北京人大数字科技有限公司-HTTP://SZ.RDYC.CN/",
+   "url": "http://sz.rdyc.cn/",
+   "vendor_name": "北京人大数字科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/rucdigit.com/芸窗思政学习平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/rucdigit.com/芸窗思政学习平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Karger医学资源",
+   "searchStr": "KARGER MEDICAL RESOURCES-Karger医学资源-S KARGER AG-S Karger AG-HTTPS://WWW.KARGER.COM/",
+   "url": "https://www.karger.com/",
+   "vendor_name": "S Karger AG",
+   "step": "https://mgmt.carsi.edu.cn/member_files/Karger.com/Karger医学资源.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/Karger.com/Karger医学资源.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Sage现刊数据库（国内平台）",
+   "searchStr": "SAGE-Sage现刊数据库（国内平台）-SAGE PUBLICATIONS LTD.-SAGE Publications Ltd.-HTTP://SAGE.CNPEREADING.COM/",
+   "url": "http://sage.cnpereading.com/",
+   "vendor_name": "SAGE Publications Ltd.",
+   "step": "https://mgmt.carsi.edu.cn/member_files/journals.sagepub.com/Sage现刊数据库国内平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/journals.sagepub.com/Sage现刊数据库国内平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "森途学苑",
+   "searchStr": "森途学苑-森途学苑-SENTU-北京森途教育科技股份有限公司-HTTPS://WWW.SENTUXUEYUAN.COM/",
+   "url": "https://www.sentuxueyuan.com/",
+   "vendor_name": "北京森途教育科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.sentuxueyuan.com/森途学苑.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.sentuxueyuan.com/森途学院.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "学问网全媒体自主学习库",
+   "searchStr": "XUEWENWANG-学问网全媒体自主学习库-SEVEN(BEIJING)EDUCATION TECHNOLOGY CO.,LTD-赛文(北京)教育科技有限公司-HTTPS://WWW.XUEWEN.NET.CN/",
+   "url": "https://www.xuewen.net.cn/",
+   "vendor_name": "赛文(北京)教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sevedu.com/学问网全媒体自主学习库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sevedu.com/学问网全媒体自主学习库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "赛文医学点播课堂",
+   "searchStr": "SEVEDU MEDICAL EDUCATION RESOURCES-赛文医学点播课堂-SEVEN(BEIJING)EDUCATION TECHNOLOGY CO.,LTD-赛文(北京)教育科技有限公司-HTTPS://LIB.SEVEDU.COM/",
+   "url": "https://lib.sevedu.com/",
+   "vendor_name": "赛文(北京)教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sevedu.com/赛文医学点播课堂.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sevedu.com/赛文医学点播课堂.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "医智学全科医学智能学习库",
+   "searchStr": "AIMED-医智学全科医学智能学习库-SEVEN(BEIJING)EDUCATION TECHNOLOGY CO.,LTD-赛文(北京)教育科技有限公司-HTTPS://AIMED.NET.CN/",
+   "url": "https://aimed.net.cn/",
+   "vendor_name": "赛文(北京)教育科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sevedu.com/医智学全科医学智能学习库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sevedu.com/医智学全科医学智能学习库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "艺术维基·全球艺术资源库",
+   "searchStr": "YISHUWIKI-艺术维基·全球艺术资源库-SHAANXI LONGMAI CLOUD INFORMATION TECHNOLOGY CO., LTD.-陕西龙脉云信息科技有限公司-HTTPS://B.YISHU.WIKI/CARSI",
+   "url": "https://b.yishu.wiki/carsi",
+   "vendor_name": "陕西龙脉云信息科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/longmai.link/艺术维基全球艺术资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/longmai.link/艺术维基全球艺术资源库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "觅果-AI智能学伴",
+   "searchStr": "MIGO·INTERN-觅果-AI智能学伴-SHANGHAI ARTIFICIAL INTELLIGENCE LABORATORY-上海人工智能实验室（上海人工智能创新中心）-HTTPS://SSO.OPENXLAB.ORG.CN/LOGIN?REDIRECT=HTTPS://MIGO.INTERN-AI.ORG.CN/&CLIENTID=OYMLMBGK4BXK4KXBXQGX&SOURCE=CARSI_OAUTH",
+   "url": "https://sso.openxlab.org.cn/login?redirect=https://migo.intern-ai.org.cn/&clientId=oymlmbgk4bxk4kxbxqgx&source=carsi_oauth",
+   "vendor_name": "上海人工智能实验室（上海人工智能创新中心）",
+   "step": "https://mgmt.carsi.edu.cn/member_files/shlab.org.cn/觅果-AI智能学伴.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/shlab.org.cn/觅果-AI智能学伴.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "本地PubMed",
+   "searchStr": "BDPUBMED-本地PubMed-SHANGHAI JI HAO NETWORK CO. LTD.-上海骥灏网络股份有限公司-HTTPS://PM.YUNTSG.COM",
+   "url": "https://pm.yuntsg.com",
+   "vendor_name": "上海骥灏网络股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/tsgyun.com/本地PubMed.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/tsgyun.com/本地PubMed.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "致远一号智算平台",
+   "searchStr": "ZHIYUAN-1 INTELLIGENT COMPUTING PLATFORM-致远一号智算平台-SHANGHAI JIAO TONG UNIVERSITY-上海交通大学-HTTPS://AIC.SJTU.EDU.CN/LOGINBACK",
+   "url": "https://aic.sjtu.edu.cn/loginback",
+   "vendor_name": "上海交通大学",
+   "step": "https://mgmt.carsi.edu.cn/member_files/sjtu.edu.cn/致远一号智算平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/sjtu.edu.cn/致远一号智算平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "上纽课",
+   "searchStr": "MINI COURSE-上纽课-SHANGHAI NEW YORK UNIVERSITY-上海纽约大学-HTTPS://MINICOURSE.SHANGHAI.NYU.EDU/",
+   "url": "https://minicourse.shanghai.nyu.edu/",
+   "vendor_name": "上海纽约大学",
+   "step": "https://mgmt.carsi.edu.cn/member_files/shnyu.edu.cn/上纽课.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/shnyu.edu.cn/上纽课.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "知心心理资源平台",
+   "searchStr": "ZXPSY-知心心理资源平台-SHANGHAI YICHU INFORMATION TECHNOLOGY CO., LTD.-上海羿初信息技术有限公司-HTTPS://ZXPSY.NET/INDEX.ASPX",
+   "url": "https://zxpsy.net/index.aspx",
+   "vendor_name": "上海羿初信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zxpsy.net/知心心理资源平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zxpsy.net/知心心理资源平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "数据公园 设计创新趋势数据库",
+   "searchStr": "DATA PARK-数据公园 设计创新趋势数据库-SHUKU (BEIJING) TECHNOLOGY CO. LTD.-数库（北京）科技有限公司-HTTP://WWW.DATAPARK.CN",
+   "url": "http://www.datapark.cn",
+   "vendor_name": "数库（北京）科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/datapark.cn/数据公园设计创新趋势数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/datapark.cn/数据公园设计创新趋势数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "SIAM电子期刊",
+   "searchStr": "SIAM JOURNALS PACKAGE-SIAM电子期刊-SIAM (SOCIETY FOR INDUSTRIAL AND APPLIED MATHEMATICS)-SIAM (Society for Industrial and Applied Mathematics)-HTTPS://EPUBS.SIAM.ORG/JOURNALS",
+   "url": "https://epubs.siam.org/journals",
+   "vendor_name": "SIAM (Society for Industrial and Applied Mathematics)",
+   "step": "https://mgmt.carsi.edu.cn/member_files/siam.org/SIAM电子期刊.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/siam.org/SIAM电子期刊.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "SIAM LOCUS过刊库",
+   "searchStr": "SIAM LOCUS-SIAM LOCUS过刊库-SIAM (SOCIETY FOR INDUSTRIAL AND APPLIED MATHEMATICS)-SIAM (Society for Industrial and Applied Mathematics)-HTTPS://EPUBS.SIAM.ORG/LOCUS",
+   "url": "https://epubs.siam.org/locus",
+   "vendor_name": "SIAM (Society for Industrial and Applied Mathematics)",
+   "step": "https://mgmt.carsi.edu.cn/member_files/siam.org/SIAMLOCUS过刊库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/siam.org/SIAMLOCUS过刊库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "SIAM电子书",
+   "searchStr": "SIAM EBOOKS-SIAM电子书-SIAM (SOCIETY FOR INDUSTRIAL AND APPLIED MATHEMATICS)-SIAM (Society for Industrial and Applied Mathematics)-HTTPS://EPUBS.SIAM.ORG/EBOOKS",
+   "url": "https://epubs.siam.org/ebooks",
+   "vendor_name": "SIAM (Society for Industrial and Applied Mathematics)",
+   "step": "https://mgmt.carsi.edu.cn/member_files/siam.org/SIAM电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/siam.org/SIAM电子书.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "全球产业科技情报分析系统PatNavi",
+   "searchStr": "PATNAVI-全球产业科技情报分析系统PatNavi-SIXLENS-六棱镜（杭州）科技有限公司-HTTPS://PATNAVI.LINKINIP.COM",
+   "url": "https://patnavi.linkinip.com",
+   "vendor_name": "六棱镜（杭州）科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/linkinip.com/全球产业科技情报分析系统PatNavi.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/linkinip.com/全球产业科技情报分析系统PatNavi.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "皮书数据库",
+   "searchStr": "YEARBOOKS DATABASE-皮书数据库-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://WWW.PISHU.COM.CN/",
+   "url": "https://www.pishu.com.cn/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/皮书数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/皮书数据库.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "国别区域与全球治理数据平台",
+   "searchStr": "COUNTRIES，REGIONS AND GLOBAL GOVERNANCE（CRGG）-国别区域与全球治理数据平台-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://WWW.CRGGCN.COM/",
+   "url": "https://www.crggcn.com/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/国别区域与全球治理数据平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/国别区域与全球治理数据平台.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "“一带一路”数据库",
+   "searchStr": " “ONE BELT, ONE ROAD” DATABASE-“一带一路”数据库-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://WWW.YDYLCN.COM/",
+   "url": "https://www.ydylcn.com/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/一带一路数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/一带一路数据库.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "台湾大陆同乡会文献数据库",
+   "searchStr": "MAINLAND CHINESE EXPATRIATES IN TAIWAN HISTORICAL DOCUMENTS DATABASE-台湾大陆同乡会文献数据库-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://WWW.TONGXIANGHUICN.COM/",
+   "url": "https://www.tongxianghuicn.com/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/台湾大陆同乡会文献数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/台湾大陆同乡会文献数据库.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "中国减贫研究数据库",
+   "searchStr": "CHINA’S POVERTY ALLEVIATION DATABASE-中国减贫研究数据库-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://WWW.JIANPINCN.COM/",
+   "url": "https://www.jianpincn.com/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/中国减贫研究数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/中国减贫研究数据库.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "京津冀协同发展数据库",
+   "searchStr": "BEIJING-TIANJIN-HEBEI COORDINATED DEVELOPMENT DATABASE-京津冀协同发展数据库-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://WWW.JINGJINJICN.COM/",
+   "url": "https://www.jingjinjicn.com/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/京津冀协同发展数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/京津冀协同发展数据库.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "中国乡村研究数据库",
+   "searchStr": "CHINA RURAL STUDIES DATABASE-中国乡村研究数据库-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://WWW.RURALCHINA.CN/",
+   "url": "https://www.ruralchina.cn/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/中国乡村研究数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/中国乡村研究数据库.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "集刊数据库",
+   "searchStr": "SCHOLARLY SERIALS DATABASE-集刊数据库-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://WWW.JIKAN.COM.CN/",
+   "url": "https://www.jikan.com.cn/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/集刊数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/集刊数据库.univ_file.pdf",
+   "sptype": "2"
+  },
+  {
+   "production": "先晓书院",
+   "searchStr": "XIANXIAOSHUYUAN-先晓书院-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://XIANXIAO.SSAP.COM.CN/",
+   "url": "https://xianxiao.ssap.com.cn/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/先晓书院.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/先晓书院.univ_file.doc",
+   "sptype": "2"
+  },
+  {
+   "production": "马克思主义研究数据库",
+   "searchStr": "MARXISM STUDIES DATABASE-马克思主义研究数据库-SOCIAL SCIENCES ACADEMIC PRESS (CHINA)-社会科学文献出版社-HTTPS://MARXISM.SSAP.COM.CN/",
+   "url": "https://marxism.ssap.com.cn/",
+   "vendor_name": "社会科学文献出版社",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/马克思主义研究数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ssap.com.cn/马克思主义研究数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "NATURE",
+   "searchStr": "NATURE-NATURE-SPRINGER NATURE-Springer Nature-HTTPS://WAYF.SPRINGERNATURE.COM/?REDIRECT_URI=HTTPS://WWW.NATURE.COM/NATURE ",
+   "url": "https://wayf.springernature.com/?redirect_uri=https://www.nature.com/nature ",
+   "vendor_name": "Springer Nature",
+   "step": "https://mgmt.carsi.edu.cn/member_files/springer.com/NATURE.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/springer.com/NATURE.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "Springer Link",
+   "searchStr": "SPRINGER LINK-Springer Link-SPRINGER NATURE-Springer Nature-HTTPS://WAYF.SPRINGERNATURE.COM/?REDIRECT_URI=HTTPS://LINK.SPRINGER.COM/",
+   "url": "https://wayf.springernature.com/?redirect_uri=https://link.springer.com/",
+   "vendor_name": "Springer Nature",
+   "step": "https://mgmt.carsi.edu.cn/member_files/springer.com/SpringerLink.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/springer.com/SpringerLink.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "Statista",
+   "searchStr": "STATISTA-Statista-STATISTA-Statista-HTTPS://WWW.STATISTA.COM",
+   "url": "https://www.statista.com",
+   "vendor_name": "Statista",
+   "step": "https://mgmt.carsi.edu.cn/member_files/Statista.com/Statista.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/Statista.com/Statista.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "MWORKS",
+   "searchStr": "MWORKS-MWORKS-SUZHOU TONGYUAN SOFTWARE&CONTROL TECHNOLOGY CO., LTD.-苏州同元软控技术股份有限公司-HTTPS://LOGIN.TONGYUAN.CC/",
+   "url": "https://login.tongyuan.cc/",
+   "vendor_name": "苏州同元软控技术股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/tongyuan.cc/MWORKS.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/tongyuan.cc/MWORKS.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Taylor & Francis南亚研究回溯数据库",
+   "searchStr": "TAYLOR & FRANCIS SOUTH ASIA ARCHIVE-Taylor & Francis南亚研究回溯数据库-TAYLOR & FRANCIS-Taylor & Francis-HTTP://WWW.SOUTHASIAARCHIVE.COM/UNAUTHENTICATED",
+   "url": "http://www.southasiaarchive.com/unauthenticated",
+   "vendor_name": "Taylor & Francis",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.tandfonline.com/TaylorFrancis南亚研究回溯数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.tandfonline.com/TaylorFrancis南亚研究回溯数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Taylor & Francis电子书库",
+   "searchStr": "TAYLOR & FRANCIS EBOOKS-Taylor & Francis电子书库-TAYLOR & FRANCIS-Taylor & Francis-HTTPS://WWW.TAYLORFRANCIS.COM/",
+   "url": "https://www.taylorfrancis.com/",
+   "vendor_name": "Taylor & Francis",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.tandfonline.com/TaylorFrancis电子书库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.tandfonline.com/TaylorFrancis电子书库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Taylor & Francis期刊数据库",
+   "searchStr": "TAYLOR & FRANCIS ONLINE-Taylor & Francis期刊数据库-TAYLOR & FRANCIS-Taylor & Francis-HTTPS://WWW.TANDFONLINE.COM/",
+   "url": "https://www.tandfonline.com/",
+   "vendor_name": "Taylor & Francis",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.tandfonline.com/TaylorFrancis期刊数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.tandfonline.com/TaylorFrancis期刊数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "开放科学计算联盟云",
+   "searchStr": "OPEN SCIENCE COMPUTING ALLIANCE CLOUD-开放科学计算联盟云-THE INSTITUTE OF HIGH ENERGY PHYSICS OF THE CHINESE ACADEMY OF SCIENCES-中国科学院高能物理研究所-HTTPS://OCLOUD.IHEP.AC.CN/LOGIN",
+   "url": "https://ocloud.ihep.ac.cn/login",
+   "vendor_name": "中国科学院高能物理研究所",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ihep.ac.cn/开放科学计算联盟云.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ihep.ac.cn/开放科学计算联盟云.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "Optica Publishing Group",
+   "searchStr": "OPTICA PUBLISHING GROUP-Optica Publishing Group-THE OPTICAL SOCIETY-The Optical Society-HTTPS://OPG.OPTICA.ORG/",
+   "url": "https://opg.optica.org/",
+   "vendor_name": "The Optical Society",
+   "step": "https://mgmt.carsi.edu.cn/member_files/osa.org/OpticaPublishingGroup.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/osa.org/OpticaPublishingGroup.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Thieme E-Journals 化学与药学电子期刊",
+   "searchStr": "MEDICAL AND CHEMISTRY JOURNALS-Thieme E-Journals 化学与药学电子期刊-THIEME GROUP-Thieme Group-HTTPS://WWW.THIEME-CONNECT.COM/PRODUCTS/ALL/HOME.HTML",
+   "url": "https://www.thieme-connect.com/products/all/home.html",
+   "vendor_name": "Thieme Group",
+   "step": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/ThiemeE-Journals化学与药学电子期刊.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/ThiemeE-Journals化学与药学电子期刊.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "MedOne Clinical Platforms",
+   "searchStr": "MEDONE CLINICAL PLATFORMS-MedOne Clinical Platforms-THIEME GROUP-Thieme Group-HTTPS://MEDONE.THIEME.COM",
+   "url": "https://medone.thieme.com",
+   "vendor_name": "Thieme Group",
+   "step": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/MedOneClinicalPlatforms.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/MedOneClinicalPlatforms.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "MedOne Education",
+   "searchStr": "MEDONE EDUCATION-MedOne Education-THIEME GROUP-Thieme Group-HTTPS://MEDONE-EDUCATION.THIEME.COM/",
+   "url": "https://medone-education.thieme.com/",
+   "vendor_name": "Thieme Group",
+   "step": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/MedOneEducation.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/MedOneEducation.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "TCC 临床医学电子图书",
+   "searchStr": "THIEME CLINICAL COLLECTIONS-TCC 临床医学电子图书-THIEME GROUP-Thieme Group-HTTPS://WWW.THIEME-CONNECT.COM/PRODUCTS/ALL/HOME.HTML",
+   "url": "https://www.thieme-connect.com/products/all/home.html",
+   "vendor_name": "Thieme Group",
+   "step": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/TCC临床医学电子图书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/TCC临床医学电子图书.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Science of Synthesis",
+   "searchStr": "SCIENCE OF SYNTHESIS-Science of Synthesis-THIEME GROUP-Thieme Group-HTTPS://SCIENCE-OF-SYNTHESIS.THIEME.COM/",
+   "url": "https://science-of-synthesis.thieme.com/",
+   "vendor_name": "Thieme Group",
+   "step": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/ScienceofSynthesis.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/ScienceofSynthesis.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Pharmaceutical Substances",
+   "searchStr": "PHARMACEUTICAL SUBSTANCES-Pharmaceutical Substances-THIEME GROUP-Thieme Group-HTTPS://PHARMACEUTICAL-SUBSTANCES.THIEME.COM/PS/",
+   "url": "https://pharmaceutical-substances.thieme.com/ps/",
+   "vendor_name": "Thieme Group",
+   "step": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/PharmaceuticalSubstances.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/thieme-connect.com/PharmaceuticalSubstances.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Thomson Reuters Westlaw",
+   "searchStr": "THOMSON REUTERS WESTLAW-Thomson Reuters Westlaw-THOMSON REUTERS-Thomson Reuters-HTTPS://SIGNON.THOMSONREUTERS.COM/V2/FEDERATION/CARSI?PRODUCTID=CBT&RETURNTO=HTTPS://1.NEXT.WESTLAW.COM/COSI/SIGNON",
+   "url": "https://signon.thomsonreuters.com/v2/federation/CARSI?productid=CBT&returnto=https://1.next.westlaw.com/Cosi/SignOn",
+   "vendor_name": "Thomson Reuters",
+   "step": "https://mgmt.carsi.edu.cn/member_files/thomsonreuters.com/ThomsonReutersWestlaw.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/thomsonreuters.com/ThomsonReutersWestlaw.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "高精度气象数据下载服务",
+   "searchStr": "HIGH-PRECISION METEOROLOGICAL DATA DOWNLOAD SERVICE-高精度气象数据下载服务-TIANJI WEATHER SCIENCE AND TECHNOLOGY COMPANY-中科天机气象科技有限公司-HTTPS://WWW.TJWEATHER.COM/",
+   "url": "https://www.tjweather.com/",
+   "vendor_name": "中科天机气象科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/tjweather.com/高精度气象数据下载服务.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/tjweather.com/高精度气象数据下载服务.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "师范教育专题数据库",
+   "searchStr": "NORMAL EDUCATION DATABASE-师范教育专题数据库-TLFZ-北京天利方舟科技有限责任公司-HTTPS://TEACHER.XIANZHIWANG.CN",
+   "url": "https://teacher.xianzhiwang.cn",
+   "vendor_name": "北京天利方舟科技有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/teacher.xianzhiwang.cn/师范教育专题数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/teacher.xianzhiwang.cn/师范教育专题数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国知网",
+   "searchStr": "CHINA NATIONAL KNOWLEDGE INFRASTRUCTURE-中国知网-TONGFANG KNOWLEDGE NETWORK TECHNOLOGY-同方知网（北京）技术有限公司-HTTPS://FSSO.CNKI.NET/",
+   "url": "https://fsso.cnki.net/",
+   "vendor_name": "同方知网（北京）技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/fsso.cnki.net/中国知网.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/fsso.cnki.net/中国知网.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Scientific.NET",
+   "searchStr": "SCIENTIFIC.NET-Scientific.NET-TRANS TECH PUBLICATIONS LTD.-Trans Tech Publications Ltd.-HTTPS://WWW.SCIENTIFIC.NET/",
+   "url": "https://www.scientific.net/",
+   "vendor_name": "Trans Tech Publications Ltd.",
+   "step": "https://mgmt.carsi.edu.cn/member_files/scientific.net/ScientificNET.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/scientific.net/ScientificNET.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "EduPKI数字证书管理平台",
+   "searchStr": "EDUPKI CERTIFICATE MANAGER-EduPKI数字证书管理平台-TRUSTASIA TECHNOLOGIES, INC.-亚数信息科技（上海）有限公司-HTTPS://EDUPKI.TRUSTASIA.COM",
+   "url": "https://edupki.trustasia.com",
+   "vendor_name": "亚数信息科技（上海）有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/trustasia.com/EduPKI数字证书管理平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/trustasia.com/EduPKI数字证书管理平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "文泉学堂高等教育学科建设知识库",
+   "searchStr": "WISFOUNT ONLINE LEARNING-文泉学堂高等教育学科建设知识库-TSINGHUA UNIVERSITY PRESS LIMITED-清华大学出版社有限公司-HTTPS://LIB.WQXUETANG.COM",
+   "url": "https://lib.wqxuetang.com",
+   "vendor_name": "清华大学出版社有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/tup.com.cn/高等教育学科建设知识库文泉学堂.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/tup.com.cn/文泉学堂高等教育学科建设知识库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "经纶知识服务平台",
+   "searchStr": "KVIPSMART-经纶知识服务平台-VIPSMART-重庆维普智图数据科技有限公司-HTTPS://K.VIPSLIB.COM",
+   "url": "https://k.vipslib.com",
+   "vendor_name": "重庆维普智图数据科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vipslib.com/经纶知识服务平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vipslib.com/经纶知识服务平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "德古意特在线",
+   "searchStr": "DE GRUYTER ONLINE-德古意特在线-WALTER DE GRUYTER GMBH-Walter de Gruyter GmbH-HTTPS://WWW.DEGRUYTER.COM",
+   "url": "https://www.degruyter.com",
+   "vendor_name": "Walter de Gruyter GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特在线.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特在线.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "哈佛大学出版社电子书",
+   "searchStr": "HARVARD UNIVERSITY PRESS EBOOK-哈佛大学出版社电子书-WALTER DE GRUYTER GMBH-Walter de Gruyter GmbH-HTTPS://WWW.DEGRUYTER.COM/BROWSE?SUBMITTEDFILTERID=BY-TYPE&PAGESIZE=10&SORT=DATEDESCENDING&T_41=HUP&TYPE_5=BOOK",
+   "url": "https://www.degruyter.com/browse?submittedFilterId=by-type&pageSize=10&sort=datedescending&t_41=HUP&type_5=book",
+   "vendor_name": "Walter de Gruyter GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/哈佛大学出版社电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/哈佛大学出版社电子书.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "德古意特英文电子书",
+   "searchStr": "DEGRUYTER EBOOK (ENGLISH)-德古意特英文电子书-WALTER DE GRUYTER GMBH-Walter de Gruyter GmbH-HTTPS://WWW.DEGRUYTER.COM/BROWSE?SUBMITTEDFILTERID=BY-LANGUAGE&TYPE_4=BOOK&PAGESIZE=10&SORT=DATEDESCENDING&LANG_11=EN",
+   "url": "https://www.degruyter.com/browse?submittedFilterId=by-language&type_4=book&pageSize=10&sort=datedescending&lang_11=en",
+   "vendor_name": "Walter de Gruyter GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特英文电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特英文电子书.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "德古意特德语电子书",
+   "searchStr": "DEGRUYTER EBOOK (GERMAN)-德古意特德语电子书-WALTER DE GRUYTER GMBH-Walter de Gruyter GmbH-HTTPS://WWW.DEGRUYTER.COM/BROWSE?SUBMITTEDFILTERID=BY-LANGUAGE&TYPE_4=BOOK&PAGESIZE=10&SORT=DATEDESCENDING&LANG_9=DE",
+   "url": "https://www.degruyter.com/browse?submittedFilterId=by-language&type_4=book&pageSize=10&sort=datedescending&lang_9=de",
+   "vendor_name": "Walter de Gruyter GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特德语电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特德语电子书.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "德古意特美国大学出版社电子书",
+   "searchStr": "DEGRUYTER UNIVERSITY PUBLISHER PARTNER EBOOK-德古意特美国大学出版社电子书-WALTER DE GRUYTER GMBH-Walter de Gruyter GmbH-HTTPS://WWW.DEGRUYTER.COM/PAGE/2163",
+   "url": "https://www.degruyter.com/page/2163",
+   "vendor_name": "Walter de Gruyter GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特美国大学出版社电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特美国大学出版社电子书.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "尼采在线数据库",
+   "searchStr": "NIETZSCHE ONLINE-尼采在线数据库-WALTER DE GRUYTER GMBH-Walter de Gruyter GmbH-HTTPS://WWW.DEGRUYTER.COM/",
+   "url": "https://www.degruyter.com/",
+   "vendor_name": "Walter de Gruyter GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/尼采在线数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/尼采在线数据库.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "德古意特拉丁语大词典和文学在线",
+   "searchStr": "THESAURUS LINGUAE LATINAE & BIBLIOTHECA TEUBNERIANA LATINA-德古意特拉丁语大词典和文学在线-WALTER DE GRUYTER GMBH-Walter de Gruyter GmbH-HTTPS://WWW.DEGRUYTER.COM/VIEW/DB/BTLTLL?RSKEY=9C2OT5&RESULT=1",
+   "url": "https://www.degruyter.com/view/db/btltll?rskey=9C2OT5&result=1",
+   "vendor_name": "Walter de Gruyter GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特拉丁语大词典和文学在线.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/德古意特拉丁语大词典和文学在线.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "马恩全集电子书",
+   "searchStr": "MEGA-马恩全集电子书-WALTER DE GRUYTER GMBH-Walter de Gruyter GmbH-HTTPS://WWW.DEGRUYTER.COM/VIEW/MVW/MEGA-B?TAB_BODY=TOC-75243",
+   "url": "https://www.degruyter.com/view/mvw/MEGA-B?tab_body=toc-75243",
+   "vendor_name": "Walter de Gruyter GmbH",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/马恩全集电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.degruyter.com/马恩全集电子书.univ_file.pdf",
+   "sptype": "1"
+  },
+  {
+   "production": "中国地方志数据库",
+   "searchStr": "CHINA LOCAL GAZETTEERS-中国地方志数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://FZ.WANFANGDATA.COM.CN/INDEX.DO",
+   "url": "http://fz.wanfangdata.com.cn/index.do",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国地方志数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/地方志数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中国法律法规数据库",
+   "searchStr": "CHINA LAWS & REGULATIONS DATABASE-中国法律法规数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://C.WANFANGDATA.COM.CN/CLAW",
+   "url": "http://c.wanfangdata.com.cn/claw",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国法律法规数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国法律法规数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中外标准数据库",
+   "searchStr": "CHINA STANDARDS DATABASE-中外标准数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://C.WANFANGDATA.COM.CN/STANDARD",
+   "url": "http://c.wanfangdata.com.cn/standard",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中外标准数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中外标准数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中国科技成果数据库",
+   "searchStr": "CHINA SCIENTIFIC & TECHNOLOGICAL ACHIEVEMENTS DATABASE-中国科技成果数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://C.WANFANGDATA.COM.CN/CSTAD",
+   "url": "http://c.wanfangdata.com.cn/cstad",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国科技成果数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国科技成果数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中外科技报告数据库",
+   "searchStr": "科技报告数据库-中外科技报告数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://WWW.WANFANGDATA.COM.CN/TECH/TECHINDEX.DO",
+   "url": "http://www.wanfangdata.com.cn/tech/techindex.do",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中外科技报告数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/科技报告数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中外专利数据库",
+   "searchStr": "CHINA PATENTS DATABASE-中外专利数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://C.WANFANGDATA.COM.CN/PATENT",
+   "url": "http://c.wanfangdata.com.cn/patent",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中外专利数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中外专利数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中国学术会议文献数据库",
+   "searchStr": "CHINA CONFERENCE PROCEEDINGS DATABASE-中国学术会议文献数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://C.WANFANGDATA.COM.CN/CONFERENCE",
+   "url": "http://c.wanfangdata.com.cn/conference",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国学术会议文献数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国学术会议文献数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中国学位论文全文数据库",
+   "searchStr": "CHINA DISSERTATIONS DATABASE-中国学位论文全文数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://C.WANFANGDATA.COM.CN/THESIS",
+   "url": "http://c.wanfangdata.com.cn/thesis",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国学位论文全文数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国学位论文全文数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中国学术期刊数据库",
+   "searchStr": "CHINA ONLINE JOURNALS-中国学术期刊数据库-WANFANGDATA-北京万方数据股份有限公司-HTTP://C.WANFANGDATA.COM.CN/PERIODICAL",
+   "url": "http://c.wanfangdata.com.cn/periodical",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国学术期刊数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国学术期刊数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "万方数据科研选题评估分析系统",
+   "searchStr": "万方选题-万方数据科研选题评估分析系统-WANFANGDATA-北京万方数据股份有限公司-HTTP://TOPIC.WANFANGDATA.COM.CN/",
+   "url": "http://topic.wanfangdata.com.cn/",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/万方数据科研选题评估分析系统.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/万方数据科研选题评估分析系统.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "万方数据科慧平台",
+   "searchStr": "SCI-FUND-万方数据科慧平台-WANFANGDATA-北京万方数据股份有限公司-HTTP://SCIFUND.WANFANGDATA.COM.CN/",
+   "url": "http://scifund.wanfangdata.com.cn/",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/万方数据科慧平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/万方数据科慧平台.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "中国机构数据库",
+   "searchStr": "CHINA INSTITUTION DATABASE-中国机构数据库-WANFANGDATA-北京万方数据股份有限公司-HTTPS://INSTITUTION.WANFANGDATA.COM.CN/INSTITUTION/NAVIGATION",
+   "url": "https://institution.wanfangdata.com.cn/Institution/Navigation",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国机构数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/中国机构数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "外文文献保障服务平台",
+   "searchStr": "SCIGATE FOREIGN LITERATURE SERVICE PLATFORM-外文文献保障服务平台-WANFANGDATA-北京万方数据股份有限公司-HTTPS://FOR.WANFANGDATA.COM.CN/",
+   "url": "https://for.wanfangdata.com.cn/",
+   "vendor_name": "北京万方数据股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/外文文献保障服务平台.step_file.docx",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wanfangdata.com.cn/外文文献保障服务平台.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "田田阅读电子书",
+   "searchStr": "TTREADER-田田阅读电子书-WHDF-武汉鼎方信息技术有限公司-HTTPS://READ.BOOK05.COM",
+   "url": "https://read.book05.com",
+   "vendor_name": "武汉鼎方信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/book05.com/田田阅读电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/book05.com/田田阅读电子书.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "WILEY 电子书、电子期刊数据库",
+   "searchStr": "WILEY ONLINE LIBRARY-WILEY 电子书、电子期刊数据库-WILEY-Wiley-HTTPS://ONLINELIBRARY.WILEY.COM/",
+   "url": "https://onlinelibrary.wiley.com/",
+   "vendor_name": "Wiley",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wiley.com/WILEY电子书电子期刊数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wiley.com/WILEY电子书电子期刊数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "Cochrane Library 考克兰图书馆",
+   "searchStr": "COCHRANE LIBRARY-Cochrane Library 考克兰图书馆-WILEY-Wiley-HTTPS://WWW.COCHRANELIBRARY.COM/",
+   "url": "https://www.cochranelibrary.com/",
+   "vendor_name": "Wiley",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wiley.com/CochraneLibrary考克兰图书馆.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wiley.com/CochraneLibrary考克兰图书馆.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID电子书",
+   "searchStr": "OVID BOOKS-OVID电子书-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=BAOV",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=baov",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVID电子书.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVID电子书.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID期刊",
+   "searchStr": "OVID JOURNALS-OVID期刊-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=BROWSE&D=YROVFT",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=browse&D=yrovft",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVID期刊.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVID期刊.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID MEDLINE数据库",
+   "searchStr": "OVID MEDLINE-OVID MEDLINE数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=MEDALL",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=medall",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDMEDLINE数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDMEDLINE数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID EMBASE数据库",
+   "searchStr": "OVID EMBASE-OVID EMBASE数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=OEMEZD",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=oemezd",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDEMBASE数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDEMBASE数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID CAB数据库",
+   "searchStr": "OVID CAB-OVID CAB数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=CABA",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=caba",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDCAB数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDCAB数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID FSTA数据库",
+   "searchStr": "OVID FSTA-OVID FSTA数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=FSTA",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=fsta",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDFSTA数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDFSTA数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID JBI数据库",
+   "searchStr": "OVID JBI-OVID JBI数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=JBI",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=jbi",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDJBI数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDJBI数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID IPA数据库",
+   "searchStr": "OVID IPA-OVID IPA数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=IPAB",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=ipab",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDIPA数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDIPA数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID DRUG INFORMATION FULL TEXT数据库",
+   "searchStr": "OVID DRUG INFORMATION FULL TEXT-OVID DRUG INFORMATION FULL TEXT数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=DIFT",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=dift",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDDRUGINFORMATIONFULLTEXT数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDDRUGINFORMATIONFULLTEXT数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID BIOSIS PREVIEW数据库",
+   "searchStr": "OVID BIOSIS PREVIEW-OVID BIOSIS PREVIEW数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=B20O01",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=b20o01",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDBIOSISPREVIEW数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDBIOSISPREVIEW数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID AGRICOLA数据库",
+   "searchStr": "OVID AGRICOLA-OVID AGRICOLA数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=AGRA",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=agra",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDAGRICOLA数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDAGRICOLA数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID PSYCINFO数据库",
+   "searchStr": "OVID PSYCINFO-OVID PSYCINFO数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=PSYH",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=psyh",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDPSYCINFO数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDPSYCINFO数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID PSYCARTICLE数据库",
+   "searchStr": "OVID PSYCARTICLE-OVID PSYCARTICLE数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=PAOVFT",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=paovft",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDPSYCARTICLE数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDPSYCARTICLE数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "OVID PETROLEUM ABSTRACTS数据库",
+   "searchStr": "OVID PETROLEUM ABSTRACTS-OVID PETROLEUM ABSTRACTS数据库-WOLTERS KLUWER-Wolters Kluwer-HTTP://OVIDSP.OVID.COM/OVIDWEB.CGI?T=JS&NEWS=N&CSC=Y&PAGE=MAIN&D=PTLM",
+   "url": "http://ovidsp.ovid.com/ovidweb.cgi?T=JS&NEWS=n&CSC=Y&PAGE=main&D=ptlm",
+   "vendor_name": "Wolters Kluwer",
+   "step": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDPETROLEUMABSTRACTS数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/ovidsp.ovid.com/OVIDPETROLEUMABSTRACTS数据库.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "威科先行法律信息库",
+   "searchStr": "WOLTERS KLUWER CHINA LAW & REFERENCE-威科先行法律信息库-WOLTERS KLUWER N.V.-北京威科亚太信息技术有限公司-HTTPS://LAW.WKINFO.COM.CN",
+   "url": "https://law.wkinfo.com.cn",
+   "vendor_name": "北京威科亚太信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/wolterskluwer.com/威科先行法律信息库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/wolterskluwer.com/威科先行法律信息库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "世界科技出版公司",
+   "searchStr": "WORLD SCIENTIFIC PUBLISHING-世界科技出版公司-WORLD SCIENTIFIC PUBLISHING CO PTE LTD-新加坡世界科技出版公司-HTTPS://WWW.WORLDSCIENTIFIC.COM/",
+   "url": "https://www.worldscientific.com/",
+   "vendor_name": "新加坡世界科技出版公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/www.worldscientific.com/世界科技出版公司.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/www.worldscientific.com/世界科技出版公司.univ_file.docx",
+   "sptype": "1"
+  },
+  {
+   "production": "博看书苑数据库",
+   "searchStr": "BOOKAN DATABASE-博看书苑数据库-WUHAN DINGSEN ELECTRONIC TECHNOLOGY CO., LTD-武汉鼎森电子科技有限公司-HTTP://NEW.BOOKAN.COM.CN",
+   "url": "http://new.bookan.com.cn",
+   "vendor_name": "武汉鼎森电子科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/bookan.com.cn/博看书苑数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/bookan.com.cn/博看书苑数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "笔杆网—一站式服务写作平台",
+   "searchStr": "BIGAN.NET-笔杆网—一站式服务写作平台-WUHAN LIBO INFORMATION TECHNOLOGY CO. LTD-武汉莱博信息技术有限公司-WWW.BIGAN.NET",
+   "url": "www.bigan.net",
+   "vendor_name": "武汉莱博信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/laibokeji.com/笔杆网一站式服务写作平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/laibokeji.com/笔杆网一站式服务写作平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "“知识视界”视频教育资源库",
+   "searchStr": "VIDEO LIBRARY-“知识视界”视频教育资源库-WUHANYUANLAI-武汉缘来文化传播有限责任公司-HTTPS://WWW.LIBVIDEO.COM/",
+   "url": "https://www.libvideo.com/",
+   "vendor_name": "武汉缘来文化传播有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yuanlai.cn/知识视界视频教育资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yuanlai.cn/知识视界视频教育资源库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "维萨里3D人体数字解剖资源库",
+   "searchStr": "VESAL 3D  ANATOMY-维萨里3D人体数字解剖资源库-XIAN VESAL DIGITAL RESPONSIBILITY CO LTD-西安维萨里数字科技有限责任公司-HTTPS://SPACE.VESAL.SITE/ANATOMY/3DDOWNLOAD/INDEX.HTML",
+   "url": "https://space.vesal.site/anatomy/3DDownload/index.html",
+   "vendor_name": "西安维萨里数字科技有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/vesal.cn/维萨里3D人体数字解剖资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/vesal.cn/维萨里3D人体数字解剖资源库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中国近代文献数据总库",
+   "searchStr": "MODERN CHINESE LITERATURE DATA BASE-中国近代文献数据总库-YUE READ (ZHEJIANG) DIGITAL TECHNOLOGY CO., LTD-越读（浙江）数字科技有限公司-HTTPS://WWW.JDWXK.COM",
+   "url": "https://www.jdwxk.com",
+   "vendor_name": "越读（浙江）数字科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/jdwxk.com/中国近代文献数据总库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/jdwxk.com/中国近代文献数据总库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "MET全民英语学习资源库",
+   "searchStr": "MET-MET全民英语学习资源库-YUETU STAR GUANGDONG TECHNOLOGY CO., LTD-阅途之星（广东）科技有限公司-HTTPS://LIB.52MET.COM",
+   "url": "https://lib.52met.com",
+   "vendor_name": "阅途之星（广东）科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yuetustar.edu.cn/MET全民英语学习资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yuetustar.edu.cn/MET全民英语学习资源库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "MET世界语言学习馆",
+   "searchStr": "MET WORLD LANGUAGES LEARNING PLATFORM-MET世界语言学习馆-YUETU STAR GUANGDONG TECHNOLOGY CO., LTD-阅途之星（广东）科技有限公司-HTTPS://WWW.52MET.COM",
+   "url": "https://www.52met.com",
+   "vendor_name": "阅途之星（广东）科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yuetustar.com/MET世界语言学习馆.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yuetustar.com/MET世界语言学习馆.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "阅途美育在线",
+   "searchStr": "ONLINE AESTHETIC EDUCATION PLATFORM - YUETU-阅途美育在线-YUETU STAR GUANGDONG TECHNOLOGY CO., LTD-阅途之星（广东）科技有限公司-HTTPS://WWW.MYU100.COM",
+   "url": "https://www.myu100.com",
+   "vendor_name": "阅途之星（广东）科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yuetustar.com/阅途美育在线.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yuetustar.com/阅途美育在线.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "设计师之家数字图书馆",
+   "searchStr": "DESIGNERHOME-设计师之家数字图书馆-YUETU STAR GUANGDONG TECHNOLOGY CO., LTD-阅途之星（广东）科技有限公司-HTTPS://WWW.51SJSJ.COM",
+   "url": "https://www.51sjsj.com",
+   "vendor_name": "阅途之星（广东）科技有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/yuetustar.com/设计师之家数字图书馆.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/yuetustar.edu.cn/设计师之家数字图书馆.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "全球创新知识平台",
+   "searchStr": "GLOBAL INNOVATION KNOWLEDGE PLATFORM-全球创新知识平台-ZCSC-中创思潮（广东）人工智能研究有限公司-HTTPS://WWW.INNOVATIONTREE.CN/",
+   "url": "https://www.innovationtree.cn/",
+   "vendor_name": "中创思潮（广东）人工智能研究有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zcsc.cn/全球创新知识平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zcsc.cn/全球创新知识平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "掌阅精选机构服务",
+   "searchStr": "ZHANGYUEJINGXUAN-掌阅精选机构服务-ZHANGYUE-掌阅科技股份有限公司-HTTPS://SE.ZHANGYUE.COM/LIBRARY_PC/OTHER.HTML",
+   "url": "https://se.zhangyue.com/library_pc/Other.html",
+   "vendor_name": "掌阅科技股份有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zhangyue.com/掌阅精选机构服务.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zhangyue.com/掌阅精选机构服务.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "博学易知考研数据库",
+   "searchStr": "BXYZKY-博学易知考研数据库-ZHEJIANG BOXUE YIZHI INFORMATION TECHNOLOGY CO., LTD-浙江博学易知信息技术有限公司-HTTPS://WEB.TWBXYZ.COM/INDEX",
+   "url": "https://web.twbxyz.com/index",
+   "vendor_name": "浙江博学易知信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/twbxyz.com/博学易知考研数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/twbxyz.com/博学易知考研数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "博学易知考试数据库",
+   "searchStr": "BXYZKS-博学易知考试数据库-ZHEJIANG BOXUE YIZHI INFORMATION TECHNOLOGY CO., LTD-浙江博学易知信息技术有限公司-HTTPS://EXAM.TWBXYZ.COM/INDEX",
+   "url": "https://exam.twbxyz.com/index",
+   "vendor_name": "浙江博学易知信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/twbxyz.com/博学易知考试数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/twbxyz.com/博学易知考试数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "博学易知公考数据库",
+   "searchStr": "BXYZGK-博学易知公考数据库-ZHEJIANG BOXUE YIZHI INFORMATION TECHNOLOGY CO., LTD-浙江博学易知信息技术有限公司-HTTPS://GWY.TWBXYZ.COM/INDEX",
+   "url": "https://gwy.twbxyz.com/index",
+   "vendor_name": "浙江博学易知信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/twbxyz.com/博学易知公考数据库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/twbxyz.com/博学易知公考数据库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "深时数字地球在线地球科学科研协作平台",
+   "searchStr": "DEEP-TIME DIGITAL EARTH PLATFORM-深时数字地球在线地球科学科研协作平台-ZHEJIANG DEEP-TIME DIGITAL EARTH INTERNATIONAL RESEARCH CENTER-浙江深时数字地球国际研究中心-HTTPS://DEEP-TIME.ORG/#/HOME",
+   "url": "https://deep-time.org/#/home",
+   "vendor_name": "浙江深时数字地球国际研究中心",
+   "step": "https://mgmt.carsi.edu.cn/member_files/deep-time.org/深时数字地球在线地球科学科研协作平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/deep-time.org/深时数字地球在线地球科学科研协作平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "浙商大AI马克思",
+   "searchStr": "AI MARX-浙商大AI马克思-ZHEJIANG GONGSHANG UNIVERSITY-浙江工商大学-HTTPS://DS.ZJGSU.EDU.CN/CARSI?REDIRECT=/CHATDEEPSEEK/3A1853E6-F52F-358D-6ED5-162A783C6093",
+   "url": "https://ds.zjgsu.edu.cn/carsi?redirect=/chatdeepseek/3a1853e6-f52f-358d-6ed5-162a783c6093",
+   "vendor_name": "浙江工商大学",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zjgsu.edu.cn/浙商大AI马克思.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zjgsu.edu.cn/浙商大AI马克思.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "书递——中文电子图书数字出版平台",
+   "searchStr": "SHU DI ELIB-书递——中文电子图书数字出版平台-ZHEJIANG UNIVERSITY PRESS CO., LTD.-浙江大学出版社有限责任公司-HTTPS://WWW.ELIB.LINK/",
+   "url": "https://www.elib.link/",
+   "vendor_name": "浙江大学出版社有限责任公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zjupress.com/书递中文电子图书数字出版平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zjupress.com/书递中文电子图书数字出版平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中华历史文献库",
+   "searchStr": "GUJIKU-中华历史文献库-ZHENGZHOU SHITU INFORMATION TECHNOLOGY CO., LTD.-郑州世图信息技术有限公司-HTTPS://GUJI.ZZSHITU.COM:9008/",
+   "url": "https://guji.zzshitu.com:9008/",
+   "vendor_name": "郑州世图信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zzshitu.com/中华历史文献库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zzshitu.com/中华历史文献库.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "世图学术发现平台",
+   "searchStr": "ZZSHITU-世图学术发现平台-ZHENGZHOU SHITU INFORMATION TECHNOLOGY CO., LTD.-郑州世图信息技术有限公司-HTTPS://SCHOLAR.ZZSHITU.COM/",
+   "url": "https://scholar.zzshitu.com/",
+   "vendor_name": "郑州世图信息技术有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/zzshitu.com/世图学术发现平台.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/zzshitu.com/世图学术发现平台.univ_file.docx",
+   "sptype": "2"
+  },
+  {
+   "production": "中科医云·学术资源库",
+   "searchStr": "SCIPMED-中科医云·学术资源库-ZHONGKE DIGITAL PUBLISHING & MEDIA LIMITED COMPANY-中科数字出版传媒有限公司-HTTPS://MEDLINE.CSPMMED.COM",
+   "url": "https://medline.cspmmed.com",
+   "vendor_name": "中科数字出版传媒有限公司",
+   "step": "https://mgmt.carsi.edu.cn/member_files/cspmmed.com/中科医云学术资源库.step_file.pdf",
+   "univ": "https://mgmt.carsi.edu.cn/member_files/cspmmed.com/中科医云学术资源库.univ_file.docx",
+   "sptype": "2"
+  }
+ ]
+}

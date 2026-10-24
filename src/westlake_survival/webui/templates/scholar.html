@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}学术资源 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">学术资源（订阅数据库 / CARSI / DOI 全文）</h1>
+
+<div class="card" style="margin-bottom:1rem">
+  <div style="font-weight:600">校园网认证状态</div>
+  {% if campus.ip_authorized %}
+  <div style="margin-top:.3rem"><span class="chip">✅ 校园网认证范围内</span>
+    <span class="muted" style="font-size:.82rem">订阅库全文与 PDF 直链大概率可用（{{ campus.checked_at }} 探测）</span></div>
+  {% else %}
+  <div style="margin-top:.3rem"><span class="chip warn">❌ 不在校园网认证范围</span>
+    <span class="muted" style="font-size:.82rem">校外走 CARSI 联盟登录（westlake scholar sso cnki）或校园 VPN（{{ campus.checked_at }} 探测）</span></div>
+  {% endif %}
+  <div class="muted" style="font-size:.8rem;margin-top:.25rem">{{ campus.evidence }}</div>
+</div>
+
+<h2 class="page">DOI 解析 / 全文获取</h2>
+<form method="get" action="/scholar/doi" class="filter">
+  <label>DOI
+    <input type="search" name="doi" placeholder="10.1007/s00453-018-0477-7" value="{{ doi_query or '' }}">
+  </label>
+  <button type="submit">解析</button>
+</form>
+{% if paper %}
+<div class="card" style="margin-bottom:1rem">
+  <div style="font-weight:600">{{ paper.title or '（无题录）' }}</div>
+  <div class="muted" style="font-size:.85rem">{{ paper.authors[:6]|join('，') }}{% if paper.authors|length > 6 %} 等{% endif %}
+    ｜{{ paper.journal }} {{ paper.year }}｜{{ paper.publisher }}</div>
+  <div style="margin-top:.35rem;font-size:.88rem">
+    <a href="{{ paper.doi_url }}" target="_blank" rel="noopener">DOI 页</a>
+    {% if paper.oa_pdf_url %} · <a href="{{ paper.oa_pdf_url }}" target="_blank" rel="noopener">OA PDF</a>{% endif %}
+    {% if paper.publisher_pdf_url %} · <a href="{{ paper.publisher_pdf_url }}" target="_blank" rel="noopener">出版社 PDF</a>
+    · <a href="/scholar/doi.pdf?doi={{ paper.doi }}">经本服务下载 PDF</a>{% endif %}
+  </div>
+  <div class="muted" style="font-size:.8rem;margin-top:.3rem">{{ paper.campus_hint }}</div>
+  {% if pdf_error %}<div class="note" style="margin-top:.5rem">{{ pdf_error }}</div>{% endif %}
+</div>
+{% endif %}
+
+<h2 class="page">数据库注册表（{{ dbs|length }}）</h2>
+<p class="muted" style="font-size:.82rem">通道：<span class="chip">campus</span> 校园 IP
+ ｜ <span class="chip">carsi</span> CARSI 联盟 SSO（校外可用）
+ ｜ <span class="chip">open</span> 免费 ｜ <span class="chip">account</span> 独立账号</p>
+<div class="grid cols-2">
+  {% for db in dbs %}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:.5rem;align-items:baseline">
+      <div style="font-weight:600"><a href="{{ db.url }}" target="_blank" rel="noopener">{{ db.name }}</a></div>
+      <span class="chip">{{ db.access }}</span>
+    </div>
+    <div class="muted" style="font-size:.8rem;margin-top:.2rem">{{ db.category }}{% if db.vendor %} · {{ db.vendor }}{% endif %}</div>
+    {% if db.key == 'cnki' %}<div style="font-size:.82rem;margin-top:.3rem"><a href="{{ carsi_entry_cnki }}" target="_blank" rel="noopener">CARSI 校外入口 →</a></div>{% endif %}
+    {% if db.note %}<div class="muted" style="font-size:.8rem;margin-top:.3rem">{{ db.note }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<h2 class="page">CARSI 联盟目录</h2>
+<form method="get" action="/scholar" class="filter">
+  <label>关键词
+    <input type="search" name="q" placeholder="搜 356 个 CARSI 资源（名称/厂商）" value="{{ carsi_query or '' }}">
+  </label>
+  <button type="submit">搜索</button>
+</form>
+{% if carsi %}
+<div class="card">
+  <p class="muted" style="font-size:.82rem;margin:0 0 .4rem">命中 {{ carsi|length }} 个：</p>
+  <table class="data">
+    <thead><tr><th>资源</th><th>厂商</th><th>入口</th></tr></thead>
+    <tbody>
+      {% for s in carsi[:50] %}
+      <tr>
+        <td>{{ s.production }}</td>
+        <td class="muted">{{ s.vendor_name or '' }}</td>
+        <td><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.url[:52] }}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+<p class="muted" style="font-size:.82rem">CARSI = 高校/科研机构用户联邦认证：校外用统一身份密码登录出版社。数据为 www.carsi.edu.cn 公开目录快照（{{ carsi_fetched }}），CLI <code>westlake scholar carsi --refresh</code> 在线更新。</p>
+{% endblock %}
