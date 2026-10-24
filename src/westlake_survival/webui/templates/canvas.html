@@ -30,11 +30,11 @@
 <section id="cv-grades" class="reveal">
 {% if grades is defined and grades %}
 <h2 class="section">课程成绩（{{ grades | length }} 门）</h2>
-<p class="muted" style="font-size:.85rem">当前分随老师发布评分实时更新；未发布的课程显示「未发布」。</p>
+<div class="callout mute"><span>当前分随老师发布评分实时更新；未发布的课程显示「未发布」。</span></div>
 <table class="data">
   <thead><tr><th>课程</th><th>当前分</th><th>当前等级</th><th>最终分</th></tr></thead>
   <tbody>{% for g in grades %}<tr>
-    <td>{{ g.name }}{% if g.term_name %} <span class="muted" style="font-size:.78rem">{{ g.term_name }}</span>{% endif %}</td>
+    <td>{{ g.name | replace('|', ' · ') }}{% if g.term_name %} <span class="muted" style="font-size:.78rem">{{ g.term_name }}</span>{% endif %}</td>
     <td>{% if g.current_score is not none %}<span class="chip ok">{{ g.current_score }}</span>{% else %}<span class="chip">未发布</span>{% endif %}</td>
     <td>{{ g.current_grade or '—' }}</td>
     <td>{% if g.final_score is not none %}{{ g.final_score }}{% else %}—{% endif %}</td>
@@ -90,7 +90,7 @@
 <h2 class="section">在修课程（{{ courses | length }}）</h2>
 {% if courses %}
 <div class="grid cols-2">
-  {% for c in courses %}<div class="card"><div style="font-weight:600">{{ c.name }}</div><div class="muted" style="font-size:.8rem">{{ c.code }}</div></div>{% endfor %}
+  {% for c in courses %}<div class="card"><div style="font-weight:600">{{ c.name | replace('|', ' · ') }}</div><div class="muted" style="font-size:.8rem">{{ c.code }}</div></div>{% endfor %}
 </div>
 {% elif not error %}<div class="callout mute"><span>未获取到在修课程。</span></div>{% endif %}
 </section>

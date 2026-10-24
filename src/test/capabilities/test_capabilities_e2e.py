@@ -195,10 +195,11 @@ def test_sis_page_has_nine_blocks(server: str) -> None:
 
 
 def test_canvas_and_affairs_blocks_thick(server: str) -> None:
-    """Canvas 考试/测验区与办事页待办/进行中区（空态也渲染）。"""
+    """Canvas 考试/测验/成绩/公告区与办事页待办/进行中区（空态也渲染）。"""
     _, canvas_html = _get(server + "/canvas")
-    for marker in ("考试", "测验"):
+    for marker in ("考试", "测验", "课程成绩", "最新公告", "未发布"):
         assert marker in canvas_html, marker
+    assert 'id="cv-nav"' in canvas_html  # 锚点导航
     _, affairs_html = _get(server + "/affairs")
     # 待办为 0 是真实态：空态文案也算渲染到位
     assert ("我的待办" in affairs_html) or ("没有待办任务" in affairs_html)
