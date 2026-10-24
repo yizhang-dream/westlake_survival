@@ -28,6 +28,19 @@ LIST_COLUMNS = (
     ("人才培养", "rcoy/bkspy.htm"),
 )
 
+#: 英文版栏目（2026-10-25 实测：英文首页在 ``Home.htm``，同站同构英文树，
+#: 文章仍是 ``info/<栏>/<id>.htm`` 形态，:func:`articles` 解析器通用）。
+LIST_COLUMNS_EN = (
+    ("News", "Home/News/News.htm"),
+    ("Colloquium", "Home/Events/Colloquium.htm"),
+    ("Programs", "Home/Programs/Undergraduate_Program.htm"),
+)
+
+
+def columns(lang: str = "zh"):
+    """栏目清单（名称, 路径）——``lang="en"`` 给英文树。"""
+    return LIST_COLUMNS if lang != "en" else LIST_COLUMNS_EN
+
 
 class Article:
     def __init__(self, title: str, url: str):
@@ -96,15 +109,18 @@ def sections(
     *,
     session: requests.Session | None = None,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> list[tuple[str, str]]:
-    """首页栏目（名称, 路径）。"""
+    """首页栏目（名称, 路径）；``lang="en"`` 解析英文首页 ``Home.htm``。"""
     session = session if session is not None else direct_session()
-    html = _fetch("", session, timeout or DEFAULT_TIMEOUT)
+    html = _fetch("" if lang != "en" else "Home.htm", session, timeout or DEFAULT_TIMEOUT)
     out: list[tuple[str, str]] = []
     seen: set[str] = set()
     for href, raw in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', html, re.S):
         title = re.sub(r"<[^>]+>", "", raw).strip()
-        if re.fullmatch(r"[\u4e00-\u9fff]{2,8}", title) and href.endswith(".htm") and not href.startswith("http"):
+        pattern = r"[\u4e00-\u9fff]{2,8}" if lang != "en" else r"[A-Za-z][A-Za-z ]{3,28}"
+        ok = re.fullmatch(pattern, title)
+        if ok and href.endswith(".htm") and not href.startswith("http"):
             if href not in seen:
                 seen.add(href)
                 out.append((title, href))
@@ -138,10 +154,12 @@ def _cli():
 
     @group.command(name="news")
     @click.option("--limit", type=int, default=10, show_default=True)
+    @click.option("--lang", type=click.Choice(["zh", "en"]), default="zh", show_default=True)
     @handle
-    def news_cmd(limit: int) -> None:
-        """新闻动态。"""
-        for a in articles("xwdt.htm", limit=limit):
+    def news_cmd(limit: int, lang: str) -> None:
+        """新闻动态（--lang en 走英文树 Home/News）。"""
+        path = "xwdt.htm" if lang != "en" else "Home/News/News.htm"
+        for a in articles(path, limit=limit):
             click.echo(f"  {a.title}　{a.url}")
 
     @group.command(name="events")

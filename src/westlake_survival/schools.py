@@ -56,12 +56,13 @@ def _fetch(url: str, session: requests.Session, timeout: float) -> str:
     return response.content.decode("utf-8", errors="replace")
 
 
-def _science_news(session: requests.Session, timeout: float, limit: int) -> list[SchoolArticle]:
+def _science_news(session: requests.Session, timeout: float, limit: int,
+                   language: str = "Chinese") -> list[SchoolArticle]:
     url = "https://science.westlake.edu.cn/chemistry_api/biz/modularity/project247/outLxyHmNewsList"
     try:
         response = session.post(
             url,
-            json={"pageNo": 1, "pageSize": limit, "language": "Chinese", "kexi": None, "workType": None},
+            json={"pageNo": 1, "pageSize": limit, "language": language, "kexi": None, "workType": None},
             timeout=timeout, verify=False,
         )
     except requests.RequestException as exc:
@@ -116,17 +117,19 @@ def _news_desc_news(base: str, path: str, session: requests.Session, timeout: fl
     return out[:limit]
 
 
-def _engineering_news(session: requests.Session, timeout: float, limit: int) -> list[SchoolArticle]:
-    """TRS 首页组件：mainBanner 条目即新闻。"""
+def _engineering_news(session: requests.Session, timeout: float, limit: int,
+                       base: str = "https://engineering.westlake.edu.cn/",
+                       label: str = "工学院") -> list[SchoolArticle]:
+    """TRS 首页组件：mainBanner 条目即新闻（生科英文站 lifesciences 同构）。"""
     from westlake_survival._trs import balanced, component_script, js_literal
 
-    html = _fetch("https://engineering.westlake.edu.cn/", session, timeout)
+    html = _fetch(base, session, timeout)
     block = component_script(html, "homePage")
     if not block:
-        raise ParseError("工学院首页未找到 homePage 组件")
+        raise ParseError(f"{label}首页未找到 homePage 组件")
     match = re.search(r"mainBanner\s*:\s*\[", block)
     if not match:
-        raise ParseError("工学院组件缺少 mainBanner")
+        raise ParseError(f"{label}组件缺少 mainBanner")
     items = js_literal(balanced(block, match.end() - 1))
     out = []
     for item in items if isinstance(items, list) else []:
@@ -137,16 +140,18 @@ def _engineering_news(session: requests.Session, timeout: float, limit: int) -> 
         if title and link:
             out.append(SchoolArticle(title=title, url=link))
     if not out:
-        raise ParseError("工学院新闻为空")
+        raise ParseError(f"{label}新闻为空")
     return out[:limit]
 
 
-def _institute_news(session: requests.Session, timeout: float, limit: int) -> list[SchoolArticle]:
+def _institute_news(session: requests.Session, timeout: float, limit: int,
+                      lang: str = "zh") -> list[SchoolArticle]:
     from westlake_survival.institute import articles
 
+    path = "xwdt.htm" if lang != "en" else "Home/News/News.htm"
     return [
         SchoolArticle(title=a.title, url=a.url)
-        for a in articles("xwdt.htm", limit=limit, session=session, timeout=timeout)
+        for a in articles(path, limit=limit, session=session, timeout=timeout)
     ]
 
 
@@ -156,6 +161,7 @@ def news(
     limit: int = 10,
     session: requests.Session | None = None,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> list[SchoolArticle]:
     """某学院的最新新闻。
 
@@ -169,16 +175,24 @@ def news(
     if school not in SCHOOLS:
         raise ValueError(f"未知学院 {school!r}，可选：{', '.join(SCHOOLS)}")
     name, base, kind = SCHOOLS[school]
+    if lang == "en" and school == "medicine":
+        raise WestlakeError("医学院无英文面（About 页无语言切换，2026-10-25 实测）")
+    if lang == "en" and school == "sls":
+        raise WestlakeError("生科英文站 lifesciences 结构另型（homePage 无 mainBanner，多 lists 数组），待后续适配")
+    if lang == "en" and school == "engineering":
+        raise WestlakeError("工学院英文站 en-soe 是空壳 SPA（无服务端内容，2026-10-25 实测）")
     session = session if session is not None else direct_session()
     effective = timeout or DEFAULT_TIMEOUT
     if kind == "api":
-        return _science_news(session, effective, limit)
+        # 理学院双语 = 接口 language 参数（English/Chinese）
+        return _science_news(session, effective, limit,
+                             language="Chinese" if lang != "en" else "English")
     if kind == "news_desc":
         path = "NEWS/" if school == "sls" else "News/"
         return _news_desc_news(base, path, session, effective, limit)
     if kind == "trs_home":
         return _engineering_news(session, effective, limit)
-    return _institute_news(session, effective, limit)
+    return _institute_news(session, effective, limit, lang=lang)
 
 
 # --------------------------------------------------------------------------- #
@@ -215,10 +229,12 @@ def _cli():
     @group.command(name="news")
     @click.argument("school")
     @click.option("--limit", type=int, default=10, show_default=True)
+    @click.option("--lang", type=click.Choice(["zh", "en"]), default="zh", show_default=True,
+                  help="英文（science/institute 支持；medicine/engineering/sls 见报错说明）。")
     @handle
-    def news_cmd(school: str, limit: int) -> None:
-        """某学院最新新闻，如 `westlake schools news science`。"""
-        for a in news(school, limit=limit):
+    def news_cmd(school: str, limit: int, lang: str) -> None:
+        """某学院最新新闻，如 `westlake schools news science --lang en`。"""
+        for a in news(school, limit=limit, lang=lang):
             extra = f"　{a.date}" if a.date else ""
             click.echo(f"  {a.title}{extra}　{a.url}")
 
