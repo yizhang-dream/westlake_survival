@@ -18,6 +18,8 @@ import pytest
 
 from westlake_survival.discovery import app_directory, subdomain_census
 
+pytestmark = pytest.mark.live
+
 
 
 
