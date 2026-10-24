@@ -732,6 +732,22 @@ def _canvas_context() -> dict:
         context["courses"] = [
             {"name": c.name, "code": getattr(c, "code", ""), "id": c.id} for c in client.list_courses()
         ]
+        # 考试/测验（库已有：quizzes + 日历 exam 事件）
+        try:
+            context["quizzes"] = [
+                {"title": q.title, "course": str(q.course_id), "due": (q.due_at.isoformat() if q.due_at else ""),
+                 "url": q.html_url}
+                for q in client.quizzes()[:15]
+            ]
+        except Exception:
+            context["quizzes"] = []
+        try:
+            context["exams"] = [
+                {"title": e.title, "start": (e.start_at.isoformat() if e.start_at else ""), "url": e.url}
+                for e in client.exam_events()[:10]
+            ]
+        except Exception:
+            context["exams"] = []
         context["deadlines"] = [
             {
                 "title": a.name,
@@ -913,8 +929,24 @@ def _services_context() -> dict:
 
 
 def _affairs_context() -> dict:
-    """办事页上下文：应用目录 + 常用入口；目录失败降级为提示。"""
-    context: dict = {"error": None, "apps": [], "links": [], "source_url": "one.westlake.edu.cn/taskcenter"}
+    """办事页上下文：我的待办/进行中 + 应用目录 + 常用入口；各块独立降级。"""
+    context: dict = {
+        "error": None, "apps": [], "links": [],
+        "source_url": "one.westlake.edu.cn/taskcenter",
+        "todo": [], "todo_error": None, "doing": [],
+    }
+    tc = _import_module("taskcenter")
+    if tc is not None:
+        try:
+            context["todo"] = [
+                {"title": t.title, "department": t.department, "url": t.url} for t in tc.todo()
+            ]
+        except Exception as exc:
+            context["todo_error"] = exc.__class__.__name__
+        try:
+            context["doing"] = [{"title": d.title, "status": d.status} for d in tc.doing()]
+        except Exception:
+            context["doing"] = []
     module = _import_module("discovery")
     if module is not None and hasattr(module, "app_directory"):
         try:

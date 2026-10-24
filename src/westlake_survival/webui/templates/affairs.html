@@ -33,6 +33,14 @@
 <p class="muted">没有待办任务。</p>
 {% endif %}
 
+{% if doing %}
+<h2 class="section">我发起的流程（{{ doing | length }}）</h2>
+<ul>{% for d in doing %}<li>{{ d.title }}{% if d.status %}　[{{ d.status }}]{% endif %}</li>{% endfor %}</ul>
+{% else %}
+<h2 class="section">我发起的流程</h2>
+<p class="muted">没有进行中的流程。</p>
+{% endif %}
+
 <h2 class="section">常用入口</h2>
 <table class="data">
   <thead><tr><th>服务</th><th>地址</th><th>说明</th></tr></thead>
