@@ -45,6 +45,8 @@ __all__ = [
     "app_directory",
     "snowball_hosts",
     "portal_services",
+    "archive_hosts",
+    "asset_hosts",
 ]
 
 logger = logging.getLogger(__name__)
@@ -55,10 +57,15 @@ TASKCENTER_BASE = "https://one.westlake.edu.cn/taskcenter"
 APP_DIRECTORY_PATH = "/client/stats/apps?domain=westlake.edu.cn"
 
 #: 普查候选（精选：证书日志命中 + 常见服务前缀；全量字典会拖慢 probe）。
+#: 2026-10-24 大字典清扫批扩充：新命中 2dmater/aging-conference/astro/audio/
+#: bioinfo/cap/car/career/mp/pan/report/storage/visitor + m./new./old. 前缀。
 CENSUS_HOSTS = (
-    "www sso iam my canvas sis lib library opac print pms map hpc mirrors "
+    "www sso iam idp my canvas sis lib library opac print pms map hpc mirrors "
     "finance hr oa one booking alumni international exchange mail energy iot "
-    "security remotework its lab yanglab mydisk webvpn webvpn2"
+    "security remotework its lab yanglab mydisk webvpn webvpn2 1x ac "
+    "2dmater aging-conference astro audio bioinfo cap car career cbis "
+    "mp pan report storage visitor "
+    "m.hpc new.hpc old.hpc m.remotework"
 ).split()
 
 
@@ -354,6 +361,98 @@ def snowball_hosts(
                 if candidate not in visited and host not in ("payment", "isearch"):
                     next_queue.append(candidate)
         queue = next_queue[:24]  # 控制规模
+    return found
+
+
+#: Wayback CDX 历史 URL 端点（第六种发现方法：历史索引不依赖当前链接）。
+ARCHIVE_CDX_URL = (
+    "http://web.archive.org/cdx/search/cdx?url=westlake.edu.cn"
+    "&matchType=domain&output=text&fl=original&collapse=urlkey&limit=20000"
+)
+
+
+def archive_hosts(
+    *, timeout: float = 30.0, session: requests.Session | None = None
+) -> dict[str, int]:
+    """Wayback 历史索引收割 ``*.westlake.edu.cn``（含已下线服务），带缓存。
+
+    返回 ``{子域: 出现次数}``。2026-10-24 实测：直接访问可通（约 1.8MB、
+    千级 URL）；若网络不通返回空并留缓存。CDATA 注意：该端点是 http，部分
+    环境会被拦——失败时抛 :class:`WestlakeError`。
+    """
+    import re as _re
+    from collections import Counter
+
+    if session is None:
+        # 外网站点：直连优先（2026-10-24 实测直连可通），系统代理兜底
+        try:
+            response = direct_session().get(ARCHIVE_CDX_URL, timeout=timeout)
+            response.raise_for_status()
+        except requests.RequestException:
+            response = requests.get(ARCHIVE_CDX_URL, timeout=timeout)
+            response.raise_for_status()
+    else:
+        response = session.get(ARCHIVE_CDX_URL, timeout=timeout)
+        response.raise_for_status()
+    counter: Counter[str] = Counter()
+    for line in response.text.splitlines():
+        m = _re.match(r"https?://([a-z0-9.-]+)\.westlake\.edu\.cn", line.strip(), _re.I)
+        if m:
+            counter[m.group(1).lower()] += 1
+    from westlake_survival import _cache
+
+    _cache.save_json("discovery/archive_hosts.json", dict(counter))
+    return dict(counter)
+
+
+def asset_hosts(
+    hosts: list[str] | None = None,
+    *,
+    js_per_host: int = 12,
+    timeout: float = 8.0,
+) -> dict[str, list[str]]:
+    """静态资产收割：抓已知站首页与其引用 JS，收集其中的 ``*.westlake.edu.cn``。
+
+    第七种发现方法（2026-10-24 实测：对 50 个已知站收敛为零新增——用于交叉
+    验证字典/滚雪球的覆盖度）。返回 ``{子域: [来源页…]}``。
+    """
+    import re as _re
+    from urllib.parse import urljoin
+
+    session = direct_session()
+    targets = hosts or [h for h in CENSUS_HOSTS if "." not in h and h not in ("mydisk", "webvpn", "webvpn2", "1x", "ac")]
+    found: dict[str, list[str]] = {}
+    host_re = _re.compile(r"https?://([a-z0-9.-]+\.westlake\.edu\.cn)", _re.I)
+
+    def _collect(url: str) -> str:
+        try:
+            response = session.get(url, timeout=timeout, verify=False)
+        except requests.RequestException:
+            return ""
+        return response.text
+
+    for host in targets:
+        page = _collect(f"https://{host}.westlake.edu.cn/")
+        if not page:
+            continue
+        for h in host_re.findall(page):
+            h = h.lower()
+            if h != f"{host}.westlake.edu.cn":
+                found.setdefault(h, [])
+                if f"{host}.westlake.edu.cn" not in found[h]:
+                    found[h].append(f"{host}.westlake.edu.cn")
+        scripts = _re.findall(r'src="([^"]+\.js[^"]*)"', page)[:js_per_host]
+        for src in scripts:
+            js_url = urljoin(f"https://{host}.westlake.edu.cn/", src)
+            js = _collect(js_url)
+            if not js:
+                continue
+            for h in host_re.findall(js):
+                h = h.lower()
+                if h != f"{host}.westlake.edu.cn":
+                    found.setdefault(h, [])
+                    if js_url not in found[h]:
+                        found[h].append(js_url)
     return found
 
 

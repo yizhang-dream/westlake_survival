@@ -41,6 +41,7 @@ from westlake_survival.schools import cli_group as schools_cmd
 from westlake_survival.taskcenter import cli_group as todo_cmd
 from westlake_survival.portal import cli_group as portal_cmd
 from westlake_survival.scholar import cli_group as scholar_cmd
+from westlake_survival.careersite import cli_group as careersite_cmd
 from westlake_survival.events import cli_group as events_cmd
 from westlake_survival.exceptions import AuthError, OffCampusError, WestlakeError
 from westlake_survival.faculty import cli_group as faculty_cmd
@@ -1379,6 +1380,7 @@ for _group in (
     todo_cmd,
     portal_cmd,
     scholar_cmd,
+    careersite_cmd,
     context_cmd,
     digest_cmd,
     probe_cmd,

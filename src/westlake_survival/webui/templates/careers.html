@@ -15,4 +15,24 @@
   </tbody>
 </table>
 <p class="muted" style="font-size:.82rem">数据来自官网招聘页（公开）。</p>
+
+<h2 class="page">就业服务网（校园招聘 / 招聘会 / 宣讲会）</h2>
+{% if career_site_error %}
+<div class="note">{{ career_site_error }}</div>
+{% endif %}
+<table class="data">
+  <thead><tr><th>类型</th><th>日期</th><th>标题</th><th>时间/场地</th><th>详情</th></tr></thead>
+  <tbody>
+    {% for c in career_site %}
+    <tr>
+      <td><span class="chip">{{ c.kind }}</span></td>
+      <td>{{ c.date }}</td>
+      <td><a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.title }}</a></td>
+      <td class="muted">{{ c.meta }}</td>
+      <td><a href="{{ c.url }}" target="_blank" rel="noopener">官网</a></td>
+    </tr>
+    {% else %}<tr><td colspan="5" class="dim">暂无条目（或就业服务网不可达）。</td></tr>{% endfor %}
+  </tbody>
+</table>
+<p class="muted" style="font-size:.82rem">来自 career.westlake.edu.cn 首页公开三区块（列表页与全部岗位检索需统一认证登录，未接入）；CLI：<code>westlake career list</code>。</p>
 {% endblock %}

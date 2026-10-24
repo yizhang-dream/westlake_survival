@@ -64,7 +64,7 @@ WEB_PAGES = (
     ("/capabilities", "能力总览", "本页：CLI + MCP + WebUI 全部入口", False),
     ("/sis", "学业", "课表/成绩/考试/待评教（教务凭据）", True),
     ("/canvas", "Canvas", "在修课程与未来截止（令牌或统一密码）", True),
-    ("/careers", "招聘", "官网招聘岗位（公开）", False),
+    ("/careers", "招聘", "官网岗位 + 就业服务网三区块（招聘公告/招聘会/宣讲会，公开）", False),
     ("/hpc", "集群", "HPC 队列配置表（公开）与 Portal 入口", False),
     ("/finance", "财务", "报销/制度/科研经费文档（公开）", False),
     ("/mirrors", "镜像", "开源镜像仓库目录与换源 Help", False),

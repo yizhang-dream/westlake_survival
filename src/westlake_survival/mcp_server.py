@@ -624,6 +624,22 @@ def _tool_affairs_apps(args: dict) -> Any:
     }
 
 
+def _tool_career_latest(args: dict) -> Any:
+    """就业服务网首页三区块（招聘公告/招聘会/宣讲会，免登录公开面）。"""
+    from westlake_survival.careersite import announcements
+
+    kind = _opt_str(args, "kind")
+    keyword = _opt_str(args, "keyword")
+    limit = _opt_int(args, "limit", 20, minimum=1, maximum=100)
+    items = announcements(kind, keyword)
+    return {
+        "count": len(items),
+        "site": "career.westlake.edu.cn",
+        "note": "列表页与全部岗位检索需统一认证登录，未接入；条目 URL 直通官网详情",
+        "items": [i.to_dict() for i in items[:limit]],
+    }
+
+
 def _tool_scholar_databases(args: dict) -> Any:
     """学术数据库注册表（访问通道标注）。"""
     from westlake_survival.scholar import databases
@@ -1106,6 +1122,24 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             ["course", "assignment"],
         ),
         "handler": _tool_canvas_submit,
+    },
+    {
+        "name": "career_latest",
+        "description": (
+            "就业服务网最新动态：招聘公告 / 招聘会 / 宣讲会三区块"
+            "（首页公开面，含日期、时段、场地与状态）。"
+        ),
+        "inputSchema": _schema(
+            {
+                "kind": _str_param(
+                    "类型过滤：campus=招聘公告 jobfair=招聘会 teachin=宣讲会；缺省全部。",
+                    enum=["campus", "jobfair", "teachin"],
+                ),
+                "keyword": _str_param("标题/场地子串过滤。"),
+                "limit": _int_param("最多返回条数，默认 20。", minimum=1, maximum=100),
+            }
+        ),
+        "handler": _tool_career_latest,
     },
     {
         "name": "scholar_databases",
