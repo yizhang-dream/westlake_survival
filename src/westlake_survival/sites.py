@@ -144,8 +144,30 @@ STATIC_SITES: dict = {
 }
 
 #: 官网同款 TRS（homePage 组件）：主 Banner 条目。
-HOMEPAGE_SITES: dict = {
-    "graduateschool": {"name": "研究生院", "group": "招生与基金"},
+HOMEPAGE_SITES: dict = {}
+
+#: TRS 组件列表栏（2026-10-25 逐站反出）：导航树藏在 ``header.navList``
+#: 组件 JSON 里（非裸 HTML 锚点，猜路径全 404/500），真栏目路径如下。
+#: cols: 标签 -> {path, comp, key, title 字段, date 字段}；banner=True 先抓首页 Banner。
+TRS_LIST_SITES: dict = {
+    "graduateschool": {
+        "name": "研究生院", "group": "招生与基金", "banner": True,
+        "cols": {"通知公告": {"path": "Notice/", "comp": "notice",
+                              "key": "rightList", "title": "text"}},
+    },
+    "wudf": {
+        "name": "发展基金会（捐赠）", "group": "招生与基金",
+        "cols": {
+            "捐赠新闻": {"path": "News_Center/Foundation_News/", "comp": "donationNews", "key": "list"},
+            "机构公告": {"path": "News_Center/Institutional_Announcements/", "comp": "institutionNotice", "key": "list"},
+        },
+    },
+    "zh-ugadmissions": {
+        "name": "本科招生网（中文）", "group": "招生与基金",
+        "cols": {"招生动态": {"path": "Admissions/AdmissionEvents/",
+                              "comp": "AdmissionEventsNew", "key": "list",
+                              "date": "data"}},  # 官网把日期字段拼成了 data
+    },
 }
 
 #: 不做内容抓取的特例站：SPA / 登录墙 / 三维演示 / 纯课题组页。
@@ -171,8 +193,6 @@ INTRO_SITES: dict = {
               "intro": "天文观测平台（Next.js SPA），内容见官网。"},
     "qiushi": {"name": "求是西湖", "group": "招生与基金",
                "intro": "求是西湖项目（活动信息 / 求是学者），静态站。"},
-    "wudf": {"name": "发展基金会（捐赠）", "group": "招生与基金",
-             "intro": "捐赠项目与校友基金（官网同款 TRS，首页无列表数据）。"},
     # 英文镜像子站（2026-10-25 补）：内容主体已在双语模块/中文站，此处给入口。
     "eniscps": {"name": "物质科学公共实验平台（EN）", "group": "科研平台",
                 "intro": "iscps 英文镜像（自研模板，info 链接为仪器目录非新闻）。"},
@@ -684,6 +704,44 @@ def site_detail(url: str) -> dict:
     return data
 
 
+def _fetch_trs_list(key: str, config: dict, limit: int) -> list[SiteSection]:
+    """TRS 组件列表栏：逐栏取页面 -> 组件块 -> ``array_of(key)`` -> 条目。"""
+    from westlake_survival._trs import array_of, component_script
+
+    base = _host(key)
+    s = _session()
+    sections: list[SiteSection] = []
+    if config.get("banner"):
+        try:
+            sections.extend(_fetch_homepage_banner(key, limit))
+        except Exception:  # noqa: BLE001 - Banner 失败不拖垮栏目
+            pass
+    for label, cfg in config["cols"].items():
+        try:
+            html = _decoded(s.get(base + cfg["path"], timeout=DEFAULT_TIMEOUT))
+            block = component_script(html, cfg["comp"])
+            rows = array_of(block, cfg["key"]) if block else []
+        except Exception:  # noqa: BLE001 - 单栏失败继续
+            continue
+        items = []
+        title_f, date_f = cfg.get("title", "title"), cfg.get("date", "date")
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            title = str(row.get(title_f) or "").strip()
+            if not title:
+                continue
+            items.append(SiteItem(
+                title=title[:90],
+                url=str(row.get("url") or base),
+                date=str(row.get(date_f) or "")[:10]))
+            if len(items) >= limit:
+                break
+        if items:
+            sections.append(SiteSection(label=label, items=items))
+    return sections
+
+
 def site_content(key: str, limit: int = 8) -> SiteContent:
     """取一个站点的内容（博达 / 静态 / homePage / HPC / 特例简介五路分发）。"""
     config = BAIDA_SITES.get(key)
@@ -701,6 +759,14 @@ def site_content(key: str, limit: int = 8) -> SiteContent:
         content = SiteContent(key=key, name=config["name"], group=config["group"], url=_host(key))
         try:
             content.sections = _fetch_static_index(key, limit)
+        except Exception as exc:
+            content.error = f"{exc.__class__.__name__}: {exc}"[:120]
+        return content
+    if key in TRS_LIST_SITES:
+        config = TRS_LIST_SITES[key]
+        content = SiteContent(key=key, name=config["name"], group=config["group"], url=_host(key))
+        try:
+            content.sections = _fetch_trs_list(key, config, limit)
         except Exception as exc:
             content.error = f"{exc.__class__.__name__}: {exc}"[:120]
         return content
@@ -736,6 +802,9 @@ def sites_index() -> list[dict]:
         if key in BAIDA_SITES:
             cfg = BAIDA_SITES[key]
             has_cols = bool(cfg.get("cols"))
+        elif key in TRS_LIST_SITES:
+            cfg = TRS_LIST_SITES[key]
+            has_cols = True
         elif key in STATIC_SITES:
             cfg = STATIC_SITES[key]
             has_cols = True
@@ -757,8 +826,9 @@ def sites_index() -> list[dict]:
 
 
 def all_keys() -> list[str]:
-    """全部已接入站点 key（博达 + 静态 + homePage + HPC + 特例）。"""
-    return sorted({*BAIDA_SITES, *STATIC_SITES, *HOMEPAGE_SITES, *HPC_SITES, *INTRO_SITES})
+    """全部已接入站点 key（博达 + TRS 列表 + 静态 + homePage + HPC + 特例）。"""
+    return sorted({*BAIDA_SITES, *TRS_LIST_SITES, *STATIC_SITES,
+                   *HOMEPAGE_SITES, *HPC_SITES, *INTRO_SITES})
 
 
 def all_sites(limit: int = 8) -> list[SiteContent]:
@@ -795,6 +865,8 @@ def sites_list() -> None:
     for key in all_keys():
         if key in BAIDA_SITES:
             cfg = BAIDA_SITES[key]
+        elif key in TRS_LIST_SITES:
+            cfg = TRS_LIST_SITES[key]
         elif key in STATIC_SITES:
             cfg = STATIC_SITES[key]
         elif key in HOMEPAGE_SITES:
