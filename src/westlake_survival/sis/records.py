@@ -104,6 +104,26 @@ __all__ = [
     "DISCIPLINE_QUERY",
     "DisciplineRecord",
     "discipline_records",
+    # 志愿服务历史
+    "VOL_HISTORY_COMPONENT",
+    "VOL_HISTORY_GRID_ID",
+    "VolunteerHistoryEntry",
+    "VolunteerHistory",
+    "volunteer_history",
+    # 学期注册缴费
+    "REGISTRATION_COMPONENT",
+    "RegistrationStatus",
+    "registration",
+    # 心理健康预约
+    "APPOINTMENT_COMPONENT",
+    "AppointmentSlot",
+    "Appointments",
+    "appointments",
+    # 离校 / 生源状态
+    "LEAVING_CHECK_COMPONENT",
+    "SOURCE_INFO_COMPONENT",
+    "leaving_check",
+    "source_info_status",
     # CLI
     "cli_group",
 ]
@@ -667,6 +687,336 @@ def discipline_records() -> list[DisciplineRecord]:
 
 
 # --------------------------------------------------------------------------- #
+# 志愿服务历史（官方 + 自主提交，含总时长）
+# --------------------------------------------------------------------------- #
+#: 志愿服务历史页组件（``WL_VOLUN`` 菜单，学生端可见）。
+VOL_HISTORY_COMPONENT = "WL_CUSTOMIZE_MENU.WL_VOL_HIS_COM.GBL"
+
+#: 志愿服务历史网格 id（2026-10-24 实测）。
+VOL_HISTORY_GRID_ID = "WL_VOL_HISTORY"
+
+#: 总时长 label 值里的单位粘连形态（如 ``24HOUR``）拆成 ``24 HOUR``。
+_TOTAL_TIME_RESUB = re.compile(r"^(\d+(?:\.\d+)?)(HOUR|MINUTE|小时)$")
+
+
+@dataclass
+class VolunteerHistoryEntry:
+    """一条志愿服务历史记录（实测网格 ``WL_VOL_HISTORY``）。
+
+    Attributes:
+        year: 学年（如 ``2025``）。
+        source: 来源（``Official Entry`` 官方录入 / ``Self Submitted`` 自主提交）。
+        name: 服务名称（中文自由文本）。
+        time_text: 服务时间段（如 ``2025/11/18 18:30 — 2025/11/19 16:30``）。
+        hours: 时长文本（如 ``2.0``）。
+        raw: 原始「表头 → 值」字典，列名漂移时兜底。
+    """
+
+    year: str = ""
+    source: str = ""
+    name: str = ""
+    time_text: str = ""
+    hours: str = ""
+    raw: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """转为可序列化字典。"""
+        return {
+            "year": self.year,
+            "source": self.source,
+            "name": self.name,
+            "time_text": self.time_text,
+            "hours": self.hours,
+            "raw": dict(self.raw),
+        }
+
+    @classmethod
+    def from_row(cls, row: dict) -> "VolunteerHistoryEntry":
+        """从行字典构造（列名 2026-10-24 实测）。"""
+        return cls(
+            year=_pick(row, "Academic Year", "Year"),
+            source=_pick(row, "Official Entry / Self Submitted", "Source"),
+            name=_pick(row, "Volunteer Service Name", "Service Name", "Name"),
+            time_text=_pick(row, "Volunteer Time", "Activity Time", "Time"),
+            hours=_pick(row, "Service Duration (Hours)", "Duration", "Hours"),
+            raw=dict(row),
+        )
+
+
+@dataclass
+class VolunteerHistory:
+    """志愿服务历史页整体：总时长 + 明细列表。
+
+    Attributes:
+        total_time: 总时长文本（实测 label ``Total Time Of Volunteer Service``
+            的值 ``24HOUR`` 规范化为 ``24 HOUR``）。
+        entries: 志愿服务历史明细（无记录时为空列表）。
+    """
+
+    total_time: str = ""
+    entries: list = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """转为可序列化字典。"""
+        return {
+            "total_time": self.total_time,
+            "entries": [e.to_dict() for e in self.entries],
+        }
+
+
+def volunteer_history() -> VolunteerHistory:
+    """取志愿服务历史（官方录入 + 自主提交，含总时长）。
+
+    与 :func:`volunteer_records`（「我的志愿服务」``WL_VOL_MYSELF_COM``）为
+    不同组件：历史页按学年汇总全部记录并给出总时长（2026-10-24 实测 4 行、
+    总时长 24 HOUR）。
+
+    Returns:
+        :class:`VolunteerHistory`。
+
+    Raises:
+        AuthError: 会话失效。
+        OffCampusError: 校外访问被拒。
+        ActionError: 历史组件未授权。
+        ParseError: 已渲染网格结构变化（缺表头等）。
+    """
+    html = pages.fetch_page(VOL_HISTORY_COMPONENT)
+    rows = _grid_rows(html, VOL_HISTORY_GRID_ID)
+    entries = _rows_to_models(rows, VolunteerHistoryEntry.from_row)
+    total = pages.parse_label_values(html).get("Total Time Of Volunteer Service", "")
+    match = _TOTAL_TIME_RESUB.match(total.replace(" ", ""))
+    if match:
+        total = f"{match.group(1)} {match.group(2)}"
+    return VolunteerHistory(total_time=total, entries=entries)
+
+
+# --------------------------------------------------------------------------- #
+# 学期注册缴费状态
+# --------------------------------------------------------------------------- #
+#: 学期注册缴费组件（``WL_XG_MENU`` 菜单，学生端「Semester Enrollment」）。
+REGISTRATION_COMPONENT = "WL_XG_MENU.WL_STU_REG_PAY_COM.GBL"
+
+#: 注册缴费页提示句特征（中英双语兜底）。
+_REG_NOTICE_RE = re.compile(
+    r"(The payment of fees[^<.!！]*[.!！]|缴费[^<.!！]{0,120}[.!！]|"
+    r"registration[^<.!！]{0,120}[.!！]|注册[^<.!！]{0,120}[.!！])",
+    re.IGNORECASE,
+)
+
+
+@dataclass
+class RegistrationStatus:
+    """学期注册缴费状态。
+
+    Attributes:
+        fields: 个人信息「标签 → 值」字典（实测键 ``Student ID`` / ``Name`` /
+            ``Grade`` / ``Academic Career`` / ``Academic Group`` / ``College`` /
+            ``Payment Academic Year``）。
+        notice: 注册缴费提示句（2026-10-24 实测「The payment of fees for
+            the 2026-2027 academic year is currently not open!」）。
+    """
+
+    fields: dict = field(default_factory=dict)
+    notice: str = ""
+
+    def to_dict(self) -> dict:
+        """转为可序列化字典。"""
+        return {"fields": dict(self.fields), "notice": self.notice}
+
+
+def registration() -> RegistrationStatus:
+    """取学期注册缴费状态。
+
+    Returns:
+        :class:`RegistrationStatus`；页面未开放缴费时 ``notice`` 携带站点
+        提示句，``fields`` 为个人信息区键值对。
+
+    Raises:
+        AuthError: 会话失效。
+        OffCampusError: 校外访问被拒。
+        ActionError: 注册组件未授权。
+    """
+    html = pages.fetch_page(REGISTRATION_COMPONENT)
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text)
+    match = _REG_NOTICE_RE.search(text)
+    return RegistrationStatus(
+        fields=pages.parse_label_values(html),
+        notice=match.group(1).strip() if match else "",
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 心理健康预约（周历）
+# --------------------------------------------------------------------------- #
+#: 「我的预约」组件（``WL_SA_MENU``，心理健康在线预约）。
+APPOINTMENT_COMPONENT = "WL_SA_MENU.WL_MTL_MY_APPNT2.GBL"
+
+#: 周历表头里的星期词（用于列 → 星期映射）。
+_WEEKDAY_WORDS = ("Monday", "Tuesday", "Wednesday", "Thursday",
+                  "Friday", "Saturday", "Sunday")
+
+#: 空闲占位符（周历空单元格渲染为连续箭头）。
+_EMPTY_CELL = "-->"
+
+
+@dataclass
+class AppointmentSlot:
+    """周历上的一个已占用时段。
+
+    Attributes:
+        day: 星期（如 ``Monday``）。
+        date: 日期文本（如 ``2026-10-19``，页面有则带）。
+        time: 起始时间（如 ``14:00``）。
+        text: 单元格内容（预约标题 / 状态等）。
+    """
+
+    day: str = ""
+    date: str = ""
+    time: str = ""
+    text: str = ""
+
+    def to_dict(self) -> dict:
+        """转为可序列化字典。"""
+        return {"day": self.day, "date": self.date, "time": self.time, "text": self.text}
+
+
+@dataclass
+class Appointments:
+    """「我的预约」周历视图。
+
+    Attributes:
+        week: 周范围文本（如 ``2026/10/19~2026/10/25``）。
+        entries: 已占用时段列表（周历全空时为空列表——2026-10-24 实测本周
+            无预约，全部单元格为 ``-->`` 占位）。
+    """
+
+    week: str = ""
+    entries: list = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """转为可序列化字典。"""
+        return {"week": self.week, "entries": [e.to_dict() for e in self.entries]}
+
+
+def _parse_week_calendar(html: str) -> Appointments:
+    """解析周历表：定位含 ``Monday`` 表头的表格，抽出非空闲单元格。
+
+    表结构（实测）：首列 ``Time`` 为整点（06:00–22:00），后 7 列为
+    Monday–Sunday；表头单元格文本形如 ``Monday2026-10-19``（星期与日期连写）。
+    空单元格渲染为 ``-->``。
+    """
+    from westlake_survival.sis.parser import _parse_tables
+
+    week_match = re.search(r"\d{4}/\d{2}/\d{2}~\d{4}/\d{2}/\d{2}", html)
+    result = Appointments(week=week_match.group(0) if week_match else "")
+    for match in re.finditer(r"<table\b", html):
+        end = html.find("</table>", match.start())
+        if end == -1:
+            continue
+        segment = html[match.start(): end + 8]
+        if "Monday" not in segment:
+            continue
+        header, rows = _parse_tables(segment)
+        days: list[tuple[str, str]] = []
+        header_cells = next((r for r in rows if r and r[:1] == ["Time"]), None)
+        if header_cells:
+            for cell in header_cells[1:]:
+                day = next((w for w in _WEEKDAY_WORDS if cell.startswith(w)), "")
+                date = cell[len(day):].strip() if day else ""
+                days.append((day, date))
+        for cells in rows:
+            if not cells or not cells[0].strip() or cells[0].strip() == "Time":
+                continue
+            slot_time = cells[0].strip()
+            for index, value in enumerate(cells[1:]):
+                text = value.replace(_EMPTY_CELL, "").strip()
+                if not text or index >= len(days):
+                    continue
+                day, date = days[index]
+                result.entries.append(
+                    AppointmentSlot(day=day, date=date, time=slot_time, text=text)
+                )
+        break
+    return result
+
+
+def appointments() -> Appointments:
+    """取「我的预约」周历（心理健康在线预约）。
+
+    Returns:
+        :class:`Appointments`；当前周无预约时 ``entries`` 为空列表。
+
+    Raises:
+        AuthError: 会话失效。
+        OffCampusError: 校外访问被拒。
+        ActionError: 预约组件未授权。
+    """
+    html = pages.fetch_page(APPOINTMENT_COMPONENT)
+    return _parse_week_calendar(html)
+
+
+# --------------------------------------------------------------------------- #
+# 离校检查 / 生源信息状态
+# --------------------------------------------------------------------------- #
+#: 离校自查清单组件。
+LEAVING_CHECK_COMPONENT = "WL_CUSTOMIZE_MENU.WL_STU_LAV_CHECK.GBL"
+
+#: 生源信息确认组件。
+SOURCE_INFO_COMPONENT = "WL_SA_MENU.WL_SA_SOURCE_INFO.GBL"
+
+#: 状态页正文抽取范围：``welcome to SIS`` 欢迎语后到 ``Supplementary Panel``
+#: 前（导航头里也有 ``Back`` 字样，不能用其做锚点）。
+_STATUS_TEXT_RE = re.compile(r"welcome to SIS(.*)Supplementary Panel", re.S)
+
+
+def _status_message(html: str) -> str:
+    """抽状态页正文提示句（先去 script/style 再锚定，避免吃到 JS 里的导航文本）。"""
+    body = re.sub(r"<script.*?</script>", " ", html, flags=re.S)
+    body = re.sub(r"<style.*?</style>", " ", body, flags=re.S)
+    match = _STATUS_TEXT_RE.search(body)
+    segment = match.group(1) if match else body
+    text = re.sub(r"<[^>]+>", " ", segment)
+    text = text.replace("&nbsp;", " ")
+    text = re.sub(r"\s+", " ", text).strip()
+    # 去掉正文首部的页面标题残留（如「Self Check List of Students Leaving School」）
+    return text[:300]
+
+
+def leaving_check() -> dict:
+    """取离校自查清单状态。
+
+    Returns:
+        ``{"message": 提示句}``；2026-10-24 实测为
+        ``You currently have no task to leave school!``（在读学生无离校
+        任务）。有任务时应为清单网格，届时按需扩展。
+
+    Raises:
+        AuthError: 会话失效。
+        OffCampusError: 校外访问被拒。
+        ActionError: 离校组件未授权。
+    """
+    html = pages.fetch_page(LEAVING_CHECK_COMPONENT)
+    return {"message": _status_message(html)}
+
+
+def source_info_status() -> dict:
+    """取生源信息确认状态。
+
+    Returns:
+        ``{"message": 提示句}``；2026-10-24 实测为
+        ``Not yet open, unable to confirm student source information.``。
+
+    Raises:
+        AuthError: 会话失效。
+        OffCampusError: 校外访问被拒。
+        ActionError: 生源组件未授权。
+    """
+    html = pages.fetch_page(SOURCE_INFO_COMPONENT)
+    return {"message": _status_message(html)}
+
+
+# --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
 def _handle_errors(func):
@@ -700,7 +1050,7 @@ def _print_table(rows, headers) -> None:
     _impl(rows, headers)
 
 
-@click.group(name="records", help="学生事务记录：住宿 / 请假 / 荣誉 / 志愿 / 实践 / 违纪。")
+@click.group(name="records", help="学生事务记录：住宿 / 请假 / 荣誉 / 志愿 / 实践 / 违纪 / 注册 / 预约等。")
 def cli_group() -> None:
     """``westlake records`` 命令组（注册由 ``cli.main`` 后续完成）。"""
 
@@ -797,3 +1147,60 @@ def records_discipline() -> None:
         for d in items
     ]
     _print_table(rows, ("日期", "类别", "描述", "状态"))
+
+
+@cli_group.command(name="vol-history")
+@_handle_errors
+def records_vol_history() -> None:
+    """显示志愿服务历史（含总时长）。"""
+    record = volunteer_history()
+    click.echo(f"总时长：{record.total_time or '—'}")
+    if not record.entries:
+        click.echo("暂无记录")
+        return
+    rows = [
+        (e.year or "—", e.source or "—", e.name or "—", e.time_text or "—",
+         e.hours or "—")
+        for e in record.entries
+    ]
+    _print_table(rows, ("学年", "来源", "服务名称", "时间", "时长(h)"))
+
+
+@cli_group.command(name="registration")
+@_handle_errors
+def records_registration() -> None:
+    """显示学期注册缴费状态。"""
+    record = registration()
+    for key, value in record.fields.items():
+        click.echo(f"{key}: {value}")
+    if record.notice:
+        click.echo(f"提示：{record.notice}")
+
+
+@cli_group.command(name="appointments")
+@_handle_errors
+def records_appointments() -> None:
+    """显示本周预约（心理健康）。"""
+    record = appointments()
+    click.echo(f"周范围：{record.week or '—'}")
+    if not record.entries:
+        click.echo("本周无预约")
+        return
+    rows = [
+        (e.date or e.day, e.time or "—", e.text or "—") for e in record.entries
+    ]
+    _print_table(rows, ("日期", "时间", "内容"))
+
+
+@cli_group.command(name="leaving-check")
+@_handle_errors
+def records_leaving_check() -> None:
+    """显示离校自查清单状态。"""
+    click.echo(leaving_check()["message"] or "未获取到提示")
+
+
+@cli_group.command(name="source-info")
+@_handle_errors
+def records_source_info() -> None:
+    """显示生源信息确认状态。"""
+    click.echo(source_info_status()["message"] or "未获取到提示")

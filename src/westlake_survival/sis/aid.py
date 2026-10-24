@@ -98,6 +98,8 @@ __all__ = [
     "WorkStudyTab",
     "study_jobs",
     "work_study_tabs",
+    "CLAIM_COMPONENT",
+    "job_claim",
     # 海外交流
     "OUTBOUND_COMPONENT",
     "OUTBOUND_GRID_ID",
@@ -758,6 +760,35 @@ def study_jobs() -> list[StudyJob]:
     return [StudyJob.from_row(row) for row in _grid_rows(html, WORK_POSITIONS_GRID_ID)]
 
 
+#: 工时申报页组件（``CHN_PACKAGE`` 菜单，2026-10-24 实测）。
+CLAIM_COMPONENT = "CHN_PACKAGE_CS.CHN_SW_CLAIM_LIST.GBL"
+
+#: 工时申报页空态提示（无岗位时整页仅此一句，无网格；在去标签前匹配，
+#: 以 ``<`` 截断避免吃到后续脚本/页脚文本）。
+_CLAIM_EMPTY_RE = re.compile(r"(You haven't got a job yet\.|No Data[^<]{0,60})")
+
+
+def job_claim() -> dict:
+    """取工时申报状态（有无勤工助学岗位）。
+
+    Returns:
+        ``{"notice": 提示句}``；2026-10-24 实测当前账号无岗位，提示
+        ``You haven't got a job yet.``（页面另有学号/性别/学院等基本信息头，
+        与 SIS 个人信息重复，不重复抽取）。有岗位时应为申报网格，届时按需
+        扩展。
+
+    Raises:
+        AuthError: 会话失效。
+        OffCampusError: 校外访问被拒。
+        ActionError: 工时组件未授权。
+    """
+    html = pages.fetch_page(CLAIM_COMPONENT)
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text)
+    match = _CLAIM_EMPTY_RE.search(text)
+    return {"notice": match.group(1).strip() if match else ""}
+
+
 def outbound_programs() -> list[OutboundRecord]:
     """取 Outbound（海外交流派出）申请记录。
 
@@ -897,6 +928,13 @@ def aid_jobs() -> None:
         ("岗位", "部门", "工时", "工资", "状态"),
         "没有勤工助学记录。",
     )
+
+
+@cli_group.command(name="claim")
+@_handle_errors
+def aid_claim() -> None:
+    """显示工时申报状态（有无岗位）。"""
+    click.echo(job_claim()["notice"] or "未获取到提示")
 
 
 @cli_group.command(name="outbound")

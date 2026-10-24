@@ -26,6 +26,7 @@
 ``program_plan`` / ``program_courses`` / ``program_course_search`` /
 ``events_upcoming`` / ``research_latest`` / ``site_search`` / ``faculty_search`` /
 ``campus_dining`` / ``campus_housing`` / ``campus_map`` / ``affairs_apps`` / ``contact_info`` / ``context_snapshot`` /
+``scholar_databases`` / ``scholar_resolve_doi`` / ``scholar_campus``（学术资源）/
 ``canvas_deadlines``；另有写操作工具 ``canvas_submit``（交作业，缺省只预检，
 ``confirm=true`` 才真正提交）。
 
@@ -198,6 +199,46 @@ def _tool_sis_evals_pending(args: dict) -> Any:
     from westlake_survival.sis import pending_evaluations
 
     return [task.to_dict() for task in pending_evaluations()]
+
+
+def _tool_sis_volunteer_history(args: dict) -> Any:
+    """志愿服务历史（官方录入 + 自主提交，含总时长）。"""
+    from westlake_survival.sis.records import volunteer_history
+
+    return volunteer_history().to_dict()
+
+
+def _tool_sis_registration(args: dict) -> Any:
+    """学期注册缴费状态（个人信息 + 缴费提示）。"""
+    from westlake_survival.sis.records import registration
+
+    return registration().to_dict()
+
+
+def _tool_sis_appointments(args: dict) -> Any:
+    """本周心理预约（周历范围 + 已占用时段）。"""
+    from westlake_survival.sis.records import appointments
+
+    return appointments().to_dict()
+
+
+def _tool_sis_clubs(args: dict) -> Any:
+    """我的社团（学年 / 社团 / 发起人 / 人数）。"""
+    from westlake_survival.sis.aid import my_clubs
+
+    return [org.to_dict() for org in my_clubs()]
+
+
+def _tool_sis_statuses(args: dict) -> Any:
+    """离校检查 / 生源确认 / 工时申报三类状态提示。"""
+    from westlake_survival.sis.aid import job_claim
+    from westlake_survival.sis.records import leaving_check, source_info_status
+
+    return {
+        "leaving_check": leaving_check(),
+        "source_info": source_info_status(),
+        "job_claim": job_claim(),
+    }
 
 
 def _tool_calendar_today(args: dict) -> Any:
@@ -583,6 +624,48 @@ def _tool_affairs_apps(args: dict) -> Any:
     }
 
 
+def _tool_scholar_databases(args: dict) -> Any:
+    """学术数据库注册表（访问通道标注）。"""
+    from westlake_survival.scholar import databases
+
+    keyword = _opt_str(args, "keyword")
+    rows = databases(keyword)
+    return {
+        "count": len(rows),
+        "access_legend": "campus=校园IP carsi=CARSI联盟SSO open=免费 account=独立账号",
+        "databases": [
+            {
+                "key": db.key,
+                "name": db.name,
+                "url": db.url,
+                "category": db.category,
+                "access": db.access,
+                "vendor": db.vendor,
+                "note": db.note,
+            }
+            for db in rows
+        ],
+    }
+
+
+def _tool_scholar_resolve_doi(args: dict) -> Any:
+    """DOI 解析：题录 + OA 副本 + 出版社 PDF 线索 + 校园网提示。"""
+    from westlake_survival.scholar import resolve_doi
+
+    doi = _opt_str(args, "doi")
+    if not doi:
+        raise ValueError("参数 doi 不能为空")
+    paper = resolve_doi(doi, with_pdf_url=not args.get("pdf_url_only"))
+    return paper.to_dict()
+
+
+def _tool_scholar_campus(args: dict) -> Any:
+    """校园网 IP 认证状态（出版社信标探测）。"""
+    from westlake_survival.scholar import campus_status
+
+    return campus_status(refresh=bool(args.get("refresh"))).to_dict()
+
+
 def _tool_campus_map(args: dict) -> Any:
     """校园地图辅助：地址、地图图片、720yun 全景与到校交通。"""
     from westlake_survival.campusmap import campus_map
@@ -792,6 +875,36 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "handler": _tool_sis_evals_pending,
     },
     {
+        "name": "sis_volunteer_history",
+        "description": "取志愿服务历史（官方录入 + 自主提交，含总时长）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_volunteer_history,
+    },
+    {
+        "name": "sis_registration",
+        "description": "取学期注册缴费状态（个人信息 + 缴费开放提示）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_registration,
+    },
+    {
+        "name": "sis_appointments",
+        "description": "取本周心理预约（周范围 + 已占用时段）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_appointments,
+    },
+    {
+        "name": "sis_clubs",
+        "description": "取我的社团列表（学年 / 社团 / 发起人 / 人数）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_clubs,
+    },
+    {
+        "name": "sis_statuses",
+        "description": "取离校检查 / 生源确认 / 工时申报状态提示。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_statuses,
+    },
+    {
         "name": "calendar_today",
         "description": "今天的日期 / 星期 / 学期 / 教学周次 / 当日校历事件。",
         "inputSchema": _schema(),
@@ -993,6 +1106,43 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             ["course", "assignment"],
         ),
         "handler": _tool_canvas_submit,
+    },
+    {
+        "name": "scholar_databases",
+        "description": (
+            "学术数据库注册表：中西文全文/引文索引/事实库/数据平台，"
+            "标注访问通道（campus=校园IP carsi=CARSI联盟SSO open=免费 account=独立账号）。"
+        ),
+        "inputSchema": _schema(
+            {"keyword": _str_param("名称/类别/厂商子串，如「知网」「外文全文」。缺省全部。")}
+        ),
+        "handler": _tool_scholar_databases,
+    },
+    {
+        "name": "scholar_resolve_doi",
+        "description": (
+            "解析 DOI：CrossRef 题录 + OA 副本 + 出版社 citation_pdf_url，"
+            "并提示当前出口 IP 是否在校园网认证范围（订阅全文可直接取）。"
+        ),
+        "inputSchema": _schema(
+            {
+                "doi": _str_param("DOI，接受裸 DOI 或 doi.org 链接。"),
+                "pdf_url_only": {
+                    "type": "boolean",
+                    "description": "true 时跳过出版社落地页探测（更快），只给题录与 OA。",
+                },
+            },
+            ["doi"],
+        ),
+        "handler": _tool_scholar_resolve_doi,
+    },
+    {
+        "name": "scholar_campus",
+        "description": "当前出口 IP 是否被出版社认作校园网（信标探测，缓存 30 分钟）。",
+        "inputSchema": _schema(
+            {"refresh": {"type": "boolean", "description": "true 时强制重新探测。"}}
+        ),
+        "handler": _tool_scholar_campus,
     },
 )
 
