@@ -165,6 +165,12 @@
     background: var(--accent); flex-shrink: 0;
   }
   h3.section { font-size: 1.02rem; margin: 1.3rem 0 .5rem; color: var(--heading); }
+  h3.sub { font-size: .95rem; margin: 1.05rem 0 .4rem; color: var(--heading); font-weight: 700; }
+  h3.sub .count {
+    margin-left: .45rem; font-size: .72rem; font-weight: 700; color: var(--muted);
+    background: color-mix(in srgb, var(--muted) 14%, transparent);
+    border-radius: 999px; padding: .1rem .5rem; vertical-align: middle;
+  }
   p { color: var(--muted); }
   .grid { display: grid; gap: .9rem; }
   .grid.cols-4 { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }

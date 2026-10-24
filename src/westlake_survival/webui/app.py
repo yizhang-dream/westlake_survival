@@ -1095,7 +1095,7 @@ def _affairs_context() -> dict:
 
 
 def _sites_context() -> dict:
-    """全站页上下文：30 站内容并行抓取（博达/静态/TRS/特例四路），分组渲染。"""
+    """全站页上下文：31 站内容并行抓取（博达发现器/TRS/HPC/静态四路），分组渲染。"""
     module = _import_module("sites")
     if module is None:
         return {"error": "sites 模块不可用", "groups": [], "stats": {}}
@@ -1110,16 +1110,22 @@ def _sites_context() -> dict:
                 {"label": sec["label"], "entries": sec["items"]} for sec in data["sections"]
             ]
             data["n_items"] = sum(len(sec["entries"]) for sec in data["sections"])
+            data["n_sections"] = len(data["sections"])
             sites.append(data)
     groups: list[dict] = []
     for group in module.SITE_GROUPS:
         rows = [c for c in sites if c["group"] == group]
-        if rows:
-            groups.append({"name": group, "sites": rows})
+        if not rows:
+            continue
+        opened = next((i for i, c in enumerate(rows) if c["n_items"]), None)
+        if opened is not None:
+            rows[opened]["default_open"] = True
+        groups.append({"name": group, "sites": rows})
     stats = {
         "total": len(sites),
         "with_items": sum(1 for c in sites if c["n_items"]),
         "entry_count": sum(c["n_items"] for c in sites),
+        "section_count": sum(c["n_sections"] for c in sites),
     }
     return {"error": None, "groups": groups, "stats": stats}
 

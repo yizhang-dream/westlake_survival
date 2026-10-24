@@ -1,14 +1,19 @@
 """全校 68 域名中「未接内容页」站点的统一内容读取层。
 
-2026-10-25 批量探测（直连 + 编码兜底）后按形态分三类接入：
+2026-10-25 批量探测（直连 + 编码兜底）后按形态分类接入；2026-10-24 深挖批
+加入两层能力：
 
-- **博达 CMS 家族**（``VsbFormFunc`` 特征）：栏目页 ``index/<拼音>.htm`` 或
-  ``<目录>/<拼音>.htm``，条目 ``info/<栏>/<文>.htm`` + ``title=`` 属性 +
-  ``YYYY-MM-DD`` 日期，分页 ``<拼音>/N.htm``。典型坑：响应无 charset 头，
-  ``requests`` 按 latin-1 解码成乱码，须 :func:`_decoded` 兜底重解码。
-- **官网同款 TRS**（``new homePage(...)``）：研究生院；主 Banner 结构与
-  ``schools.py`` 工学院同款，复用 :mod:`westlake_survival._trs`。
-- **静态列表站**：首页 ``<a>`` + 日期直接抽（nanolab / lams / dq）。
+- **博达栏目发现器**（:func:`_discover_baida_columns`）：抓首页导航锚点
+  -> 逐个 GET 候选栏目页 -> ``info/`` 条目 ≥2 才收录。手工 ``cols`` 只做
+  种子，其余栏目（奖学金 / 勤工助学 / 招标公告等同构栏）全自动补全，
+  单站上限 12 栏。
+- **HPC 中心**（:data:`HPC_SITES`）：Vue SPA 壳，内容在公网 mkdocs/sphinx
+  手册（四套目录树）+ 校内网成果库 PHP API（直连 -> 系统代理双通道，
+  不通时优雅降级）+ 资料 PDF。
+
+典型坑：博达响应无 charset 头须 :func:`_decoded` 重解码；Jinja 里数据
+键名避开 ``items``（dict 方法）；sphinx rtd 主题 ``class`` 与 ``href``
+先后顺序不定。
 
 特例站（SPA / 登录墙 / 三维演示）不做内容抓取，保留入口与简介（见
 :data:`INTRO_SITES`）。全部只读 ``GET``；不碰登录与写操作。
@@ -18,6 +23,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from urllib.parse import urljoin
 
 import click
 
@@ -245,8 +251,76 @@ def _host(key: str) -> str:
     return f"https://{key}.westlake.edu.cn/"
 
 
+#: 首页锚点（href + 锚内 120 字符文本），用于栏目发现。
+_HOMEPAGE_ANCHOR_RE = re.compile(r'<a[^>]+href="([^"#]+?\.htm)"[^>]*>([\s\S]{0,120}?)</a>')
+#: 候选栏目路径：可选一级目录 + 文件名.htm（info/ 条目是两级数字目录，天然不匹配）。
+_COL_PATH_RE = re.compile(r"^(?:\.\./)?(?:[A-Za-z0-9_]+/)?[A-Za-z0-9_]+\.htm$")
+#: 非栏目标签（导航装饰 / 分页），命中即弃（比较前压掉全角/半角空白）。
+_SKIP_LABELS = {"更多", "more", "MORE", "详情", "首页", "主页", "home", "HOME",
+                "返回", "下一篇", "上一篇", "English", "登录", "检索"}
+_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"[\s\u3000]+")
+
+
+def _clean_label(raw: str) -> str:
+    """锚文本 -> 栏目标签：去标签、压空白。"""
+    return _WS_RE.sub("", _TAG_RE.sub("", raw).replace("&nbsp;", " ")).strip()
+
+
+def _norm_col_path(href: str) -> str:
+    """栏目路径规范化：剥 ../ 前缀（首页常写 index/tzgg.htm 或 tzgg.htm 等价）。"""
+    return href.lstrip("./").removeprefix("../")
+
+
+def _discover_baida_columns(key: str, s, manual_paths: set[str],
+                            limit: int, max_pages: int = 14) -> list[SiteSection]:
+    """从首页导航链接逐个探测内容栏目（含 ≥2 条 info/ 条目才收录）。
+
+    2026-10-24 深挖批：手工 cols 只覆盖每站 1-2 个栏目，导航里其实还有
+    奖学金 / 勤工助学 / 招标公告等同构栏目；本发现器把「找到链接→
+    一步步深挖」固化：首页锚点 -> 栏目页 -> info/ 条目计数验证。
+    """
+    base = _host(key)
+    try:
+        html = _decoded(s.get(base, timeout=DEFAULT_TIMEOUT))
+    except Exception:
+        return []
+    candidates: list[tuple[str, str]] = []
+    seen = set(manual_paths)
+    for m in _HOMEPAGE_ANCHOR_RE.finditer(html):
+        href, inner = m.group(1), m.group(2)
+        if href.startswith(("http", "javascript", "mailto")):
+            continue
+        norm = _norm_col_path(href)
+        if not _COL_PATH_RE.fullmatch(norm) or norm in seen:
+            continue
+        filename = norm.rsplit("/", 1)[-1]
+        if filename.removeprefix("index").isdigit() and filename != "index.htm":
+            continue  # 分页（list2.htm / tzgg2.htm）
+        label = _clean_label(inner)
+        if not (2 <= len(label) <= 20) or label in _SKIP_LABELS:
+            continue
+        seen.add(norm)
+        candidates.append((norm, label))
+        if len(candidates) >= max_pages:
+            break
+    sections: list[SiteSection] = []
+    for norm, label in candidates:
+        try:
+            resp = s.get(base + norm, timeout=DEFAULT_TIMEOUT)
+            page = _decoded(resp)
+        except Exception:
+            continue
+        if len(_ITEM_LINK_RE.findall(page)) < 2:
+            continue
+        items = _extract_items(page, base, limit)
+        if len(items) >= 2:
+            sections.append(SiteSection(label=label, items=items))
+    return sections
+
+
 def _fetch_baida_columns(key: str, cols: dict, limit: int) -> list[SiteSection]:
-    """抓博达站各栏目列表页，返回栏目节。"""
+    """抓博达站栏目：手工 cols 打头 + 首页发现器补全，单站上限 12 栏。"""
     base = _host(key)
     s = _session()
     sections = []
@@ -254,8 +328,16 @@ def _fetch_baida_columns(key: str, cols: dict, limit: int) -> list[SiteSection]:
         url = base + path
         resp = s.get(url, timeout=DEFAULT_TIMEOUT)
         html = _decoded(resp)
-        sections.append(SiteSection(label=label, items=_extract_items(html, base, limit)))
-    return sections
+        items = _extract_items(html, base, limit)
+        if items:
+            sections.append(SiteSection(label=label, items=items))
+    discovered = _discover_baida_columns(
+        key, s, {_norm_col_path(p) for p in cols.values()}, limit)
+    known = [s_.label for s_ in sections]
+    for sec in discovered:
+        if sec.label not in known:
+            sections.append(sec)
+    return sections[:12]
 
 
 def _fetch_static_index(key: str, limit: int) -> list[SiteSection]:
@@ -341,16 +423,143 @@ def _fetch_homepage_banner(key: str, limit: int) -> list[SiteSection]:
     return sections
 
 
+#: HPC 中心：Vue SPA 壳 + mkdocs 手册（公网可达）+ 成果库 PHP API（仅校内网）。
+HPC_SITES: dict = {
+    "hpc": {"name": "高性能计算中心", "group": "科研平台"},
+}
+
+#: HPC 手册四套（2026-10-24 从 SPA bundle 的 manuals 数组反出真实路径；
+#: science/ai 是 mkdocs-material，cryo 是 sphinx rtd 主题，WRAP 是静态标题页）。
+_HPC_MANUALS = (
+    ("science", "科学工程计算集群手册", "mkdocs"),
+    ("ai", "GPU 集群用户手册", "mkdocs"),
+    ("cryo", "冷冻电镜集群使用指南", "sphinx"),
+    ("wrap", "WRAP（RNA-Seq 平台）文档", "headings"),
+)
+_HPC_MANUAL_URL = {
+    "science": "document/science/",
+    "ai": "document/ai/index.html",
+    "cryo": "document/cryo/index.html",
+    "wrap": "docs/shiny/document.html",
+}
+
+#: mkdocs-material 导航条目（属性可能带引号也可能裸写）。
+_MKDOCS_NAV_RE = re.compile(
+    r'href="?([-\w/]+\.html)"?\s+class="?(?:md-nav__link[^">]*)"?[^>]*>\s*'
+    r'(?:<span[^>]*>\s*)?([^<]{2,40}?)\s*<'
+)
+#: sphinx rtd 主题 toctree 条目（class 与 href 先后顺序不定）。
+_SPHINX_NAV_RE = re.compile(
+    r'<a[^>]*?(?:class="reference[^"]*"[^>]*href="?([-\w/]+\.html)"?'
+    r'|href="?([-\w/]+\.html)"?[^>]*class="reference[^"]*")[^>]*>\s*([^<]{2,50}?)\s*<'
+)
+#: 静态文档页标题（h1/h2 章节列表）。
+_HEADING_RE = re.compile(r'<h[12][^>]*>\s*(?:<a[^>]*>\s*</a>)?\s*([^<]{3,80}?)\s*<')
+
+#: 成果库 API 的 type 代码 -> 栏目（SPA 里 partObj: article=1 patent=2 soft=3）。
+_HPC_ESSAY_TYPES = {"1": "学术论文", "2": "专利", "3": "软件成果"}
+_ESSAY_API = "http://172.16.75.35:8007/selectessay.php"
+
+
+def _hpc_manual_sections(base: str, s, limit: int) -> list[SiteSection]:
+    """抓四套手册的目录树（每章一节条目，无日期）。三种 markup 分别抽。"""
+    sections = []
+    for dir_name, label, kind in _HPC_MANUALS:
+        path = _HPC_MANUAL_URL[dir_name]
+        try:
+            resp = s.get(base + path, timeout=DEFAULT_TIMEOUT)
+            html = _decoded(resp)
+        except Exception:
+            continue
+        root = base + path.rsplit("/", 1)[0] + "/"
+        if kind == "mkdocs":
+            pairs = _MKDOCS_NAV_RE.findall(html)
+        elif kind == "sphinx":
+            nav_start = html.find("wy-menu")
+            nav_end = html.find("</nav>", nav_start)
+            pairs = [(g1 or g2, t) for g1, g2, t in _SPHINX_NAV_RE.findall(
+                html[nav_start:nav_end])] if nav_start != -1 else []
+        else:  # 静态标题页：h1/h2 即章节，无锚点则用序号伪锚去重
+            pairs = [(f"{path}#sec-{i}", t)
+                     for i, t in enumerate(_HEADING_RE.findall(html))]
+            root = base
+        items, seen = [], set()
+        for href, title in pairs:
+            title = title.strip()
+            if href in seen or not title or len(title) < 2:
+                continue
+            seen.add(href)
+            items.append(SiteItem(title=title, url=urljoin(root, href)))
+        if len(items) >= 3:
+            sections.append(SiteSection(label=label, items=items[: max(limit * 2, 16)]))
+    return sections
+
+
+def _hpc_essay_sections(limit: int) -> list[SiteSection]:
+    """成果库 API（论文/专利/软件）。仅校内网可达：先直连，再走系统代理。
+
+    2026-10-24 实测：校外 / 代理节点不在校内路由时两端都 502/超时，
+    此时返回空并在 error 里说明，不硬凑。
+    """
+    import requests as _rq
+
+    last_exc = None
+    for use_proxy in (False, True):
+        try:
+            sess = _rq.Session()
+            sess.trust_env = use_proxy
+            resp = sess.get(_ESSAY_API, timeout=4)
+            data = resp.json()
+            if str(data.get("code")) != "200":
+                last_exc = WestlakeError(f"code={data.get('code')}")
+                continue
+            by_type: dict[str, list] = {}
+            for row in data.get("data") or []:
+                if not isinstance(row, dict):
+                    continue
+                title = str(row.get("title") or "").strip()
+                if not title:
+                    continue
+                by_type.setdefault(str(row.get("type")), []).append(SiteItem(
+                    title=title,
+                    url=str(row.get("link") or ""),
+                    date=str(row.get("datetime") or "")[:16],
+                ))
+            return [
+                SiteSection(label=_HPC_ESSAY_TYPES[t], items=rows[:limit])
+                for t in ("1", "2", "3") if (rows := by_type.get(t))
+            ]
+        except Exception as exc:  # noqa: BLE001 - 双通道各自的失败都要记录
+            last_exc = exc
+    raise WestlakeError(f"成果库 API 仅校内网可达（{last_exc.__class__.__name__}）")
+
+
+def _fetch_hpc(key: str, limit: int) -> tuple[list[SiteSection], str]:
+    """HPC 站：手册导航 + 成果库 + 资料 PDF。返回 (sections, note)。"""
+    base = _host(key)
+    s = _session()
+    sections = _hpc_manual_sections(base, s, limit)
+    note = ""
+    try:
+        sections.extend(_hpc_essay_sections(limit))
+    except WestlakeError as exc:
+        note = str(exc)
+    sections.append(SiteSection(label="资料下载", items=[
+        SiteItem(title="HPC 用户手册（PDF）", url=f"{base}hpc_user.pdf"),
+        SiteItem(title="HPC 服务介绍（PDF）", url=f"{base}hpc_service.pdf"),
+    ]))
+    return sections, note
+
+
 def site_content(key: str, limit: int = 8) -> SiteContent:
-    """取一个站点的内容（博达 / 静态 / homePage / 特例简介四路分发）。"""
+    """取一个站点的内容（博达 / 静态 / homePage / HPC / 特例简介五路分发）。"""
     config = BAIDA_SITES.get(key)
     if config is not None:
         content = SiteContent(key=key, name=config["name"], group=config["group"], url=_host(key))
-        if config.get("cols"):
-            try:
-                content.sections = _fetch_baida_columns(key, config["cols"], limit)
-            except Exception as exc:
-                content.error = f"{exc.__class__.__name__}: {exc}"[:120]
+        try:
+            content.sections = _fetch_baida_columns(key, config.get("cols") or {}, limit)
+        except Exception as exc:
+            content.error = f"{exc.__class__.__name__}: {exc}"[:120]
         if not content.sections:
             content.intro = "办事型站点，栏目为流程文档；入口直达。"
         return content
@@ -367,6 +576,16 @@ def site_content(key: str, limit: int = 8) -> SiteContent:
         content = SiteContent(key=key, name=config["name"], group=config["group"], url=_host(key))
         try:
             content.sections = _fetch_homepage_banner(key, limit)
+        except Exception as exc:
+            content.error = f"{exc.__class__.__name__}: {exc}"[:120]
+        return content
+    if key in HPC_SITES:
+        config = HPC_SITES[key]
+        content = SiteContent(key=key, name=config["name"], group=config["group"], url=_host(key))
+        try:
+            content.sections, note = _fetch_hpc(key, limit)
+            if note:
+                content.intro = note
         except Exception as exc:
             content.error = f"{exc.__class__.__name__}: {exc}"[:120]
         return content
@@ -390,6 +609,9 @@ def sites_index() -> list[dict]:
         elif key in HOMEPAGE_SITES:
             cfg = HOMEPAGE_SITES[key]
             has_cols = True
+        elif key in HPC_SITES:
+            cfg = HPC_SITES[key]
+            has_cols = True
         else:
             cfg = INTRO_SITES[key]
             has_cols = False
@@ -402,8 +624,8 @@ def sites_index() -> list[dict]:
 
 
 def all_keys() -> list[str]:
-    """全部已接入站点 key（博达 + 静态 + homePage + 特例）。"""
-    return sorted({*BAIDA_SITES, *STATIC_SITES, *HOMEPAGE_SITES, *INTRO_SITES})
+    """全部已接入站点 key（博达 + 静态 + homePage + HPC + 特例）。"""
+    return sorted({*BAIDA_SITES, *STATIC_SITES, *HOMEPAGE_SITES, *HPC_SITES, *INTRO_SITES})
 
 
 def all_sites(limit: int = 8) -> list[SiteContent]:
@@ -444,6 +666,8 @@ def sites_list() -> None:
             cfg = STATIC_SITES[key]
         elif key in HOMEPAGE_SITES:
             cfg = HOMEPAGE_SITES[key]
+        elif key in HPC_SITES:
+            cfg = HPC_SITES[key]
         else:
             cfg = INTRO_SITES[key]
         rows.append((key, cfg["name"], cfg["group"]))

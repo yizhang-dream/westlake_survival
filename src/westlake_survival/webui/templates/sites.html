@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block title %}全站 · 西湖生存手册{% endblock %}
 {% block content %}
-<h1 class="page">全校站点（30 个已接入）</h1>
+<h1 class="page">全校站点（{{ stats.total }} 个已接入）</h1>
 
 <div class="stats">
   <div class="stat"><div class="label">已接入站点</div><div class="value" data-count="{{ stats.total }}">{{ stats.total }}</div></div>
   <div class="stat"><div class="label">有条目站点</div><div class="value" data-count="{{ stats.with_items }}">{{ stats.with_items }}</div></div>
+  <div class="stat"><div class="label">栏目总数</div><div class="value" data-count="{{ stats.section_count }}">{{ stats.section_count }}</div></div>
   <div class="stat"><div class="label">条目总数</div><div class="value" data-count="{{ stats.entry_count }}">{{ stats.entry_count }}</div></div>
 </div>
 
@@ -17,16 +18,16 @@
 <section id="grp-{{ loop.index }}" class="reveal">
 <h2 class="section">{{ g.name }}（{{ g.sites | length }} 站）</h2>
 {% for c in g.sites %}
-<details class="fold"{% if c.sections and c.sections[0].items %} open{% endif %}>
-  <summary>{{ c.name }}{% if c.n_items %}<span class="chip">{{ c.n_items }} 条</span>{% else %}<span class="chip plain">简介</span>{% endif %}</summary>
+<details class="fold" data-fold-key="sites-{{ c.key }}"{% if c.default_open %} data-should-open="1"{% endif %}>
+  <summary>{{ c.name }}{% if c.n_items %}<span class="chip">{{ c.n_sections }} 栏</span><span class="chip ok">{{ c.n_items }} 条</span>{% else %}<span class="chip plain">简介</span>{% endif %}</summary>
   <div class="fold-body">
     {% if c.error %}<div class="callout warn"><span>抓取异常：{{ c.error }}</span></div>{% endif %}
     {% if c.intro %}<div class="callout"><span>{{ c.intro }} <a href="{{ c.url }}" target="_blank" rel="noopener">进入站点 →</a></span></div>{% endif %}
     {% for sec in c.sections %}
       {% if sec.entries %}
-      <h3 class="section">{{ sec.label }}（{{ sec.entries | length }}）</h3>
+      <h3 class="sub">{{ sec.label }}<span class="count">{{ sec.entries | length }}</span></h3>
       <table class="data">
-        <tbody>{% for i in sec.entries %}<tr><td class="time">{{ i.date or '—' }}</td><td><a href="{{ i.url }}" target="_blank" rel="noopener">{{ i.title }}</a></td></tr>{% endfor %}</tbody>
+        <tbody>{% for i in sec.entries %}<tr><td class="time">{{ i.date }}</td><td><a href="{{ i.url }}" target="_blank" rel="noopener">{{ i.title }}</a></td></tr>{% endfor %}</tbody>
       </table>
       {% elif sec.label %}
       <div class="callout mute"><span>{{ sec.label }}：暂无条目。</span></div>
@@ -45,6 +46,19 @@
 {% block scripts %}
 <script>
 (function () {
+  // 折叠记忆：用户手动开过的记住，没动过的按 data-should-open 默认值
+  document.querySelectorAll('details.fold[data-fold-key]').forEach(function (d) {
+    var key = 'fold-' + d.getAttribute('data-fold-key');
+    var saved = null;
+    try { saved = localStorage.getItem(key); } catch (e) {}
+    if (saved === '1') d.open = true;
+    else if (saved === '0') d.open = false;
+    else d.open = d.hasAttribute('data-should-open');
+    d.addEventListener('toggle', function () {
+      try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) {}
+    });
+  });
+
   var nav = document.querySelector('.anchor-nav');
   if (!nav || !('IntersectionObserver' in window)) return;
   var links = Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]'));

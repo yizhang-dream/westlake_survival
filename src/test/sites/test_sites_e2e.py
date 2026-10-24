@@ -64,6 +64,42 @@ def test_unknown_key_raises() -> None:
         mod.site_content("no-such-site")
 
 
+def test_hpc_manuals_full_nav() -> None:
+    """HPC：四套手册目录全量（科学 16 章 + GPU + 冷冻电镜 + WRAP）+ PDF。"""
+    mod = _mod()
+    content = mod.site_content("hpc", limit=6)
+    labels = {s.label for s in content.sections}
+    assert {"科学工程计算集群手册", "GPU 集群用户手册", "冷冻电镜集群使用指南",
+            "WRAP（RNA-Seq 平台）文档", "资料下载"} <= labels
+    science = next(s for s in content.sections if s.label == "科学工程计算集群手册")
+    assert len(science.items) >= 12, "科学工程手册应≥12章"
+    for item in science.items:
+        assert item.url.startswith("https://hpc.westlake.edu.cn/document/science/")
+    cryo = next(s for s in content.sections if s.label == "冷冻电镜集群使用指南")
+    assert len(cryo.items) >= 5
+    # 成果库 API（校内网）不通时优雅降级：手册仍在、intro 提示原因
+    if "学术论文" not in labels:
+        assert "校内网" in (content.intro or "")
+
+
+def test_baida_discovery_expands_columns() -> None:
+    """栏目发现器：学生事务部从手工 2 栏扩到≥8 栏（奖学金/社团等同构栏目）。"""
+    mod = _mod()
+    content = mod.site_content("osa", limit=4)
+    labels = [s.label for s in content.sections]
+    assert len([l for l in labels if l not in ("通知公告", "学生活动")]) >= 6
+    assert all(s.items for s in content.sections), "发现器只收录有条目的栏目"
+    assert len(content.sections) <= 12, "单站栏目上限 12"
+
+
+def test_ore_discovery_from_empty_cols() -> None:
+    """科技合作部（原无手工栏目）：纯靠首页发现器也要出内容栏目。"""
+    mod = _mod()
+    content = mod.site_content("ore", limit=4)
+    assert content.sections, "发现器应给 ore 补出栏目"
+    assert sum(len(s.items) for s in content.sections) >= 10
+
+
 def test_webui_sites_page() -> None:
     """/sites 页四件套齐：stats、锚点、折叠块、至少 40 条条目上页面。
 
