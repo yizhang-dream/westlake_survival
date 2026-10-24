@@ -4,15 +4,28 @@
 {% block content %}
 <h1 class="page">网上办事大厅</h1>
 
-<p class="muted" style="font-size:.9rem">
-  全校 {{ apps | length }} 个流程应用，来自任务中心免登录目录（{{ source_url }}）。
-  发起办理需登录学校统一认证；这里先用来搜「这件事在哪儿办」。
-</p>
+<div class="callout"><span>全校 {{ apps | length }} 个流程应用，来自任务中心免登录目录（{{ source_url }}）。发起办理需登录学校统一认证；这里先用来搜「这件事在哪儿办」。</span></div>
+
+<div class="stats">
+  <div class="stat"><div class="label">流程应用</div><div class="value" data-count="{{ apps | length }}">{{ apps | length }}</div></div>
+  <div class="stat"><div class="label">我的待办</div><div class="value" data-count="{{ todo | length if todo else 0 }}">{{ todo | length if todo else 0 }}</div></div>
+  <div class="stat"><div class="label">进行中流程</div><div class="value" data-count="{{ doing | length if doing else 0 }}">{{ doing | length if doing else 0 }}</div></div>
+  <div class="stat"><div class="label">常用入口</div><div class="value" data-count="{{ links | length }}">{{ links | length }}</div></div>
+</div>
+
+<nav class="anchor-nav">
+  <a href="#af-apps">应用目录</a>
+  <a href="#af-todo">我的待办</a>
+  <a href="#af-doing">我发起的</a>
+  <a href="#af-links">常用入口</a>
+</nav>
 
 <input type="search" id="appFilter" placeholder="搜应用名或部门（如 预约 / 出入 / 经费 / 信息技术中心）"
        style="width:100%;max-width:28rem;padding:.45rem .6rem;margin:.2rem 0 1.2rem;
               border:1px solid var(--line);border-radius:8px">
 
+<section id="af-apps" class="reveal">
+<h2 class="section">应用目录</h2>
 <div class="grid cols-2" id="appGrid">
   {% for a in apps %}
   <div class="card app-item" style="padding:.7rem .9rem">
@@ -23,24 +36,36 @@
   {% endfor %}
 </div>
 <p class="muted" id="appCount" style="font-size:.82rem"></p>
+</section>
 
+<section id="af-todo" class="reveal">
 {% if todo %}
 <h2 class="section">我的待办（{{ todo | length }}）</h2>
-<ul>{% for t_ in todo %}<li>{{ t_.title }}{% if t_.department %}　[{{ t_.department }}]{% endif %} {% if t_.url %}<a href="{{ t_.url }}" target="_blank" rel="noopener">去处理</a>{% endif %}</li>{% endfor %}</ul>
+<table class="data">
+  <thead><tr><th>事项</th><th>部门</th><th>操作</th></tr></thead>
+  <tbody>{% for t_ in todo %}<tr><td>{{ t_.title }}</td><td>{{ t_.department or '—' }}</td><td>{% if t_.url %}<a href="{{ t_.url }}" target="_blank" rel="noopener">去处理</a>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+</table>
 {% elif todo_error %}
 <div class="note">我的待办不可用（{{ todo_error }}；需统一密码，首次运行自动登录）</div>
 {% else %}
-<p class="muted">没有待办任务。</p>
+<div class="callout mute"><span>没有待办任务。</span></div>
 {% endif %}
+</section>
 
+<section id="af-doing" class="reveal">
 {% if doing %}
 <h2 class="section">我发起的流程（{{ doing | length }}）</h2>
-<ul>{% for d in doing %}<li>{{ d.title }}{% if d.status %}　[{{ d.status }}]{% endif %}</li>{% endfor %}</ul>
+<table class="data">
+  <thead><tr><th>流程</th><th>状态</th></tr></thead>
+  <tbody>{% for d in doing %}<tr><td>{{ d.title }}</td><td>{% if d.status %}<span class="chip">{{ d.status }}</span>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+</table>
 {% else %}
 <h2 class="section">我发起的流程</h2>
-<p class="muted">没有进行中的流程。</p>
+<div class="callout mute"><span>没有进行中的流程。</span></div>
 {% endif %}
+</section>
 
+<section id="af-links" class="reveal">
 <h2 class="section">常用入口</h2>
 <table class="data">
   <thead><tr><th>服务</th><th>地址</th><th>说明</th></tr></thead>
@@ -54,6 +79,7 @@
     {% endfor %}
   </tbody>
 </table>
+</section>
 
 <script>
 (function () {

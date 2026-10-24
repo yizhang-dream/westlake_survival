@@ -4,8 +4,14 @@
 <h1 class="page">理论科学研究院</h1>
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
 {% for p in panels %}
-<h2 class="section">{{ p.title }}（{{ p.entries | length }}）</h2>
-<ul>{% for i in p.entries %}<li><a href="{{ i.u }}" target="_blank" rel="noopener">{{ i.t }}</a></li>{% endfor %}</ul>
+<details class="fold"{% if loop.first %} open{% endif %}>
+  <summary>{{ p.title }}<span class="chip">{{ p.entries | length }} 条</span></summary>
+  <div class="fold-body">
+    <table class="data">
+      <tbody>{% for i in p.entries %}<tr><td><a href="{{ i.u }}" target="_blank" rel="noopener">{{ i.t }}</a></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</details>
 {% endfor %}
-<p class="muted" style="font-size:.82rem">数据来自 its.westlake.edu.cn（该域名实际挂理论科学研究院官网）。</p>
+<div class="callout"><span>数据来自 its.westlake.edu.cn（该域名实际挂理论科学研究院官网）。</span></div>
 {% endblock %}

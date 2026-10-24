@@ -3,33 +3,120 @@
 {% block content %}
 <h1 class="page">Canvas</h1>
 {% if error %}<div class="note">Canvas 数据不可用：{{ error }}（令牌或统一凭据，及校园网）</div>{% endif %}
-{% if courses %}
-<h2 class="section">在修课程（{{ courses | length }}）</h2>
-<div class="grid cols-2">
-  {% for c in courses %}<div class="card"><div style="font-weight:600">{{ c.name }}</div><div class="muted" style="font-size:.8rem">{{ c.code }}</div></div>{% endfor %}
-</div>
-{% endif %}
-{% if deadlines %}
-<h2 class="section">未来截止（15）</h2>
-<table class="data">
-  <thead><tr><th>作业</th><th>截止</th><th>链接</th></tr></thead>
-  <tbody>{% for d in deadlines %}<tr><td>{{ d.title }}</td><td class="time">{{ d.due }}</td><td><a href="{{ d.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
-</table>
-{% elif not error %}<p class="muted">暂无未来截止。</p>{% endif %}
 
-{% if exams %}
+{# —— 概览数字条 —— #}
+<div class="stats">
+  <div class="stat"><div class="label">在修课程</div><div class="value" data-count="{{ courses | length }}">{{ courses | length }}</div></div>
+  {% set scored = grades | selectattr('current_score', 'ne', none) | list if grades is defined else [] %}
+  {% set avg = (scored | map(attribute='current_score') | list | sum / scored | length) | round(1) if scored else none %}
+  {% if avg is not none %}
+  <div class="stat"><div class="label">当前均分</div><div class="value" data-count="{{ avg }}">{{ avg }}</div></div>
+  {% endif %}
+  <div class="stat"><div class="label">未来截止</div><div class="value" data-count="{{ deadlines | length }}">{{ deadlines | length }}</div></div>
+  <div class="stat"><div class="label">考试</div><div class="value" data-count="{{ exams | length }}">{{ exams | length }}</div></div>
+  <div class="stat"><div class="label">测验</div><div class="value" data-count="{{ quizzes | length }}">{{ quizzes | length }}</div></div>
+  <div class="stat"><div class="label">最新公告</div><div class="value">{{ announcements | length if announcements is defined else 0 }}<small> 条</small></div></div>
+</div>
+
+<nav class="anchor-nav" id="cv-nav">
+  <a href="#cv-grades">成绩</a>
+  <a href="#cv-deadlines">截止</a>
+  <a href="#cv-exams">考试</a>
+  <a href="#cv-quizzes">测验</a>
+  <a href="#cv-ann">公告</a>
+  <a href="#cv-courses">课程</a>
+</nav>
+
+<section id="cv-grades" class="reveal">
+{% if grades is defined and grades %}
+<h2 class="section">课程成绩（{{ grades | length }} 门）</h2>
+<p class="muted" style="font-size:.85rem">当前分随老师发布评分实时更新；未发布的课程显示「未发布」。</p>
+<table class="data">
+  <thead><tr><th>课程</th><th>当前分</th><th>当前等级</th><th>最终分</th></tr></thead>
+  <tbody>{% for g in grades %}<tr>
+    <td>{{ g.name }}{% if g.term_name %} <span class="muted" style="font-size:.78rem">{{ g.term_name }}</span>{% endif %}</td>
+    <td>{% if g.current_score is not none %}<span class="chip ok">{{ g.current_score }}</span>{% else %}<span class="chip">未发布</span>{% endif %}</td>
+    <td>{{ g.current_grade or '—' }}</td>
+    <td>{% if g.final_score is not none %}{{ g.final_score }}{% else %}—{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% elif not error %}
+<h2 class="section">课程成绩</h2>
+<div class="callout mute"><span>成绩数据不可用或全部未发布。</span></div>
+{% endif %}
+</section>
+
+<section id="cv-deadlines" class="reveal">
+<h2 class="section">未来截止（{{ deadlines | length }}）</h2>
+{% if deadlines %}
+<table class="data">
+  <thead><tr><th>作业</th><th>课程</th><th>截止</th><th>链接</th></tr></thead>
+  <tbody>{% for d in deadlines %}<tr><td>{{ d.title }}</td><td>{{ d.course }}</td><td class="time">{{ d.due }}</td><td><a href="{{ d.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
+</table>
+{% elif not error %}<div class="callout mute"><span>暂无未来截止。</span></div>{% endif %}
+</section>
+
+<section id="cv-exams" class="reveal">
 <h2 class="section">考试（{{ exams | length }}）</h2>
+{% if exams %}
 <table class="data">
   <thead><tr><th>考试</th><th>开始</th><th>链接</th></tr></thead>
   <tbody>{% for e in exams %}<tr><td>{{ e.title }}</td><td class="time">{{ e.start }}</td><td><a href="{{ e.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
 </table>
-{% elif not error %}<p class="muted">暂无已排期考试。</p>{% endif %}
+{% elif not error %}<div class="callout mute"><span>暂无已排期考试。</span></div>{% endif %}
+</section>
 
-{% if quizzes %}
+<section id="cv-quizzes" class="reveal">
 <h2 class="section">测验（{{ quizzes | length }}）</h2>
+{% if quizzes %}
 <table class="data">
-  <thead><tr><th>测验</th><th>截止</th><th>链接</th></tr></thead>
-  <tbody>{% for q in quizzes %}<tr><td>{{ q.title }}</td><td class="time">{{ q.due }}</td><td><a href="{{ q.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
+  <thead><tr><th>测验</th><th>课程</th><th>截止</th><th>链接</th></tr></thead>
+  <tbody>{% for q in quizzes %}<tr><td>{{ q.title }}</td><td>{{ q.course }}</td><td class="time">{{ q.due }}</td><td><a href="{{ q.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
 </table>
-{% elif not error %}<p class="muted">暂无测验。</p>{% endif %}
+{% elif not error %}<div class="callout mute"><span>暂无测验。</span></div>{% endif %}
+</section>
+
+<section id="cv-ann" class="reveal">
+<h2 class="section">最新公告</h2>
+{% if announcements is defined and announcements %}
+<table class="data">
+  <thead><tr><th>课程</th><th>公告</th><th>发布</th><th>链接</th></tr></thead>
+  <tbody>{% for a in announcements %}<tr><td>{{ a.course }}</td><td>{{ a.title }}</td><td class="time">{{ a.posted }}</td><td><a href="{{ a.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
+</table>
+{% elif not error %}<div class="callout mute"><span>近 6 门课程暂无公告。</span></div>{% endif %}
+</section>
+
+<section id="cv-courses" class="reveal">
+<h2 class="section">在修课程（{{ courses | length }}）</h2>
+{% if courses %}
+<div class="grid cols-2">
+  {% for c in courses %}<div class="card"><div style="font-weight:600">{{ c.name }}</div><div class="muted" style="font-size:.8rem">{{ c.code }}</div></div>{% endfor %}
+</div>
+{% elif not error %}<div class="callout mute"><span>未获取到在修课程。</span></div>{% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var nav = document.getElementById('cv-nav');
+  if (nav && 'IntersectionObserver' in window) {
+    var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
+    var map = {};
+    links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (a) { a.classList.remove('active'); });
+          var a = map[e.target.id];
+          if (a) a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-25% 0px -65% 0px' });
+    document.querySelectorAll('section[id]').forEach(function (s) { spy.observe(s); });
+    var first = document.querySelector('section[id]');
+    if (first && map[first.id]) map[first.id].classList.add('active');
+  }
+})();
+</script>
 {% endblock %}

@@ -7,10 +7,8 @@
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
 
 {% if counts %}
-<p class="muted" style="font-size:.9rem">
-  共 {{ counts.total }} 项能力：命令行 {{ counts.cli }} · MCP 工具 {{ counts.mcp }} · 网页 {{ counts.web }}；
-  其中 {{ counts.needs_auth }} 项需要凭据，其余为官网公开数据。
-</p>
+<div class="callout"><span>共 {{ counts.total }} 项能力：命令行 {{ counts.cli }} · MCP 工具 {{ counts.mcp }} · 网页 {{ counts.web }}；
+  其中 {{ counts.needs_auth }} 项需要凭据，其余为官网公开数据。</span></div>
 
 <input type="search" id="capFilter" placeholder="搜索能力（名称 / 说明 / 子命令）"
        style="width:100%;max-width:26rem;padding:.45rem .6rem;margin:.4rem 0 1.2rem;

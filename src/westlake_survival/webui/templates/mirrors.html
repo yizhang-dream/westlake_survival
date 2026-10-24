@@ -3,6 +3,10 @@
 {% block content %}
 <h1 class="page">开源镜像站</h1>
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
+<div class="stats">
+  <div class="stat"><div class="label">镜像仓库</div><div class="value" data-count="{{ repos | length }}">{{ repos | length }}</div></div>
+  <div class="stat"><div class="label">带换源帮助</div><div class="value">{{ repos | selectattr('help', 'ne', none) | list | length }}<small> 个</small></div></div>
+</div>
 <div class="grid cols-2">
   {% for r in repos %}
   <div class="card">
@@ -12,5 +16,5 @@
   </div>
   {% endfor %}
 </div>
-<p class="muted" style="font-size:.82rem">pip / conda / apt 换源见各 Help 页；镜像仅校园网内速度最佳。</p>
+<div class="callout"><span>pip / conda / apt 换源见各 Help 页；镜像仅校园网内速度最佳。</span></div>
 {% endblock %}

@@ -326,6 +326,12 @@
   td .rep { visibility: hidden; }
   #grade-table tr.grp td { border-top: 2px solid var(--line); }
   td .chip { white-space: nowrap; }
+  .traffic-line {
+    padding: .45rem .1rem; border-bottom: 1px dashed var(--line);
+    font-size: .88rem; color: var(--ink); transition: all .15s;
+  }
+  .traffic-line:last-child { border-bottom: none; }
+  .traffic-line:hover { color: var(--accent); padding-left: .5rem; }
 
   /* —— 提示组件 callout：替代裸文字段落 —— */
   .callout {
