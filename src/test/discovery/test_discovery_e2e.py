@@ -175,3 +175,13 @@ def test_live_portal_services_directory() -> None:
         assert must in names, must
     urls = " ".join(r["url"] for r in rows)
     assert "ohr.westlake.edu.cn" in urls and "osa.westlake.edu.cn" in urls
+
+
+def test_live_snowball_finds_research_platforms() -> None:
+    """滚雪球（扩充种子后）能发现科研公共平台群。"""
+    from westlake_survival.discovery import snowball_hosts
+
+    found = snowball_hosts(rounds=1)
+    hosts = set(found)
+    for platform in ("brcf", "larc", "nanolab", "share"):
+        assert platform in hosts, platform
