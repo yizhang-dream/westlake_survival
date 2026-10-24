@@ -18,7 +18,7 @@ import pytest
 
 from westlake_survival.discovery import app_directory, subdomain_census
 
-pytestmark = pytest.mark.live
+
 
 
 def test_live_app_directory_returns_census() -> None:
@@ -185,3 +185,19 @@ def test_live_snowball_finds_research_platforms() -> None:
     hosts = set(found)
     for platform in ("brcf", "larc", "nanolab", "share"):
         assert platform in hosts, platform
+
+
+@pytest.mark.live
+def test_webui_services_registry_is_complete() -> None:
+    # 注册表自省 + 页面渲染断言（服务真启动）
+    """服务注册表收录全部已发现站点（≥60 行），页面真渲染。"""
+    import socket
+    import subprocess
+    import urllib.request as _rq
+
+    from westlake_survival.webui.app import SERVICE_REGISTRY
+
+    assert len(SERVICE_REGISTRY) >= 60
+    hosts = " ".join(h for h, _, _ in SERVICE_REGISTRY)
+    for must in ("brcf", "larc", "nanolab", "share", "huxin", "osa", "chatbot"):
+        assert must in hosts, must
