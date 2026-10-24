@@ -81,6 +81,17 @@ POSITIONS_URL = "https://www.westlake.edu.cn/careers/OpenPositions/"
 #: ETag 缓存文件名（相对缓存目录）。
 CACHE_NAME = "careers/positions.html"
 
+#: 双语源（2026-10-24 实测）：英文主站 en.westlake.edu.cn 同路径同组件名；
+#: 英文条目的 ``category`` / ``dept`` / ``type`` 为英文（如 ``"Faculty"`` /
+#: ``"Full-time, School of Science, …"``），按这些字段过滤时须用英文原始值。
+POSITIONS_URLS = {
+    "zh": POSITIONS_URL,
+    "en": "https://en.westlake.edu.cn/careers/OpenPositions/",
+}
+
+#: ETag 缓存文件名（按语言；zh 缓存名逐字保留，en 另存一份避免互相覆盖）。
+CACHE_BY_LANG = {"zh": CACHE_NAME, "en": "careers/positions_en.html"}
+
 #: 列表页组件构造函数名。
 COMPONENT_NAME = "career"
 
@@ -259,10 +270,10 @@ def _check_response(response: requests.Response) -> None:
         raise ParseError(f"招聘页面返回 HTTP {status}：{url}")
 
 
-def _drop_cache() -> None:
+def _drop_cache(lang: str = "zh") -> None:
     """删除本地 ETag 缓存条目，令下一次请求变为无条件 GET。"""
     try:
-        path = _cache.cache_path(CACHE_NAME)
+        path = _cache.cache_path(CACHE_BY_LANG.get(lang, CACHE_NAME))
         if path.exists():
             path.unlink()
     except OSError:  # 缓存删不掉不应阻断加载
@@ -274,20 +285,23 @@ def _fetch_list_html(
     session: requests.Session | None = None,
     timeout: float | None = None,
     refresh: bool = False,
+    lang: str = "zh",
 ) -> str:
     """抓取招聘主页 HTML（照 calendar 用法走 ``_cache`` 的 ETag 条件 GET）。
 
-    响应无 charset 头，故一律取 ``response.content`` 手动 UTF-8 解码，绝不使用
-    ``response.text``。缓存只存公开页面内容，不涉凭据。
+    ``lang`` 选择中/英文主站与对应缓存（未知值回退 zh）。响应无 charset 头，
+    故一律取 ``response.content`` 手动 UTF-8 解码，绝不使用 ``response.text``。
+    缓存只存公开页面内容，不涉凭据。
     """
     session = session if session is not None else http_session()
     if refresh:
-        _drop_cache()
-    cached = _cache.load_json(CACHE_NAME, default=None) or {}
+        _drop_cache(lang)
+    cache_name = CACHE_BY_LANG.get(lang, CACHE_NAME)
+    cached = _cache.load_json(cache_name, default=None) or {}
     headers = {"If-None-Match": cached["etag"]} if cached.get("etag") else {}
     try:
         response = session.get(
-            POSITIONS_URL,
+            POSITIONS_URLS.get(lang, POSITIONS_URL),
             headers=headers,
             timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
         )
@@ -309,7 +323,7 @@ def _fetch_list_html(
         text = raw.decode("utf-8", errors="replace")
     etag = response.headers.get("ETag")
     if etag:
-        _cache.save_json(CACHE_NAME, {"etag": etag, "body": text})
+        _cache.save_json(cache_name, {"etag": etag, "body": text})
     return text
 
 
@@ -324,18 +338,21 @@ def positions(
     session: requests.Session | None = None,
     timeout: float | None = None,
     refresh: bool = False,
+    lang: str = "zh",
 ) -> list[Position]:
     """抓取并返回岗位列表，可按类别/关键词过滤。
 
     Args:
-        category: 岗位类别，精确匹配（如 ``"博士后"``、``"科研团队"``）；
-            缺省不过滤。
+        category: 岗位类别，精确匹配（如 ``"博士后"``、``"科研团队"``；
+            ``lang="en"`` 时为英文原始值，如 ``"Faculty"``）；缺省不过滤。
         keyword: 关键词，对岗位标题（``title``）做**大小写不敏感**的模糊匹配；
             缺省不过滤。
         limit: 最多返回条数；``None`` 表示不限。
         session: 可注入的 :class:`requests.Session`（测试用）。
         timeout: 请求超时（秒），缺省 :data:`~westlake_survival._net.DEFAULT_TIMEOUT`。
         refresh: 为 ``True`` 时先清本地 ETag 缓存再请求，强制拿最新内容。
+        lang: ``"zh"``（默认）抓中文主站；``"en"`` 抓英文主站
+            en.westlake.edu.cn，类别/标题/性质为英文原始值（未知值回退 zh）。
 
     Returns:
         :class:`Position` 列表；无匹配时为空列表。
@@ -350,7 +367,7 @@ def positions(
         raise ValueError(f"limit 必须 >= 0，得到 {limit!r}")
 
     items = parse_positions(
-        _fetch_list_html(session=session, timeout=timeout, refresh=refresh)
+        _fetch_list_html(session=session, timeout=timeout, refresh=refresh, lang=lang)
     )
     if category:
         wanted = category.strip()
@@ -449,19 +466,30 @@ def _handle_errors(func):
     help="人才招聘：岗位列表与详情。",
     invoke_without_command=True,
 )
-@click.option("--category", default=None, help="按岗位类别过滤（如 博士后 / 科研团队）。")
+@click.option("--category", default=None, help="按岗位类别过滤（如 博士后 / 科研团队；en 模式用英文原始值）。")
 @click.option("--keyword", default=None, help="按岗位标题模糊匹配（大小写不敏感）。")
 @click.option("--limit", type=int, default=20, show_default=True, help="最多显示条数。")
+@click.option(
+    "--lang",
+    type=click.Choice(["zh", "en"]),
+    default="zh",
+    show_default=True,
+    help="语言：zh=中文主站 en=英文主站。",
+)
 @click.pass_context
 def cli_group(
-    ctx: click.Context, category: str | None, keyword: str | None, limit: int
+    ctx: click.Context,
+    category: str | None,
+    keyword: str | None,
+    limit: int,
+    lang: str,
 ) -> None:
-    """``westlake careers [--category C] [--keyword K] [--limit N]``。"""
+    """``westlake careers [--category C] [--keyword K] [--limit N] [--lang en]``。"""
     if ctx.invoked_subcommand is not None:  # 交给子命令（detail）
         return
     if limit < 0:
         raise click.UsageError(f"--limit 必须 >= 0，得到 {limit}")
-    _run_positions(category=category, keyword=keyword, limit=limit)
+    _run_positions(category=category, keyword=keyword, limit=limit, lang=lang)
 
 
 @cli_group.command(name="detail")
@@ -485,11 +513,13 @@ def careers_detail(url: str) -> None:
 
 
 @_handle_errors
-def _run_positions(*, category: str | None, keyword: str | None, limit: int) -> None:
+def _run_positions(
+    *, category: str | None, keyword: str | None, limit: int, lang: str = "zh"
+) -> None:
     """抓取岗位列表并打印表格（``_print_table`` 惰性导入以免循环依赖）。"""
     from westlake_survival.cli.main import _print_table
 
-    items = positions(category=category, keyword=keyword, limit=limit)
+    items = positions(category=category, keyword=keyword, limit=limit, lang=lang)
     if not items:
         click.echo("未找到匹配的岗位。")
         return

@@ -92,6 +92,12 @@ DETAIL_COMPONENT = "newsDetail"
 #: ETag 缓存文件名（相对缓存目录）。
 CACHE_NAME = "news/allnews.html"
 
+#: 双语源（2026-10-25 实测）：英文主站 en.westlake.edu.cn 同构、组件同名；
+#: 英文全量列表在 ``all_news/``（中文是 allnews/，路径不同名；英文页组件带
+#: ``mounted: function(){}`` 回调，解析前须本地剥除——共享解析器按仓库约定不扩）。
+NEWS_URLS = {"zh": NEWS_URL, "en": "https://en.westlake.edu.cn/news_events/westlakenews/all_news/"}
+CACHE_BY_LANG = {"zh": CACHE_NAME, "en": "news/allnews_en.html"}
+
 #: 已知的分类（列表条目 ``title`` 字段的取值，实测于 2026-09-22）。
 CATEGORIES = ("人物", "资讯", "学术", "校园", "招生", "媒体", "影像")
 
@@ -260,6 +266,7 @@ def _fetch_list_html(
     *,
     refresh: bool = False,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> str:
     """抓取列表页 HTML（带 ETag 条件请求 + 本地缓存）。
 
@@ -276,8 +283,8 @@ def _fetch_list_html(
         _drop_etag_cache()
     try:
         body, _etag = http_get_with_etag(
-            NEWS_URL,
-            cache_name=CACHE_NAME,
+            NEWS_URLS.get(lang, NEWS_URL),
+            cache_name=CACHE_BY_LANG.get(lang, CACHE_NAME),
             session=session,
             timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
         )
@@ -287,7 +294,7 @@ def _fetch_list_html(
             if is_offcampus(response):
                 raise OffCampusError("官网新闻列表页拒绝访问（403）") from exc
         status = getattr(response, "status_code", "?")
-        raise ParseError(f"官网新闻列表页返回 HTTP {status}：{NEWS_URL}") from exc
+        raise ParseError(f"官网新闻列表页返回 HTTP {status}：{NEWS_URLS.get(lang, NEWS_URL)}") from exc
     except requests.Timeout as exc:
         raise WestlakeError(
             f"官网新闻列表请求超时（{timeout if timeout is not None else DEFAULT_TIMEOUT}s）"
@@ -318,6 +325,7 @@ def latest(
     session: requests.Session | None = None,
     refresh: bool = False,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> list[NewsItem]:
     """返回「西湖新闻」列表（默认按官网顺序，最新在前）。
 
@@ -339,7 +347,9 @@ def latest(
         OffCampusError: 被校外访问网关拦截（403 且命中阻断页特征）。
     """
     session = session if session is not None else http_session()
-    items = parse_news_list(_fetch_list_html(session, refresh=refresh, timeout=timeout))
+    items = parse_news_list(
+        _fetch_list_html(session, refresh=refresh, timeout=timeout, lang=lang)
+    )
     if category is not None:
         items = [item for item in items if item.category == category]
     if limit is not None:
@@ -424,12 +434,14 @@ def _handle_errors(func):
     help="只看某分类（人物|资讯|学术|校园|招生|媒体|影像）。",
 )
 @click.option("--limit", type=int, default=10, show_default=True, help="最多显示条数。")
+@click.option("--lang", type=click.Choice(["zh", "en"]), default="zh", show_default=True,
+              help="语言：zh=中文主站 en=英文主站（英文分类值为英文，如 People/News）。")
 @click.pass_context
-def cli_group(ctx: click.Context, category: str | None, limit: int) -> None:
-    """``westlake news [--category X] [--limit N]`` / ``westlake news detail <url>``。"""
+def cli_group(ctx: click.Context, category: str | None, limit: int, lang: str) -> None:
+    """``westlake news [--category X] [--limit N] [--lang en]`` / ``westlake news detail <url>``。"""
     if ctx.invoked_subcommand is not None:  # 交给 detail 子命令
         return
-    _run_list(category=category, limit=limit)
+    _run_list(category=category, limit=limit, lang=lang)
 
 
 @cli_group.command(name="detail")
@@ -453,11 +465,11 @@ def news_detail_cmd(url: str) -> None:
 
 
 @_handle_errors
-def _run_list(category: str | None, limit: int) -> None:
+def _run_list(category: str | None, limit: int, lang: str = "zh") -> None:
     """执行列表查询并打印表格（``_print_table`` 惰性导入以免循环依赖）。"""
     from westlake_survival.cli.main import _print_table
 
-    items = latest(category=category, limit=limit)
+    items = latest(category=category, limit=limit, lang=lang)
     if not items:
         scope = f"分类 {category!r} 下" if category else ""
         click.echo(f"未找到{scope}新闻。")

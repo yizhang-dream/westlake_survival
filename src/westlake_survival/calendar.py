@@ -59,6 +59,20 @@ CALENDAR_URL = "https://www.westlake.edu.cn/academics/academic_calendar/"
 #: ETag 缓存文件名（相对缓存目录）。
 CACHE_NAME = "calendar/academic_calendar.html"
 
+#: 双语源（2026-10-24 实测）：英文主站 en.westlake.edu.cn 同路径同组件名，
+#: 学期名与事件标题直接是英文（如 ``"Fall 2026"`` / ``"Classes Begin"``）。
+CALENDAR_URLS = {
+    "zh": CALENDAR_URL,
+    "en": "https://en.westlake.edu.cn/academics/academic_calendar/",
+}
+
+#: ETag 缓存文件名（按语言；zh 缓存名逐字保留，en 另存一份避免互相覆盖）。
+CACHE_BY_LANG = {"zh": CACHE_NAME, "en": "calendar/academic_calendar_en.html"}
+
+#: 学期起止事件的标题片段（按语言取用；_build_semester 靠它定位学期边界）。
+_SEMESTER_START_MARKS = {"zh": "课程开始", "en": "Classes Begin"}
+_SEMESTER_END_MARKS = {"zh": "课程结束", "en": "Classes End"}
+
 #: 日期字面量：``2026-08-31`` 或 ``2026/08/31``。
 _DATE_RE = re.compile(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})")
 
@@ -242,7 +256,7 @@ class AcademicCalendar:
 
     # -- 加载 -------------------------------------------------------------- #
     @classmethod
-    def load(cls, refresh: bool = False) -> "AcademicCalendar":
+    def load(cls, refresh: bool = False, lang: str = "zh") -> "AcademicCalendar":
         """抓取并解析校历主页；网络或解析失败时回退到内置常量。
 
         与 ``transit.schedule.TransitData.load`` 同口径：网络不可达与页面
@@ -251,12 +265,21 @@ class AcademicCalendar:
 
         Args:
             refresh: 为 ``True`` 时先清掉本地 ETag 缓存再请求，强制拿最新内容。
+            lang: ``"zh"``（默认）中文主站；``"en"`` 英文主站——学期名与事件
+                标题直接是英文（如 ``"Fall 2026"`` / ``"Classes Begin"``）。
+                注意 :data:`FALLBACK_DATA` 只有中文一份，en 模式离线/解析失败
+                时同样回退到这份中文数据（不做英文兜底）；``makeup_days`` /
+                ``holiday_events`` / ``exams`` 等辅助方法按中文关键词匹配，
+                在英文数据上不会命中（返回空）。
         """
         if refresh:
-            _drop_etag_cache()
+            _drop_etag_cache(lang)
         try:
-            html, _etag = http_get_with_etag(CALENDAR_URL, cache_name=CACHE_NAME)
-            return parse_calendar(html)
+            html, _etag = http_get_with_etag(
+                CALENDAR_URLS.get(lang, CALENDAR_URL),
+                cache_name=CACHE_BY_LANG.get(lang, CACHE_NAME),
+            )
+            return parse_calendar(html, lang=lang)
         except requests.RequestException as exc:
             logger.warning(
                 "抓取校历失败（%s），改用内置离线数据（截至 2026 秋季）。",
@@ -412,12 +435,15 @@ def _parse_date(value: str) -> date | None:
         return None
 
 
-def _build_semester(name: str, raw_events: list[dict]) -> Semester:
+def _build_semester(name: str, raw_events: list[dict], lang: str = "zh") -> Semester:
     """从原始事件字典列表构建 :class:`Semester`。
 
-    学期起止取自标题含"课程开始"/"课程结束"的事件；匹配不到时抛
+    学期起止取自标题含"课程开始"/"课程结束"（``lang="en"`` 页为
+    ``"Classes Begin"`` / ``"Classes End"``）的事件；匹配不到时抛
     :class:`ParseError`。
     """
+    start_mark = _SEMESTER_START_MARKS.get(lang, "课程开始")
+    end_mark = _SEMESTER_END_MARKS.get(lang, "课程结束")
     events: list[CalendarEvent] = []
     for raw in raw_events:
         title = (raw.get("title") or "").strip()
@@ -430,8 +456,8 @@ def _build_semester(name: str, raw_events: list[dict]) -> Semester:
             end = None  # 结束日不晚于开始日，视为单日
         events.append(CalendarEvent(title=title, start=start, end=end, raw=dict(raw)))
 
-    start = next((e.start for e in events if "课程开始" in e.title), None)
-    end = next((e.start for e in events if "课程结束" in e.title), None)
+    start = next((e.start for e in events if start_mark in e.title), None)
+    end = next((e.start for e in events if end_mark in e.title), None)
     if start is None or end is None:
         raise ParseError(
             f"学期 {name!r} 缺少课程起止："
@@ -443,8 +469,14 @@ def _build_semester(name: str, raw_events: list[dict]) -> Semester:
     return Semester(name=name, start=start, end=end, events=events)
 
 
-def parse_calendar(html: str) -> AcademicCalendar:
-    """解析校历主页 HTML，返回 :class:`AcademicCalendar`。"""
+def parse_calendar(html: str, lang: str = "zh") -> AcademicCalendar:
+    """解析校历主页 HTML，返回 :class:`AcademicCalendar`。
+
+    ``lang="en"`` 解析英文主站页面：学期名与事件标题直接是英文，学期边界按
+    ``"Classes Begin"`` / ``"Classes End"`` 定位；注意 ``makeup_days`` /
+    ``holiday_events`` / ``exams`` 等辅助方法按中文关键词匹配，在英文数据上
+    不会命中（返回空，详见 :meth:`AcademicCalendar.load`）。
+    """
     text = _repair_mojibake(html)
     seasons = _extract_strings(_extract_array(text, "seasonList"))
     content_array = _extract_array(text, "contentList")
@@ -471,16 +503,16 @@ def parse_calendar(html: str) -> AcademicCalendar:
             }
             for obj in _iter_objects(group_text)
         ]
-        semesters.append(_build_semester(name, raw_events))
+        semesters.append(_build_semester(name, raw_events, lang))
     return AcademicCalendar(semesters=semesters)
 
 
-def _drop_etag_cache() -> None:
+def _drop_etag_cache(lang: str = "zh") -> None:
     """删除本地 ETag 缓存条目，令下一次请求变为无条件 GET。"""
     try:
         from westlake_survival import _cache
 
-        path = _cache.cache_path(CACHE_NAME)
+        path = _cache.cache_path(CACHE_BY_LANG.get(lang, CACHE_NAME))
         if path.exists():
             path.unlink()
     except OSError:  # 缓存删不掉不应阻断加载

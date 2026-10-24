@@ -101,11 +101,26 @@ CONTACT_URL = "https://www.westlake.edu.cn/about/contact_us/"
 #: ETag 缓存文件名（相对缓存目录）。
 CACHE_NAME = "contact/contact_us.html"
 
+#: 双语源（2026-10-24 实测）：英文主站 en.westlake.edu.cn 同路径同组件名；
+#: 英文数据里校区名（如 ``"Yungu Campus"``）、地址与交通均为英文——自驾路线
+#: 在 ``trafficList[].english`` 字段（中文站在 ``chinese`` 字段），邮编写在
+#: 地址串里（不单独拆出，``postcode`` 为空串），校区名原样透传不做中文归一。
+CONTACT_URLS = {
+    "zh": CONTACT_URL,
+    "en": "https://en.westlake.edu.cn/about/contact_us/",
+}
+
+#: ETag 缓存文件名（按语言；zh 缓存名逐字保留，en 另存一份避免互相覆盖）。
+CACHE_BY_LANG = {"zh": CACHE_NAME, "en": "contact/contact_us_en.html"}
+
 #: 组件构造函数名。
 _COMPONENT = "contactUs"
 
 #: 归一化后的校区名（与 :attr:`CampusInfo.name` 一致）。
 CAMPUS_NAMES = ("云谷", "云栖", "铜鉴湖")
+
+#: 英文页（``lang="en"``）的校区名实测值（原样透传，不做中文归一）。
+CAMPUS_NAMES_EN = ("Yungu Campus", "Yunqi Campus", "Yunqi Campus (Tongjian Lake Park)")
 
 #: 原始校区名 → 归一化名。``铜鉴湖`` 必须先匹配，否则会被 ``云栖`` 提前命中。
 _CAMPUS_ALIASES = (("铜鉴湖", "铜鉴湖"), ("云谷", "云谷"), ("云栖", "云栖"))
@@ -235,28 +250,68 @@ def _format_hours(items: object) -> str:
     return "；".join(parts)
 
 
-def _traffic_entries(raw: dict) -> list[str]:
+def _route_lines(html_text: str) -> list[str]:
+    """把英文 ``english`` 自驾路线富文本拆成纯文本行（en 路径专用）。
+
+    英文页该字段是 TRS 富文本（``<div><p>…</p></div>``），先按段落边界
+    ``</p><p>`` 与 ``<br>`` 系列换成换行，再剥掉其余标签，逐行去空白。
+    """
+    text = re.sub(r"</\s*p\s*>\s*<\s*p[^>]*>", "\n", html_text or "", flags=re.IGNORECASE)
+    text = _BR_RE.sub("\n", text)
+    text = _TAG_RE.sub("", text)
+    return [line.strip() for line in text.split("\n") if line.strip()]
+
+
+def _clean_en(text: str) -> str:
+    """去掉英文数据里夹带的零宽空格（``\\u200b``，实测首末班时间里有）。"""
+    return (text or "").replace("\u200b", "").strip()
+
+
+def _traffic_entries(raw: dict, lang: str = "zh") -> list[str]:
     """把一个 ``trafficList`` 条目转成逐条交通文本。
 
-    自驾的 ``chinese`` 字段用 ``<br/>`` 分隔多条路线，每条单独作为一项并加
-    ``"自驾："`` 前缀；地铁与公交各拼成一项，附首末班时间。
+    中文站读 ``chinese`` 字段（``<br/>`` 分隔多条路线，加 ``"自驾："`` 前缀，
+    地铁/公交前缀 ``"地铁："`` / ``"公交："``，时段用全角括号）；英文站读
+    ``english`` 字段（缺省回退 ``chinese``），前缀用 ``"Self-drive:"`` /
+    ``"Metro:"`` / ``"Bus:"``，时段用半角括号。
     """
     entries: list[str] = []
-    routes = _BR_RE.sub("\n", str(raw.get("chinese") or ""))
-    for line in routes.split("\n"):
-        line = line.strip().rstrip("；;")
-        if line:
-            entries.append(f"自驾：{line}")
+    if lang == "zh":
+        routes = _BR_RE.sub("\n", str(raw.get("chinese") or ""))
+        for line in routes.split("\n"):
+            line = line.strip().rstrip("；;")
+            if line:
+                entries.append(f"自驾：{line}")
+    else:
+        source = str(raw.get("english") or raw.get("chinese") or "")
+        for line in _route_lines(source):
+            entries.append(f"Self-drive: {line}")
 
-    metro = str(raw.get("metro") or "").strip()
+    metro = str(raw.get("metro") or "")
+    if lang != "zh":
+        metro = _clean_en(metro)
+    else:
+        metro = metro.strip()
     if metro:
         hours = _format_hours(raw.get("metroOperatingHours"))
-        entries.append(f"地铁：{metro}（{hours}）" if hours else f"地铁：{metro}")
+        if lang != "zh":
+            hours = _clean_en(hours)
+            entries.append(f"Metro: {metro} ({hours})" if hours else f"Metro: {metro}")
+        else:
+            entries.append(f"地铁：{metro}（{hours}）" if hours else f"地铁：{metro}")
 
-    bus = str(raw.get("bus") or "").strip()
+    bus = str(raw.get("bus") or "")
+    if lang != "zh":
+        bus = _clean_en(bus)
+    else:
+        bus = bus.strip()
     if bus:
         hours = _format_hours(raw.get("busOperatingHours"))
-        entries.append(f"公交：{bus}（{hours}）" if hours else f"公交：{bus}")
+        if lang != "zh":
+            hours = _clean_en(hours)
+            entries.append(f"Bus: {bus} ({hours})" if hours else f"Bus: {bus}")
+        else:
+            entries.append(f"公交：{bus}（{hours}）" if hours else f"公交：{bus}")
     return entries
 
 
@@ -300,11 +355,14 @@ def _parse_contact_entry(raw: dict) -> ContactEntry:
     )
 
 
-def parse(page_text: str) -> ContactPage:
+def parse(page_text: str, lang: str = "zh") -> ContactPage:
     """解析「联系我们」页面文本，返回 :class:`ContactPage`。
 
     Args:
         page_text: 整页 HTML（已按 UTF-8 解码）。
+        lang: ``"zh"``（默认）按中文口径解析；``"en"`` 解析英文主站页面——
+            自驾路线改读 ``english`` 字段、前缀用英文、地图相对地址按英文站
+            绝对化，校区名原样透传（如 ``"Yungu Campus"``）。
 
     Returns:
         三校区信息与 contactList 条目。
@@ -344,8 +402,8 @@ def parse(page_text: str) -> ContactPage:
                 name=name,
                 address=address,
                 postcode=postcode,
-                traffic=_traffic_entries(raw_traffic),
-                map_url=urljoin(CONTACT_URL, map_url) if map_url else None,
+                traffic=_traffic_entries(raw_traffic, lang),
+                map_url=urljoin(CONTACT_URLS.get(lang, CONTACT_URL), map_url) if map_url else None,
             )
         )
 
@@ -357,14 +415,14 @@ def parse(page_text: str) -> ContactPage:
     return ContactPage(campuses=campuses_info, contacts=contact_entries)
 
 
-def parse_campuses(page_text: str) -> list[CampusInfo]:
+def parse_campuses(page_text: str, lang: str = "zh") -> list[CampusInfo]:
     """只解析三校区信息（:func:`parse` 的便捷包装）。"""
-    return parse(page_text).campuses
+    return parse(page_text, lang=lang).campuses
 
 
-def parse_contacts(page_text: str) -> list[ContactEntry]:
+def parse_contacts(page_text: str, lang: str = "zh") -> list[ContactEntry]:
     """只解析 contactList 条目（:func:`parse` 的便捷包装）。"""
-    return parse(page_text).contacts
+    return parse(page_text, lang=lang).contacts
 
 
 # --------------------------------------------------------------------------- #
@@ -379,12 +437,12 @@ def _check_response(response: requests.Response) -> None:
         raise ParseError(f"「联系我们」页面返回 HTTP {status}")
 
 
-def _drop_cache() -> None:
+def _drop_cache(lang: str = "zh") -> None:
     """删除本地 ETag 缓存条目，令下一次请求变为无条件 GET。"""
     try:
         from westlake_survival import _cache
 
-        path = _cache.cache_path(CACHE_NAME)
+        path = _cache.cache_path(CACHE_BY_LANG.get(lang, CACHE_NAME))
         if path.exists():
             path.unlink()
     except OSError:  # 缓存删不掉不应阻断加载
@@ -396,17 +454,19 @@ def _fetch(
     refresh: bool = False,
     session: requests.Session | None = None,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> str:
     """抓取页面并按 UTF-8 手动解码；带 ETag 条件请求。
 
-    响应无 ``charset`` 头，``requests`` 会把 ``response.encoding`` 当成
-    ISO-8859-1，``response.text`` 因此得到乱码，故一律取 ``response.content``
-    手动解码。
+    ``lang`` 选择中/英文主站与对应缓存（未知值回退 zh）。响应无 ``charset``
+    头，``requests`` 会把 ``response.encoding`` 当成 ISO-8859-1，
+    ``response.text`` 因此得到乱码，故一律取 ``response.content`` 手动解码。
 
     Args:
         refresh: 为 ``True`` 时先清掉本地 ETag 缓存再请求。
         session: 可注入的 :class:`requests.Session`（测试用）。
         timeout: 请求超时（秒），缺省 ``DEFAULT_TIMEOUT``。
+        lang: ``"zh"``（默认）中文主站；``"en"`` 英文主站。
 
     Raises:
         WestlakeError: 超时或连接层错误。
@@ -415,13 +475,14 @@ def _fetch(
     """
     session = session if session is not None else http_session()
     if refresh:
-        _drop_cache()
+        _drop_cache(lang)
 
-    cached = load_json(CACHE_NAME, default=None) or {}
+    cache_name = CACHE_BY_LANG.get(lang, CACHE_NAME)
+    cached = load_json(cache_name, default=None) or {}
     headers = {"If-None-Match": cached["etag"]} if cached.get("etag") else {}
     try:
         response = session.get(
-            CONTACT_URL,
+            CONTACT_URLS.get(lang, CONTACT_URL),
             headers=headers,
             timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
         )
@@ -448,34 +509,39 @@ def _fetch(
     etag = response.headers.get("ETag") or cached.get("etag")
     if etag:
         try:
-            save_json(CACHE_NAME, {"etag": etag, "body": body})
+            save_json(cache_name, {"etag": etag, "body": body})
         except OSError:  # 缓存写不进去不影响本次结果
             logger.debug("写入 ETag 缓存失败", exc_info=True)
     return body
 
 
-def _load(refresh: bool = False, **kwargs) -> ContactPage:
+def _load(refresh: bool = False, *, lang: str = "zh", **kwargs) -> ContactPage:
     """抓取并解析页面；``campuses`` / ``contacts`` 共用。"""
-    return parse(_fetch(refresh=refresh, **kwargs))
+    return parse(_fetch(refresh=refresh, lang=lang, **kwargs), lang=lang)
 
 
-def campuses(refresh: bool = False, **kwargs) -> list[CampusInfo]:
+def campuses(refresh: bool = False, *, lang: str = "zh", **kwargs) -> list[CampusInfo]:
     """返回三校区地址与交通信息。
 
     Args:
         refresh: 为 ``True`` 时跳过本地 ETag 缓存，强制拉取最新页面。
+        lang: ``"zh"``（默认）中文主站；``"en"`` 英文主站——校区名/地址/交通
+            为英文（校区名原样透传，如 ``"Yungu Campus"``）。
         **kwargs: 透传给 :func:`_fetch`（``session`` / ``timeout``，测试用）。
 
     Raises:
         WestlakeError: 网络层失败。
         ParseError: 页面结构变化或非法响应。
     """
-    return _load(refresh, **kwargs).campuses
+    return _load(refresh, lang=lang, **kwargs).campuses
 
 
-def contacts(refresh: bool = False, **kwargs) -> list[ContactEntry]:
-    """返回官网 ``contactList`` 的常用联系条目（招生电话/邮箱等）。"""
-    return _load(refresh, **kwargs).contacts
+def contacts(refresh: bool = False, *, lang: str = "zh", **kwargs) -> list[ContactEntry]:
+    """返回官网 ``contactList`` 的常用联系条目（招生电话/邮箱等）。
+
+    ``lang="en"`` 时条目标题/正文为英文（如 ``"For graduate admissions"``）。
+    """
+    return _load(refresh, lang=lang, **kwargs).contacts
 
 
 # --------------------------------------------------------------------------- #
@@ -512,16 +578,23 @@ def _handle_errors(func):
 )
 @click.option(
     "--campus",
-    type=click.Choice(list(CAMPUS_NAMES)),
+    type=click.Choice((*CAMPUS_NAMES, *CAMPUS_NAMES_EN)),
     default=None,
-    help="只看某校区（云谷 / 云栖 / 铜鉴湖）；缺省列出全部三校区。",
+    help="只看某校区（zh：云谷/云栖/铜鉴湖；en：Yungu Campus 等）；缺省全部。",
+)
+@click.option(
+    "--lang",
+    type=click.Choice(["zh", "en"]),
+    default="zh",
+    show_default=True,
+    help="语言：zh=中文主站 en=英文主站（en 数据里校区名/地址/交通为英文）。",
 )
 @click.pass_context
-def cli_group(ctx: click.Context, campus: str | None) -> None:
-    """``westlake contact [--campus 云谷|云栖|铜鉴湖]`` 与 ``westlake contact phones``。"""
+def cli_group(ctx: click.Context, campus: str | None, lang: str) -> None:
+    """``westlake contact [--campus 云谷|云栖|铜鉴湖] [--lang en]`` 与 ``westlake contact phones``。"""
     if ctx.invoked_subcommand is not None:
         return
-    _run_contact(campus)
+    _run_contact(campus, lang=lang)
 
 
 @cli_group.command(name="phones")
@@ -532,11 +605,11 @@ def contact_phones() -> None:
 
 
 @_handle_errors
-def _run_contact(campus: str | None) -> None:
+def _run_contact(campus: str | None, lang: str = "zh") -> None:
     """打印三校区（或指定校区）的地址、邮编、地图与交通。"""
     from westlake_survival.cli.main import _print_table
 
-    infos = campuses()
+    infos = campuses(lang=lang)
     if campus:
         infos = [info for info in infos if info.name == campus]
     if not infos:
@@ -544,7 +617,7 @@ def _run_contact(campus: str | None) -> None:
         return
 
     for info in infos:
-        click.echo(f"【{info.name}校区】")
+        click.echo(f"【{info.name}校区】" if lang == "zh" else f"【{info.name}】")
         rows = [(info.address or "—", info.postcode or "—", info.map_url or "—")]
         _print_table(rows, ("地址", "邮编", "校区地图"))
         for line in info.traffic:
