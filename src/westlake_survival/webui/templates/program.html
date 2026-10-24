@@ -39,8 +39,10 @@
     </table>
   {% endif %}
   {% endfor %}
+</section>
 
-  {% if plans %}
+{% if plans %}
+<section id="pg-plans" class="reveal">
   <h2 class="section">专业培养方案（学分要求与课程表）</h2>
   {% for plan in plans %}
   <h3 class="section">{{ plan.name }}</h3>
@@ -72,9 +74,11 @@
   {% endfor %}
   {% endif %}
 
+{% if summary or majors %}
+<section id="pg-majors" class="reveal">
   {% if summary %}
   <h2 class="section">本科专业</h2>
-  <p>{{ summary }}</p>
+  <div class="callout"><span>{{ summary }}</span></div>
   {% endif %}
   {% if majors %}
   <div class="grid cols-2">
@@ -86,6 +90,8 @@
     {% endfor %}
   </div>
   {% endif %}
+</section>
+{% endif %}
 
   <p class="muted" style="font-size:.82rem">
     数据来自本科招生网公开页面（{{ source_url }}）；公开网没有分专业的官方培养

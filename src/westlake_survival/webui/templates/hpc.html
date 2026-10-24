@@ -3,8 +3,13 @@
 {% block content %}
 <h1 class="page">高性能计算中心</h1>
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
-{% if clusters %}<p class="muted">集群：{{ clusters | join('、') }}；下表来自官网公开数据（队列 × 节点 × 配置）。</p>{% endif %}
+{% if clusters %}<div class="callout mute"><span>集群：{{ clusters | join('、') }}；下表来自官网公开数据（队列 × 节点 × 配置）。</span></div>{% endif %}
 {% if queues %}
+<div class="stats">
+  <div class="stat"><div class="label">集群</div><div class="value">{{ clusters | length if clusters else '—' }}</div></div>
+  <div class="stat"><div class="label">队列</div><div class="value" data-count="{{ queues | length }}">{{ queues | length }}</div></div>
+  <div class="stat"><div class="label">节点总数</div><div class="value" data-count="{{ queues | map(attribute='nodes') | map('int') | sum }}">{{ queues | map(attribute='nodes') | map('int') | sum }}</div></div>
+</div>
 <table class="data">
   <thead><tr><th>队列</th><th>节点</th><th>配置</th></tr></thead>
   <tbody>
@@ -14,6 +19,6 @@
     </tr>{% endfor %}
   </tbody>
 </table>
-<p class="muted" style="font-size:.82rem">作业提交/配额需登录 <a href="{{ portal }}" target="_blank" rel="noopener">HPC Portal（统一密码）</a>；手册在 <a href="{{ main }}" target="_blank" rel="noopener">HPC 官网</a>。</p>
-{% elif not error %}<p class="muted">暂无队列数据。</p>{% endif %}
+<div class="callout"><span>作业提交/配额需登录 <a href="{{ portal }}" target="_blank" rel="noopener">HPC Portal（统一密码）</a>；手册在 <a href="{{ main }}" target="_blank" rel="noopener">HPC 官网</a>。</span></div>
+{% elif not error %}<div class="callout mute"><span>暂无队列数据。</span></div>{% endif %}
 {% endblock %}

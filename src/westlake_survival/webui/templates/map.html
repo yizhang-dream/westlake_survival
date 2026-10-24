@@ -42,11 +42,11 @@
 
     {% if c.traffic %}
     <h3 class="section" style="font-size:1rem">到校交通</h3>
-    <ul>
+    <div class="traffic-lines">
       {% for line in c.traffic %}
-      <li>{{ line }}</li>
+      <div class="traffic-line">{{ line }}</div>
       {% endfor %}
-    </ul>
+    </div>
     {% endif %}
   </section>
   {% endfor %}

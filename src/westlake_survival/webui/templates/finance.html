@@ -3,12 +3,21 @@
 {% block content %}
 <h1 class="page">财务部</h1>
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
+{% set total_docs = panels | map(attribute='entries') | map('length') | sum %}
+<div class="stats">
+  <div class="stat"><div class="label">栏目</div><div class="value" data-count="{{ panels | length }}">{{ panels | length }}</div></div>
+  <div class="stat"><div class="label">公开文档</div><div class="value" data-count="{{ total_docs }}">{{ total_docs }}</div></div>
+</div>
 {% for p in panels %}
-<h2 class="section">{{ p.title }}（{{ p.entries | length }}）</h2>
-<ul>
-  {% for i in p.entries %}<li><a href="{{ i.u }}" target="_blank" rel="noopener">{{ i.t }}</a></li>{% endfor %}
-</ul>
+<details class="fold"{% if loop.first %} open{% endif %}>
+  <summary>{{ p.title }}<span class="chip">{{ p.entries | length }} 篇</span></summary>
+  <div class="fold-body">
+    <table class="data">
+      <tbody>{% for i in p.entries %}<tr><td><a href="{{ i.u }}" target="_blank" rel="noopener">{{ i.t }}</a></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</details>
 {% endfor %}
-{% if not panels and not error %}<p class="muted">暂无内容。</p>{% endif %}
-<p class="muted" style="font-size:.82rem">数据来自财务部官网公开栏目。</p>
+{% if not panels and not error %}<div class="callout mute"><span>暂无内容。</span></div>{% endif %}
+<div class="callout"><span>数据来自财务部官网公开栏目。</span></div>
 {% endblock %}
