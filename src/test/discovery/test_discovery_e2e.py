@@ -162,3 +162,16 @@ def test_live_snowball_finds_hidden_hosts() -> None:
         assert hidden in hosts, hidden
     # 每个发现都应带来源
     assert found["dq"] and found["dq"][0].startswith("http")
+
+
+def test_live_portal_services_directory() -> None:
+    """登录门户取服务大厅目录（统一会话浏览器真链路）。"""
+    from westlake_survival.discovery import portal_services
+
+    rows = portal_services()
+    names = " ".join(r["name"] for r in rows)
+    assert len(rows) >= 15
+    for must in ("人力资源部", "学生事务部", "研究生院", "信息技术中心"):
+        assert must in names, must
+    urls = " ".join(r["url"] for r in rows)
+    assert "ohr.westlake.edu.cn" in urls and "osa.westlake.edu.cn" in urls

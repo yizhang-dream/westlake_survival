@@ -44,6 +44,7 @@ __all__ = [
     "subdomain_census",
     "app_directory",
     "snowball_hosts",
+    "portal_services",
 ]
 
 logger = logging.getLogger(__name__)
@@ -201,6 +202,66 @@ def app_directory(
     if not apps:
         raise ParseError("办事大厅目录为空（接口结构可能已变化）")
     return apps
+
+
+def portal_services() -> list[dict]:
+    """登录门户（统一会话浏览器）取服务大厅部门/应用目录。
+
+    数据源：``my.westlake.edu.cn`` 主门户 ``getSiteMap``/``getWestLakeList``
+    接口（2026-10-24 实测 18 项，含 9 个此前未知的部门域名）。需要
+    Playwright 与已配置的统一凭据；会话持久化在 taskcenter profile。
+
+    Raises:
+        WestlakeError: Playwright 缺失或网络失败。
+        AuthError: 登录失败。
+    """
+    import json as _json
+    import re as _re
+    from westlake_survival.sso import read_credentials
+    from westlake_survival.taskcenter import PROFILE_DIR, _browser, _ensure_session, _fetch_api
+
+    sid, password = read_credentials()
+    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    with _browser() as playwright:
+        context = playwright.chromium.launch_persistent_context(
+            str(PROFILE_DIR), headless=True, viewport={"width": 1280, "height": 800}
+        )
+        page = context.pages[0] if context.pages else context.new_page()
+        captured: dict[str, str] = {}
+
+        def grab(response):
+            if "getSiteMap" in response.url or "getWestLakeList" in response.url:
+                try:
+                    captured[response.url.split("get")[-1]] = response.text()[:200000]
+                except Exception:
+                    pass
+
+        page.on("response", grab)
+        try:
+            page.goto("https://my.westlake.edu.cn/", timeout=60000)
+            page.wait_for_timeout(3000)
+            # 门户是独立 OAuth client；复用 IAM 会话可能直接过，否则填表一次
+            if "iam.westlake.edu.cn" in page.url:
+                page.wait_for_selector('input[placeholder*="用户名/手机号/邮箱"]', timeout=15000)
+                page.fill('input[placeholder*="用户名/手机号/邮箱"]', sid)
+                page.fill('input[placeholder*="密码"]', password)
+                page.locator('span:has-text("立即登录")').first.click(force=True)
+            page.wait_for_timeout(10000)
+            rows: list[dict] = []
+            for body in captured.values():
+                try:
+                    for item in _json.loads(body).get("data", {}).get("content") or []:
+                        name = str(item.get("yingyongmingcheng") or "").strip()
+                        url = str(item.get("tiaozhuanurl") or "").strip()
+                        if name and url and not any(name == r["name"] for r in rows):
+                            rows.append({"name": name, "url": url})
+                except (ValueError, AttributeError):
+                    continue
+            if not rows:
+                raise WestlakeError("门户站点图为空（接口结构可能已变化）")
+            return rows
+        finally:
+            context.close()
 
 
 # --------------------------------------------------------------------------- #
