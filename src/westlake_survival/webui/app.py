@@ -645,19 +645,20 @@ def _setup_context() -> dict:
 
 
 def _sis_context() -> dict:
-    """学业页：课表 / 成绩(GPA) / 考试 / 待评教 / 个人信息 / 学籍 / 宿舍 / 荣誉 / 志愿 / 资助。"""
+    """学业页：21 块全量（课表/成绩/考试/评教 + 学籍档案 + 校园记录 + 社团与资助）。
+
+    首块串行预热（确保 IAM 登录完成后共享会话），其余块 6 线程并行抓取；
+    每块独立降级，单块失败不影响整页。
+    """
     context: dict = {"blocks": {}}
 
-    def _guard(key: str, loader) -> None:
-        try:
-            context["blocks"][key] = loader()
-        except Exception as exc:  # 每块独立降级
-            context["blocks"][key] = {"error": f"{exc.__class__.__name__}: {exc}"[:120]}
-
-    def _grades_with_stats():
+    def _sis_module(name: str):
         import importlib
 
-        items = importlib.import_module("westlake_survival.sis.grades").grades()
+        return importlib.import_module(f"westlake_survival.sis.{name}")
+
+    def _grades_with_stats():
+        items = _sis_module("grades").grades()
         # GPA 估算：A=4.0 A-=3.7 B+=3.3 B=3.0 B-=2.7 C+=2.3 C=2.0 其余 0；仅统计有等级的课
         scale = {"A": 4.0, "A-": 3.7, "B+": 3.3, "B": 3.0, "B-": 2.7,
                  "C+": 2.3, "C": 2.0, "C-": 1.7, "D": 1.0, "F": 0.0, "P": None, "NP": None}
@@ -699,27 +700,70 @@ def _sis_context() -> dict:
             ],
         }
 
-    _guard("schedule", lambda: [
-        {"name": c.title, "teacher": c.teacher, "weekday": c.weekday,
-         "time": f"{c.start_time}-{c.end_time}", "location": c.room}
-        for c in __import__("westlake_survival.sis", fromlist=["client"]).client.get_schedule()
-    ])
-    _guard("grades", lambda: _grades_with_stats())
-    _guard("exams", lambda: [
-        {"course": e.course_title, "date": e.date, "time": e.time, "kind": e.exam_type,
-         "room": e.venue, "seat": e.seat}
-        for e in __import__("westlake_survival.sis", fromlist=["exams"]).exams.exam_schedule()
-    ])
-    _guard("evals", lambda: [
-        {"name": e.course_title, "term": e.term, "period": e.period_raw}
-        for e in __import__("westlake_survival.sis", fromlist=["evals"]).evals.pending_evaluations()
-    ])
-    _guard("profile", lambda: __import__("westlake_survival.sis", fromlist=["profile"]).profile.personal_info())
-    _guard("academic", lambda: __import__("westlake_survival.sis", fromlist=["profile"]).profile.academic_record().get("fields", {}))
-    _guard("extended", lambda: __import__("westlake_survival.sis", fromlist=["profile"]).profile.extended_info().get("fields", {}))
-    _guard("dorm", lambda: __import__("westlake_survival.sis", fromlist=["records"]).records.dormitory().to_dict())
-    _guard("honors", lambda: [h.to_dict() for h in __import__("westlake_survival.sis", fromlist=["records"]).records.honors()])
-    _guard("volunteer", lambda: [v.to_dict() for v in __import__("westlake_survival.sis", fromlist=["records"]).records.volunteer_records()])
+    records = _sis_module("records")
+    aid = _sis_module("aid")
+    loaders: dict = {
+        # 学业核心
+        "schedule": lambda: [
+            {"name": c.title, "teacher": c.teacher, "weekday": c.weekday,
+             "time": f"{c.start_time}-{c.end_time}", "location": c.room}
+            for c in _sis_module("client").get_schedule()
+        ],
+        "grades": _grades_with_stats,
+        "exams": lambda: [
+            {"course": e.course_title, "date": e.date, "time": e.time, "kind": e.exam_type,
+             "room": e.venue, "seat": e.seat}
+            for e in _sis_module("exams").exam_schedule()
+        ],
+        "evals": lambda: [
+            {"name": e.course_title, "term": e.term, "period": e.period_raw}
+            for e in _sis_module("evals").pending_evaluations()
+        ],
+        # 学籍档案
+        "profile": lambda: _sis_module("profile").personal_info(),
+        "academic": lambda: _sis_module("profile").academic_record().get("fields", {}),
+        "extended": lambda: _sis_module("profile").extended_info().get("fields", {}),
+        "registration": lambda: records.registration().to_dict(),
+        # 校园记录
+        "dorm": lambda: records.dormitory().to_dict(),
+        "honors": lambda: [h.to_dict() for h in records.honors()],
+        "vol_history": lambda: records.volunteer_history().to_dict(),
+        "practice": lambda: [p.to_dict() for p in records.social_practice()],
+        "leave": lambda: [l.to_dict() for l in records.leave_requests()],
+        "discipline": lambda: [d.to_dict() for d in records.discipline_records()],
+        "appointments": lambda: records.appointments().to_dict(),
+        "leaving": lambda: records.leaving_check(),
+        "source": lambda: records.source_info_status(),
+        # 社团与资助
+        "clubs": lambda: [c.to_dict() for c in aid.my_clubs()],
+        "orgs": lambda: [o.to_dict() for o in aid.student_orgs()],
+        "activities": lambda: [a.to_dict() for a in aid.student_activities()],
+        "aid": lambda: {
+            "loans": [r.to_dict() for r in aid.loans()],
+            "loan_app": [r.to_dict() for r in aid.loan_application()],
+            "repay": [r.to_dict() for r in aid.loan_repayments()],
+            "outbound": [r.to_dict() for r in aid.outbound_programs()],
+            "exchange": [r.to_dict() for r in aid.exchange_applications()],
+            "jobs": [r.to_dict() for r in aid.study_jobs()],
+            "claim_notice": aid.job_claim().get("notice", ""),
+        },
+    }
+
+    def _run(key: str, loader):
+        try:
+            return key, loader()
+        except Exception as exc:  # 每块独立降级
+            return key, {"error": f"{exc.__class__.__name__}: {exc}"[:120]}
+
+    # 预热：先串行跑第一块（完成 IAM 登录），再并行其余，避免并发登录竞态
+    first_key = next(iter(loaders))
+    context["blocks"][first_key] = dict([_run(first_key, loaders.pop(first_key))])[first_key]
+    if loaders:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            for key, value in pool.map(lambda item: _run(*item), loaders.items()):
+                context["blocks"][key] = value
     return context
 
 
@@ -845,6 +889,55 @@ def _mirrors_context() -> dict:
     return context
 
 
+def _scholar_context() -> dict:
+    """学术资源页上下文：校园状态 + 注册表 + CARSI 目录（可带 q 过滤）。"""
+    from westlake_survival import scholar
+    from westlake_survival._cache import load_json as _load
+
+    context: dict = {"campus": {}, "dbs": [], "carsi": [], "carsi_query": "",
+                     "carsi_fetched": "", "carsi_entry_cnki": "", "error": None}
+    try:
+        context["campus"] = scholar.campus_status().to_dict()
+    except Exception as exc:  # 状态探测失败不拖垮整页
+        context["campus"] = {"ip_authorized": False, "checked_at": "",
+                             "evidence": f"探测失败：{exc.__class__.__name__}"}
+    context["dbs"] = [vars(db) for db in scholar.databases()]
+    context["carsi_entry_cnki"] = scholar.carsi_sso_entry("cnki")
+    query = request.args.get("q", "").strip()
+    if query:
+        context["carsi_query"] = query
+        try:
+            context["carsi"] = scholar.carsi_catalog(query)
+        except Exception as exc:
+            context["error"] = f"CARSI 目录检索失败：{exc}"[:140]
+    meta = _load("scholar/carsi_sps.json")
+    if not isinstance(meta, dict):  # 在线缓存是裸数组；快照元数据在随包文件里
+        try:
+            import json as _json
+            from pathlib import Path as _Path
+            fixture = _Path(scholar.__file__).parent / "data" / "carsi_sps.json"
+            meta = _json.loads(fixture.read_text(encoding="utf-8"))
+        except Exception:
+            meta = {}
+    context["carsi_fetched"] = str(meta.get("fetched", ""))
+    return context
+
+
+def _scholar_doi_context() -> dict:
+    """DOI 解析块上下文（/scholar/doi）。"""
+    from westlake_survival import scholar
+
+    doi = request.args.get("doi", "").strip()
+    context: dict = {"doi_query": doi, "paper": None, "pdf_error": None}
+    if not doi:
+        return context
+    try:
+        context["paper"] = scholar.resolve_doi(doi).to_dict()
+    except Exception as exc:
+        context["pdf_error"] = f"解析失败：{exc}"[:200]
+    return context
+
+
 #: 服务注册表（2026-10-24 盘点；全部接入：mode=接入方式）。
 SERVICE_REGISTRY = (
     ("ac", "无线控制器", "入口卡+在线状态"),
@@ -868,6 +961,7 @@ SERVICE_REGISTRY = (
     ("heqdata", "数据平台", "入口卡+在线状态"),
     ("hr", "人事（IAM OAuth2）", "入口卡+在线状态"),
     ("huxin", "湖心讲堂", "入口卡+在线状态"),
+    ("idp", "CARSI 身份提供方（Shibboleth IdP）", "入口卡+在线状态"),
     ("info", "信息技术中心（IT 服务台）", "入口卡+在线状态"),
     ("international", "国际处", "入口卡+在线状态"),
     ("iot", "物联网", "入口卡+在线状态"),
@@ -1421,6 +1515,48 @@ def create_app() -> Flask:
     @app.route("/mirrors")
     def mirrors_page():
         return render_template("mirrors.html", **_mirrors_context())
+
+    # -- 学术资源页（订阅库 / CARSI / DOI） ---------------------------------- #
+    @app.route("/scholar")
+    def scholar_page():
+        return render_template("scholar.html", **_scholar_context())
+
+    @app.route("/scholar/doi")
+    def scholar_doi_page():
+        context = _scholar_context()
+        context.update(_scholar_doi_context())  # DOI 块的键优先生效
+        return render_template("scholar.html", **context)
+
+    @app.route("/scholar/doi.pdf")
+    def scholar_doi_pdf():
+        from westlake_survival import scholar
+
+        doi = request.args.get("doi", "").strip()
+        if not doi:
+            return {"error": "doi 参数不能为空"}, 400
+        import tempfile
+        from flask import send_file
+
+        handle = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        try:
+            path = scholar.fetch_pdf(doi, out=handle.name)
+        except Exception as exc:
+            return {"error": str(exc)[:300]}, 502
+        return send_file(path, as_attachment=True,
+                         download_name=path.name, mimetype="application/pdf")
+
+    @app.route("/api/scholar/doi")
+    def api_scholar_doi():
+        """DOI 解析 JSON（Agent 友好）：题录 + OA/出版社 PDF 线索 + 校园网提示。"""
+        from westlake_survival import scholar
+
+        doi = request.args.get("doi", "").strip()
+        if not doi:
+            return {"error": "doi 参数不能为空"}, 400
+        try:
+            return scholar.resolve_doi(doi).to_dict()
+        except Exception as exc:
+            return {"error": str(exc)[:300]}, 502
 
     @app.route("/services")
     def services_page():

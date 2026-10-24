@@ -14,27 +14,25 @@
 
 {% set gr = blocks.get('grades') %}
 {% if gr and not gr.error %}
-<h2 class="section">成绩与 GPA 估算</h2>
+<h2 class="section">成绩（{{ gr.total_courses }} 门 / {{ gr.total_credits }} 学分{% if gr.gpa_estimated %} / GPA≈{{ gr.gpa_estimated }}{% endif %}）</h2>
+<p class="muted">{{ gr.gpa_note }}</p>
 {% if gr.rows %}
 <div class="grid cols-4">
   <div class="card"><div class="label">总课程</div><div class="value">{{ gr.total_courses }}</div></div>
   <div class="card"><div class="label">总学分</div><div class="value">{{ gr.total_credits }}</div></div>
-  <div class="card"><div class="label">GPA（估算）</div><div class="value">{{ gr.gpa_estimated or '—' }}</div><div class="dim" style="font-size:.72rem">{{ gr.gpa_note }}</div></div>
+  {% if gr.gpa_estimated %}<div class="card"><div class="label">GPA（估算）</div><div class="value">{{ gr.gpa_estimated }}</div></div>{% endif %}
 </div>
 {% if gr.by_term %}
-<h3 class="section">按学期</h3>
-<table class="data">
-  <thead><tr><th>学期</th><th>课程数</th><th>计入学分</th><th>学期 GPA</th></tr></thead>
-  <tbody>{% for b in gr.by_term %}<tr><td>{{ b.term }}</td><td>{{ b.count }}</td><td>{{ b.credits }}</td><td>{{ b.gpa or '—' }}</td></tr>{% endfor %}</tbody>
-</table>
+<div class="grid cols-4">
+  {% for b in gr.by_term %}<div class="card"><div class="label">{{ b.term }}</div><div class="value">{{ b.count }} 门 · {{ b.credits }} 学分 · GPA {{ b.gpa or '—' }}</div></div>{% endfor %}
+</div>
 {% endif %}
-<h3 class="section">全部成绩（最近 60）</h3>
 <table class="data">
   <thead><tr><th>学期</th><th>课程</th><th>等级</th><th>学分</th></tr></thead>
   <tbody>{% for g in gr.rows[-60:] %}<tr><td>{{ g.term }}</td><td>{{ g.name }}</td><td>{{ g.grade }}</td><td>{{ g.credits }}</td></tr>{% endfor %}</tbody>
 </table>
 {% else %}
-<p class="muted">成绩记录为空（可能尚未出分）。</p>
+<p class="muted">暂无成绩记录。</p>
 {% endif %}
 {% elif gr and gr.error %}<div class="note">成绩不可用：{{ gr.error }}</div>{% endif %}
 
@@ -54,9 +52,10 @@
 {% elif not (ev and ev.error) %}<p class="muted">暂无待评教任务。</p>{% else %}<div class="note">评教不可用：{{ ev.error }}</div>{% endif %}
 {% endif %}
 
+<h2 class="section">学籍档案</h2>
 {% set pf = blocks.get('profile') %}
 {% if pf and not pf.error %}
-<h2 class="section">个人信息（{{ pf | length }} 项）</h2>
+<h3 class="section">个人信息（{{ pf | length }} 项）</h3>
 <div class="grid cols-2">
   {% for k, v in pf.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
 </div>
@@ -64,51 +63,159 @@
 
 {% set ac = blocks.get('academic') %}
 {% if ac and not ac.error %}
-<h2 class="section">学籍信息（{{ ac | length }} 项）</h2>
+<h3 class="section">学籍信息（{{ ac | length }} 项）</h3>
 <div class="grid cols-2">
   {% for k, v in ac.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
 </div>
 {% endif %}
 
 {% set ext = blocks.get('extended') %}
-{% if ext and not ext.error %}
-<h2 class="section">扩展信息（{{ ext | length }} 项，含联系方式与户籍）</h2>
+{% if ext is not none and not (ext and ext.error) %}
+<h3 class="section">扩展信息（{{ ext | length if ext else 0 }} 项，含联系方式与户籍）</h3>
 <div class="grid cols-2">
-  {% for k, v in ext.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+  {% for k, v in (ext or {}).items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
 </div>
 {% elif ext and ext.error %}<div class="note">扩展信息不可用：{{ ext.error }}</div>{% endif %}
 
+{% set reg = blocks.get('registration') %}
+{% if reg is not none and not (reg and reg.error) %}
+<h3 class="section">学期注册缴费（{{ reg.fields.get('Payment Academic Year') or '—' }}）</h3>
+<div class="grid cols-2">
+  {% for k, v in reg.fields.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
+</div>
+{% if reg.notice %}<p class="muted">站点提示：{{ reg.notice }}</p>{% endif %}
+{% elif reg and reg.error %}<div class="note">学期注册不可用：{{ reg.error }}</div>{% endif %}
+
+{% set src = blocks.get('source') %}
+{% if src is not none and not (src and src.error) %}
+<h3 class="section">生源信息确认</h3>
+<p class="muted">{{ src.message or '状态未知' }}</p>
+{% elif src and src.error %}<div class="note">生源信息不可用：{{ src.error }}</div>{% endif %}
+
+<h2 class="section">校园记录</h2>
 {% set dorm = blocks.get('dorm') %}
 {% if dorm and not dorm.error %}
-<h2 class="section">住宿</h2>
-<p>宿舍地址：{{ dorm.get('address') or dorm.get('宿舍地址') or '—' }}</p>
-{% if dorm.get('applications') %}
+<h3 class="section">住宿</h3>
+{% if dorm.info %}{% for k, v in dorm.info.items() %}{% if v %}<p>{{ k }}：<b>{{ v }}</b></p>{% endif %}{% endfor %}{% endif %}
+{% if dorm.applications %}
 <table class="data">
-  <thead><tr><th>申请号</th><th>类型</th><th>状态</th><th>时间</th></tr></thead>
-  <tbody>{% for a in dorm.get('applications', [])[:8] %}<tr><td>{{ a.get('申请号') or a.get('application') or '—' }}</td><td>{{ a.get('类型') or a.get('type') or '—' }}</td><td>{{ a.get('状态') or a.get('status') or '—' }}</td><td>{{ a.get('时间') or a.get('time') or '—' }}</td></tr>{% endfor %}</tbody>
+  <thead><tr><th>申请号</th><th>类型</th><th>事由</th><th>时间</th><th>状态</th></tr></thead>
+  <tbody>{% for a in dorm.applications[:8] %}<tr><td>{{ a.application_no or '—' }}</td><td>{{ a.application_type or '—' }}</td><td>{{ a.reason or '—' }}</td><td>{{ a.date_time or '—' }}</td><td>{{ a.status or '—' }}</td></tr>{% endfor %}</tbody>
 </table>
-{% endif %}
-{% endif %}
+{% else %}<p class="muted">暂无住宿申请记录。</p>{% endif %}
+{% elif dorm and dorm.error %}<div class="note">住宿信息不可用：{{ dorm.error }}</div>{% endif %}
 
-{% set honors = blocks.get('honors') %}
-{% if honors is not none %}
-<h2 class="section">荣誉记录</h2>
-{% if honors and not honors.error and honors %}
+{% set vh = blocks.get('vol_history') %}
+{% if vh is not none and not (vh and vh.error) %}
+<h3 class="section">志愿服务（总时长 {{ vh.total_time or '—' }}{% if vh.entries %}，{{ vh.entries | length }} 条{% endif %}）</h3>
+{% if vh.entries %}
 <table class="data">
-  <thead><tr><th>名称</th><th>级别</th><th>年度</th></tr></thead>
-  <tbody>{% for h in honors[:10] %}<tr><td>{{ h.get('name') or h.get('荣誉名称') or '—' }}</td><td>{{ h.get('level') or h.get('级别') or '—' }}</td><td>{{ h.get('year') or h.get('年度') or '—' }}</td></tr>{% endfor %}</tbody>
+  <thead><tr><th>学年</th><th>来源</th><th>服务名称</th><th>时间</th><th>时长(h)</th></tr></thead>
+  <tbody>{% for e in vh.entries %}<tr><td>{{ e.year }}</td><td>{{ e.source }}</td><td>{{ e.name }}</td><td class="time">{{ e.time_text }}</td><td>{{ e.hours }}</td></tr>{% endfor %}</tbody>
 </table>
-{% elif not (honors and honors.error) %}<p class="muted">暂无荣誉记录。</p>{% else %}<div class="note">荣誉不可用：{{ honors.error }}</div>{% endif %}
-{% endif %}
+{% else %}<p class="muted">暂无志愿服务记录。</p>{% endif %}
+{% elif vh and vh.error %}<div class="note">志愿服务不可用：{{ vh.error }}</div>{% endif %}
 
-{% set vol = blocks.get('volunteer') %}
-{% if vol is not none %}
-<h2 class="section">志愿服务</h2>
-{% if vol and not vol.error and vol %}
+{% set ho = blocks.get('honors') %}
+{% if ho is not none and not (ho and ho.error) %}
+<h3 class="section">荣誉</h3>
+{% if ho %}
 <table class="data">
-  <thead><tr><th>活动</th><th>时长</th><th>日期</th></tr></thead>
-  <tbody>{% for v in vol[:10] %}<tr><td>{{ v.get('activity') or v.get('活动名称') or '—' }}</td><td>{{ v.get('hours') or v.get('时长') or '—' }}</td><td>{{ v.get('date') or v.get('日期') or '—' }}</td></tr>{% endfor %}</tbody>
+  <thead><tr><th>荣誉</th><th>级别</th><th>日期</th><th>状态</th></tr></thead>
+  <tbody>{% for h in ho[:10] %}<tr><td>{{ h.name or '—' }}</td><td>{{ h.level or '—' }}</td><td>{{ h.date or '—' }}</td><td>{{ h.status or '—' }}</td></tr>{% endfor %}</tbody>
 </table>
-{% elif not (vol and vol.error) %}<p class="muted">暂无志愿记录。</p>{% else %}<div class="note">志愿不可用：{{ vol.error }}</div>{% endif %}
-{% endif %}
+{% else %}<p class="muted">暂无荣誉记录。</p>{% endif %}
+{% elif ho and ho.error %}<div class="note">荣誉不可用：{{ ho.error }}</div>{% endif %}
+
+{% set lv = blocks.get('leave') %}
+{% if lv is not none and not (lv and lv.error) %}
+<h3 class="section">请假</h3>
+{% if lv %}
+<table class="data">
+  <thead><tr><th>申请号</th><th>类型</th><th>开始</th><th>结束</th><th>状态</th></tr></thead>
+  <tbody>{% for l in lv[:10] %}<tr><td>{{ l.application_no or '—' }}</td><td>{{ l.leave_type or '—' }}</td><td>{{ l.start or '—' }}</td><td>{{ l.end or '—' }}</td><td>{{ l.status or '—' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="muted">暂无请假记录。</p>{% endif %}
+{% elif lv and lv.error %}<div class="note">请假不可用：{{ lv.error }}</div>{% endif %}
+
+{% set pr = blocks.get('practice') %}
+{% if pr is not none and not (pr and pr.error) %}
+<h3 class="section">社会实践</h3>
+{% if pr %}
+<table class="data">
+  <thead><tr><th>项目</th><th>组织</th><th>开始</th><th>结束</th><th>时长</th><th>状态</th></tr></thead>
+  <tbody>{% for p in pr[:10] %}<tr><td>{{ p.title or '—' }}</td><td>{{ p.organization or '—' }}</td><td>{{ p.start or '—' }}</td><td>{{ p.end or '—' }}</td><td>{{ p.hours or '—' }}</td><td>{{ p.status or '—' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="muted">暂无社会实践记录。</p>{% endif %}
+{% elif pr and pr.error %}<div class="note">社会实践不可用：{{ pr.error }}</div>{% endif %}
+
+{% set dc = blocks.get('discipline') %}
+{% if dc is not none and not (dc and dc.error) %}
+<h3 class="section">违纪</h3>
+{% if dc %}
+<table class="data">
+  <thead><tr><th>日期</th><th>类别</th><th>描述</th><th>状态</th></tr></thead>
+  <tbody>{% for d in dc[:10] %}<tr><td>{{ d.date or '—' }}</td><td>{{ d.category or '—' }}</td><td>{{ d.description or '—' }}</td><td>{{ d.status or '—' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="muted">暂无违纪记录。</p>{% endif %}
+{% elif dc and dc.error %}<div class="note">违纪信息不可用：{{ dc.error }}</div>{% endif %}
+
+{% set ap = blocks.get('appointments') %}
+{% if ap is not none and not (ap and ap.error) %}
+<h3 class="section">心理预约（{{ ap.week or '本周' }}）</h3>
+{% if ap.entries %}
+<table class="data">
+  <thead><tr><th>日期</th><th>时间</th><th>内容</th></tr></thead>
+  <tbody>{% for s in ap.entries %}<tr><td>{{ s.date or s.day }}</td><td>{{ s.time }}</td><td>{{ s.text }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="muted">本周无预约。</p>{% endif %}
+{% elif ap and ap.error %}<div class="note">预约信息不可用：{{ ap.error }}</div>{% endif %}
+
+{% set le = blocks.get('leaving') %}
+{% if le is not none and not (le and le.error) %}
+<h3 class="section">离校检查</h3>
+<p class="muted">{{ le.message or '状态未知' }}</p>
+{% elif le and le.error %}<div class="note">离校检查不可用：{{ le.error }}</div>{% endif %}
+
+<h2 class="section">社团与资助</h2>
+{% set cl = blocks.get('clubs') %}
+{% if cl is not none and not (cl and cl.error) %}
+<h3 class="section">我的社团（{{ cl | length }}）</h3>
+{% if cl %}
+<table class="data">
+  <thead><tr><th>学年</th><th>社团</th><th>发起人</th><th>发起截止</th><th>当前人数</th></tr></thead>
+  <tbody>{% for c in cl %}<tr><td>{{ c.academic_year or '—' }}</td><td>{{ c.club_name or '—' }}</td><td>{{ c.founder or '—' }}</td><td>{{ c.initiation_deadline or '—' }}</td><td>{{ c.initiators or '—' }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="muted">暂未加入社团。</p>{% endif %}
+{% elif cl and cl.error %}<div class="note">我的社团不可用：{{ cl.error }}</div>{% endif %}
+
+{% set og = blocks.get('orgs') %}
+{% if og is not none and not (og and og.error) %}
+<h3 class="section">社团目录（{{ og | length }} 个）</h3>
+{% if og %}
+<p class="muted">{{ og | map(attribute='name') | join(' · ') }}</p>
+{% else %}<p class="muted">目录为空。</p>{% endif %}
+{% elif og and og.error %}<div class="note">社团目录不可用：{{ og.error }}</div>{% endif %}
+
+{% set at = blocks.get('activities') %}
+{% if at is not none and not (at and at.error) %}
+<h3 class="section">社团活动</h3>
+{% if at %}
+<ul>{% for a in at[:15] %}<li>{{ a.name or a.title or a }}</li>{% endfor %}</ul>
+{% else %}<p class="muted">暂无活动报名记录。</p>{% endif %}
+{% elif at and at.error %}<div class="note">社团活动不可用：{{ at.error }}</div>{% endif %}
+
+{% set ad = blocks.get('aid') %}
+{% if ad is not none and not (ad and ad.error) %}
+<h3 class="section">贷款 / 勤工助学 / 海外交流</h3>
+<ul>
+  <li>贷款援助记录：{{ ad.loans | length }} 条</li>
+  <li>贷款申请：{{ ad.loan_app | length }} 条</li>
+  <li>还款计划：{{ ad.repay | length }} 条</li>
+  <li>海外交流（Outbound）申请：{{ ad.outbound | length }} 条</li>
+  <li>交换项目申请：{{ ad.exchange | length }} 条</li>
+  <li>勤工助学岗位：{{ ad.jobs | length }} 个</li>
+</ul>
+{% if ad.claim_notice %}<p class="muted">工时申报：{{ ad.claim_notice }}</p>{% endif %}
+{% elif ad and ad.error %}<div class="note">资助信息不可用：{{ ad.error }}</div>{% endif %}
 {% endblock %}
