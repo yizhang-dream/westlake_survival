@@ -129,6 +129,12 @@ HTML（与 ``biography_html`` 同口径，清洗由调用方按需处理）。
   曹趣、王子桐、王盼，生科院方睿、肖宇晨，以及大部分通识课授课教师），
   本模块靠多源聚合补齐；若某源挂掉，:func:`members` 只降级跳过该源并在
   日志记 warning，其余源照常返回。
+- **英文源（``lang="en"``，2026-10-24 实测）**：只用主列表源（英文主站
+  en.westlake.edu.cn 的 ``/about/faculty/``，同组件 ``faculty`` / 同键
+  ``memberList``）；science / sls / teaching 三源是中文 API / 中文页面，en
+  模式不聚合（``source`` 只能为 ``None`` / ``"main"``）。英文条目的姓名/学院/
+  学科为英文，相对 url / 图片地址按英文站根（:data:`BASE_URLS`）绝对化，
+  详情页 ``facultyDetail`` 组件与中文站同构。
 """
 
 from __future__ import annotations
@@ -195,6 +201,21 @@ BASE_URL = "https://www.westlake.edu.cn/"
 
 #: 主站列表页 ETag 缓存文件名（相对缓存目录）。
 CACHE_NAME = "faculty/faculty_list.html"
+
+#: 双语源（2026-10-24 实测）：英文主站 en.westlake.edu.cn 同路径同组件名，
+#: ``memberList`` 条目的姓名/学院/学科为英文，详情 URL 指向 en 域（也有相对
+#: 路径，须按英文站根绝对化）。**``lang="en"`` 只用主列表源**——science /
+#: sls / teaching 三源是中文 API / 中文页面，英文模式下不聚合。
+LIST_URLS = {
+    "zh": LIST_URL,
+    "en": "https://en.westlake.edu.cn/about/faculty/",
+}
+
+#: 站点根（按语言）：相对 url / 图片地址绝对化时按 lang 切换。
+BASE_URLS = {"zh": BASE_URL, "en": "https://en.westlake.edu.cn/"}
+
+#: 主站列表页 ETag 缓存文件名（按语言；zh 缓存名逐字保留，en 另存一份）。
+CACHE_BY_LANG = {"zh": CACHE_NAME, "en": "faculty/faculty_list_en.html"}
 
 #: 列表页组件构造函数名（2026-09-22 实测）。
 LIST_COMPONENT = "faculty"
@@ -416,8 +437,12 @@ def _absolute(url: str, base: str = LIST_URL) -> str:
     return urljoin(base, url)
 
 
-def _build_member(raw: dict) -> FacultyMember:
-    """把 ``memberList`` 的一个原始条目转成 :class:`FacultyMember`（主站源）。"""
+def _build_member(raw: dict, base: str = LIST_URL) -> FacultyMember:
+    """把 ``memberList`` 的一个原始条目转成 :class:`FacultyMember`（主站源）。
+
+    ``base`` 是相对 url / 图片地址的绝对化基准（zh 用中文站列表页、en 用
+    英文站列表页，见 :data:`LIST_URLS`）。
+    """
     subject, lab = _split_subject(str(raw.get("subject") or ""))
     return FacultyMember(
         name=str(raw.get("name") or ""),
@@ -425,15 +450,18 @@ def _build_member(raw: dict) -> FacultyMember:
         school=str(raw.get("school") or ""),
         subject=subject,
         lab=lab,
-        url=_absolute(str(raw.get("url") or "")),
-        img_url=_absolute(str(raw.get("imgUrl") or "")),
+        url=_absolute(str(raw.get("url") or ""), base),
+        img_url=_absolute(str(raw.get("imgUrl") or ""), base),
         visible=bool(raw.get("show", True)),
         source="main",
     )
 
 
-def parse_members(html: str) -> list[FacultyMember]:
+def parse_members(html: str, lang: str = "zh") -> list[FacultyMember]:
     """解析教师名录列表页 HTML，返回全部教师（含隐藏项，过滤由调用方负责）。
+
+    ``lang`` 只影响相对 url / 图片地址的绝对化基准（zh 按中文站、en 按英文站
+    :data:`LIST_URLS`）；英文页条目的 url 多为 en 域绝对地址。
 
     官网 ``memberList`` 实测会重复收录同一教师（2026-09-24：曾文锋出现两次，
     两条完全相同），这里按 ``url`` 去重、保留首次出现的顺序，避免同一人在列表
@@ -442,6 +470,7 @@ def parse_members(html: str) -> list[FacultyMember]:
     Raises:
         ParseError: 页面里找不到 ``faculty`` 组件或 ``memberList`` 键。
     """
+    base = LIST_URLS.get(lang, LIST_URL)
     block = component_script(html, LIST_COMPONENT)
     if not block:
         raise ParseError(f"页面中找不到组件 {LIST_COMPONENT!r}，结构可能已变化")
@@ -453,7 +482,7 @@ def parse_members(html: str) -> list[FacultyMember]:
     for item in raw_list:
         if not isinstance(item, dict):
             continue
-        member = _build_member(item)
+        member = _build_member(item, base=base)
         if member.url:
             if member.url in seen_urls:
                 continue
@@ -826,11 +855,16 @@ def _fetch_source_text(
 
 
 def _fetch_main_members(
-    session: requests.Session, timeout: float | None
+    session: requests.Session, timeout: float | None, lang: str = "zh"
 ) -> list[FacultyMember]:
-    """抓取并解析主站「导师团队」名录。"""
-    html = _fetch_html(session, LIST_URL, cache_name=CACHE_NAME, timeout=timeout)
-    return parse_members(html)
+    """抓取并解析主站「导师团队」名录（``lang`` 切换中/英文主站与缓存）。"""
+    html = _fetch_html(
+        session,
+        LIST_URLS.get(lang, LIST_URL),
+        cache_name=CACHE_BY_LANG.get(lang, CACHE_NAME),
+        timeout=timeout,
+    )
+    return parse_members(html, lang=lang)
 
 
 def _fetch_science_members(
@@ -874,7 +908,8 @@ def _fetch_teaching_members(
     return parse_teaching_members(text)
 
 
-#: 各子源（``source`` → 抓取函数）。
+#: 各子源（``source`` → 抓取函数）。``main`` 源带 ``lang`` 参数、按语言切换
+#: URL / 缓存，在 :func:`members` 里单独派发，不放这张表。
 _SOURCE_FETCHERS = {
     "main": _fetch_main_members,
     "science": _fetch_science_members,
@@ -895,6 +930,7 @@ def members(
     source: str | None = None,
     session: requests.Session | None = None,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> list[FacultyMember]:
     """抓取并过滤教师名录（默认聚合主站 + 理学院 + 生科院 + 通识课四源）。
 
@@ -907,20 +943,26 @@ def members(
         school: 学院名（``理学院`` / ``生命科学学院`` / ``工学院`` / ``医学院``）；
             按 ``FacultyMember.school`` 的**子串**匹配，因此兼聘教师（如
             ``"工学院与理学院（兼聘）"``）在两个学院下都会出现。通识课授课
-            教师的 ``school`` 为 ``"通识课程"``。
+            教师的 ``school`` 为 ``"通识课程"``。``lang="en"`` 时该字段是英文
+            原始值（如 ``"School of Science"``），中文枚举匹配不到任何条目。
         keyword: 关键词，不区分大小写地匹配 name / name_en / subject / lab。
         include_hidden: 为 ``False``（默认）时过滤掉主站 ``show`` 为假的条目。
         limit: 最多返回条数；``None`` 表示不限。
         source: 只取单一数据源（``main`` / ``science`` / ``sls`` / ``teaching``）；
-            ``None``（默认）聚合全部四源。
+            ``None``（默认）聚合全部四源。``lang="en"`` 时只允许 ``None`` 或
+            ``"main"``——science / sls / teaching 三源是中文 API / 中文页面。
         session: 可注入的 :class:`requests.Session`（测试用）。
         timeout: 请求超时（秒），缺省 :data:`~westlake_survival._net.DEFAULT_TIMEOUT`。
+        lang: ``"zh"``（默认）中文主站并聚合四源；``"en"`` **只用主列表源**
+            （英文主站 en.westlake.edu.cn 的 ``/about/faculty/``，相对 url /
+            图片地址按英文站根绝对化），姓名/学院/学科为英文（未知值回退 zh）。
 
     Returns:
         过滤后的 :class:`FacultyMember` 列表，保持各源原始顺序。
 
     Raises:
-        ValueError: ``source`` 不是 :data:`SOURCES` 中的取值。
+        ValueError: ``source`` 不是 :data:`SOURCES` 中的取值，或 ``lang="en"``
+            时指定了主站以外的 ``source``。
         WestlakeError: 主站网络层失败（超时/连接错误等）。
         ParseError: 主站 HTTP 4xx/5xx，或页面结构变化导致解析失败。
         OffCampusError: 主站被校外访问网关拦截。
@@ -928,14 +970,21 @@ def members(
     """
     if source is not None and source not in SOURCES:
         raise ValueError(f"未知的教师数据源：{source!r}（可选 {SOURCES}）")
+    if lang != "zh" and source not in (None, "main"):
+        raise ValueError(
+            f"lang={lang!r} 只支持主列表源（source=None 或 'main'），得到 {source!r}"
+        )
     session = session if session is not None else http_session()
-    wanted = (source,) if source is not None else SOURCES
+    wanted = ("main",) if lang != "zh" else ((source,) if source is not None else SOURCES)
 
     result: list[FacultyMember] = []
     seen_urls: set[str] = set()
     for name in wanted:
         try:
-            fetched = _SOURCE_FETCHERS[name](session, timeout)
+            if name == "main":
+                fetched = _fetch_main_members(session, timeout, lang=lang)
+            else:
+                fetched = _SOURCE_FETCHERS[name](session, timeout)
         except WestlakeError as exc:
             if name == "main":
                 raise  # 主站不降级：维持既有异常口径
@@ -969,6 +1018,7 @@ def fetch_detail(
     *,
     session: requests.Session | None = None,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> FacultyDetail:
     """抓取并解析一位教师的详情页。
 
@@ -979,9 +1029,12 @@ def fetch_detail(
 
     Args:
         url: 教师主页地址，绝对（``https://www.westlake.edu.cn/faculty/x.html``）
-            或相对（``/faculty/x.html``）均可。
+            或相对（``/faculty/x.html``）均可；相对路径按 ``lang`` 对应的站点
+            根（:data:`BASE_URLS`）绝对化。
         session: 可注入的 :class:`requests.Session`（测试用）。
         timeout: 请求超时（秒）。
+        lang: ``"zh"``（默认）按中文站根绝对化；``"en"`` 按英文站根绝对化
+            （英文列表条目的 url 多为 en 域绝对地址，不受影响）。
 
     Raises:
         WestlakeError: 网络层失败。
@@ -990,7 +1043,7 @@ def fetch_detail(
         NotFound: 详情页返回 404。
         OffCampusError: 被校外访问网关拦截。
     """
-    absolute = _absolute(url)
+    absolute = _absolute(url, base=BASE_URLS.get(lang, BASE_URL))
     if not _is_faculty_home(absolute):
         raise ParseError(f"该教师无独立主页：{absolute}")
     session = session if session is not None else http_session()
@@ -1046,6 +1099,13 @@ def _handle_errors(func):
 )
 @click.option("--limit", type=int, default=20, show_default=True, help="最多显示条数。")
 @click.option("--all", "include_hidden", is_flag=True, help="包含官网隐藏的成员。")
+@click.option(
+    "--lang",
+    type=click.Choice(["zh", "en"]),
+    default="zh",
+    show_default=True,
+    help="语言：zh=中文主站 en=英文主站（en 只用主列表源，school 用英文原始值）。",
+)
 @click.pass_context
 def cli_group(
     ctx: click.Context,
@@ -1054,8 +1114,9 @@ def cli_group(
     source: str,
     limit: int,
     include_hidden: bool,
+    lang: str,
 ) -> None:
-    """``westlake faculty [--school ...] [--keyword ...] [--source ...] [--limit N] [--all]``。"""
+    """``westlake faculty [--school ...] [--keyword ...] [--source ...] [--limit N] [--all] [--lang en]``。"""
     if ctx.invoked_subcommand is not None:  # detail 子命令
         return
     _run_list(
@@ -1064,6 +1125,7 @@ def cli_group(
         source=None if source == "all" else source,
         limit=limit,
         include_hidden=include_hidden,
+        lang=lang,
     )
 
 
@@ -1104,6 +1166,7 @@ def _run_list(
     source: str | None,
     limit: int,
     include_hidden: bool,
+    lang: str = "zh",
 ) -> None:
     """抓取名录并打印表格（``_print_table`` 惰性导入以免循环依赖）。
 
@@ -1119,6 +1182,7 @@ def _run_list(
         include_hidden=include_hidden,
         source=source,
         limit=None,
+        lang=lang,
     )
     if not people:
         click.echo("未找到匹配的教师。")

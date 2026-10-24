@@ -104,6 +104,17 @@ DETAIL_COMPONENT = "newsDetail"
 #: ETag 缓存文件名（相对缓存目录）。
 CACHE_NAME = "research/research_at_westlake.html"
 
+#: 双语源（2026-10-24 实测）：英文主站 en.westlake.edu.cn 同路径同组件名；
+#: 英文页分组名（研究方向）为英文（如 ``"Good Health & Wellbeing"``），条目
+#: 摘要（``abs``）与详情 URL 也是英文/英文域，日期同样从 ``tYYYYMMDD_`` 还原。
+RESEARCH_URLS = {
+    "zh": RESEARCH_URL,
+    "en": "https://en.westlake.edu.cn/research/research_at_westlake/",
+}
+
+#: ETag 缓存文件名（按语言；zh 缓存名逐字保留，en 另存一份避免互相覆盖）。
+CACHE_BY_LANG = {"zh": CACHE_NAME, "en": "research/research_at_westlake_en.html"}
+
 #: 已知的研究方向分组名（``researchList[].title``，实测于 2026-09-23）。
 CATEGORIES = (
     "生命健康 / Good Health & Wellbeing",
@@ -284,12 +295,12 @@ def _parse_datetime(value: str) -> datetime | None:
 # --------------------------------------------------------------------------- #
 # 网络层
 # --------------------------------------------------------------------------- #
-def _drop_etag_cache() -> None:
+def _drop_etag_cache(lang: str = "zh") -> None:
     """删除本地 ETag 缓存条目，令下一次请求变为无条件 GET。"""
     try:
         from westlake_survival import _cache
 
-        path = _cache.cache_path(CACHE_NAME)
+        path = _cache.cache_path(CACHE_BY_LANG.get(lang, CACHE_NAME))
         if path.exists():
             path.unlink()
     except OSError:  # 缓存删不掉不应阻断加载
@@ -310,12 +321,13 @@ def _fetch_list_html(
     *,
     refresh: bool = False,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> str:
     """抓取列表页 HTML（带 ETag 条件请求 + 本地缓存）。
 
-    该站实测无 ETag 头，等价于普通 GET；复用
-    :func:`~westlake_survival._cache.http_get_with_etag` 以获得与校历/新闻一致的
-    缓存行为，再对返回文本做一次乱码修复。
+    ``lang`` 选择中/英文主站与对应缓存（未知值回退 zh）。该站实测无 ETag 头，
+    等价于普通 GET；复用 :func:`~westlake_survival._cache.http_get_with_etag`
+    以获得与校历/新闻一致的缓存行为，再对返回文本做一次乱码修复。
 
     Raises:
         WestlakeError: 网络层失败（超时/连接错误等）。
@@ -323,11 +335,11 @@ def _fetch_list_html(
         OffCampusError: 403 且命中校外阻断特征。
     """
     if refresh:
-        _drop_etag_cache()
+        _drop_etag_cache(lang)
     try:
         body, _etag = http_get_with_etag(
-            RESEARCH_URL,
-            cache_name=CACHE_NAME,
+            RESEARCH_URLS.get(lang, RESEARCH_URL),
+            cache_name=CACHE_BY_LANG.get(lang, CACHE_NAME),
             session=session,
             timeout=timeout if timeout is not None else DEFAULT_TIMEOUT,
         )
@@ -337,7 +349,9 @@ def _fetch_list_html(
             if is_offcampus(response):
                 raise OffCampusError("官网科研进展列表页拒绝访问（403）") from exc
         status = getattr(response, "status_code", "?")
-        raise ParseError(f"官网科研进展列表页返回 HTTP {status}：{RESEARCH_URL}") from exc
+        raise ParseError(
+            f"官网科研进展列表页返回 HTTP {status}：{RESEARCH_URLS.get(lang, RESEARCH_URL)}"
+        ) from exc
     except requests.Timeout as exc:
         raise WestlakeError(
             f"官网科研进展列表请求超时（{timeout if timeout is not None else DEFAULT_TIMEOUT}s）"
@@ -368,17 +382,21 @@ def latest(
     session: requests.Session | None = None,
     refresh: bool = False,
     timeout: float | None = None,
+    lang: str = "zh",
 ) -> list[ResearchItem]:
     """返回「科研进展」列表（按官网分组顺序展平，各组内保持官网顺序）。
 
     Args:
-        category: 只看某研究方向；取值是分组 ``title``（见 :data:`CATEGORIES`，
-            如 ``"生命健康 / Good Health & Wellbeing"``）。
+        category: 只看某研究方向；取值是分组 ``title``（zh 见 :data:`CATEGORIES`，
+            如 ``"生命健康 / Good Health & Wellbeing"``；``lang="en"`` 时为英文
+            分组名，如 ``"Good Health & Wellbeing"``）。
         limit: 最多返回条数；``None`` 表示不限。
         session: 可注入的 :class:`requests.Session`（测试用）；缺省用
             :func:`westlake_survival._net.http_session`。
         refresh: 为 ``True`` 时先清掉本地 ETag 缓存再请求。
         timeout: 请求超时（秒），缺省 :data:`~westlake_survival._net.DEFAULT_TIMEOUT`。
+        lang: ``"zh"``（默认）抓中文主站；``"en"`` 抓英文主站
+            en.westlake.edu.cn，分组名/标题为英文（未知值回退 zh）。
 
     Returns:
         :class:`ResearchItem` 列表。
@@ -389,7 +407,9 @@ def latest(
         OffCampusError: 被校外访问网关拦截（403 且命中阻断页特征）。
     """
     session = session if session is not None else http_session()
-    items = parse_research_list(_fetch_list_html(session, refresh=refresh, timeout=timeout))
+    items = parse_research_list(
+        _fetch_list_html(session, refresh=refresh, timeout=timeout, lang=lang)
+    )
     if category is not None:
         items = [item for item in items if item.category == category]
     if limit is not None:
@@ -471,15 +491,22 @@ def _handle_errors(func):
 @click.option(
     "--category",
     default=None,
-    help="只看某研究方向（分组名，如「生命健康 / Good Health & Wellbeing」）。",
+    help="只看某研究方向（分组名，如「生命健康 / Good Health & Wellbeing」；en 模式用英文分组名）。",
 )
 @click.option("--limit", type=int, default=10, show_default=True, help="最多显示条数。")
+@click.option(
+    "--lang",
+    type=click.Choice(["zh", "en"]),
+    default="zh",
+    show_default=True,
+    help="语言：zh=中文主站 en=英文主站。",
+)
 @click.pass_context
-def cli_group(ctx: click.Context, category: str | None, limit: int) -> None:
-    """``westlake research [--category X] [--limit N]`` / ``westlake research detail <url>``。"""
+def cli_group(ctx: click.Context, category: str | None, limit: int, lang: str) -> None:
+    """``westlake research [--category X] [--limit N] [--lang en]`` / ``westlake research detail <url>``。"""
     if ctx.invoked_subcommand is not None:  # 交给 detail 子命令
         return
-    _run_list(category=category, limit=limit)
+    _run_list(category=category, limit=limit, lang=lang)
 
 
 @cli_group.command(name="detail")
@@ -503,11 +530,11 @@ def research_detail_cmd(url: str) -> None:
 
 
 @_handle_errors
-def _run_list(category: str | None, limit: int) -> None:
+def _run_list(category: str | None, limit: int, lang: str = "zh") -> None:
     """执行列表查询并打印表格（``_print_table`` 惰性导入以免循环依赖）。"""
     from westlake_survival.cli.main import _print_table
 
-    items = latest(category=category, limit=limit)
+    items = latest(category=category, limit=limit, lang=lang)
     if not items:
         scope = f"方向 {category!r} 下" if category else ""
         click.echo(f"未找到{scope}科研进展。")

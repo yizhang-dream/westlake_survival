@@ -86,6 +86,19 @@ EVENTS_URL = "https://www.westlake.edu.cn/news_events/EventCalendars/"
 #: 列表页 ETag 缓存文件名（相对缓存目录）。
 CACHE_NAME = "events/event_calendars.html"
 
+#: 双语源（2026-10-24 实测）：英文主站 en.westlake.edu.cn 同路径同组件名；
+#: 英文页组件块同样混有 ``mounted: function () {}`` 回调，解析路径与中文一致
+#: （:func:`~westlake_survival._trs.array_of` 按键截取目标数组，不受回调影响）。
+#: 英文条目的 ``type`` / ``school`` / ``address`` 为英文（如 ``"Seminar"`` /
+#: ``"School of Science"``），按这些字段过滤时须用英文原始值。
+EVENTS_URLS = {
+    "zh": EVENTS_URL,
+    "en": "https://en.westlake.edu.cn/news_events/EventCalendars/",
+}
+
+#: ETag 缓存文件名（按语言；zh 缓存名逐字保留，en 另存一份避免互相覆盖）。
+CACHE_BY_LANG = {"zh": CACHE_NAME, "en": "events/event_calendars_en.html"}
+
 #: 列表页组件构造函数名。
 _LIST_COMPONENT = "events"
 
@@ -310,10 +323,10 @@ def _request(
         raise WestlakeError(f"官网{what}请求失败：{exc}") from exc
 
 
-def _drop_cache() -> None:
+def _drop_cache(lang: str = "zh") -> None:
     """删除列表页本地 ETag 缓存，令下一次请求变为无条件 GET。"""
     try:
-        _cache.cache_path(CACHE_NAME).unlink(missing_ok=True)
+        _cache.cache_path(CACHE_BY_LANG.get(lang, CACHE_NAME)).unlink(missing_ok=True)
     except OSError:  # 缓存删不掉不应阻断加载
         logger.debug("删除活动预告 ETag 缓存失败", exc_info=True)
 
@@ -323,20 +336,27 @@ def _fetch_list_html(
     session: requests.Session | None = None,
     timeout: float | None = None,
     refresh: bool = False,
+    lang: str = "zh",
 ) -> str:
     """抓取活动预告列表页 HTML（带 ETag 条件 GET + 本地缓存）。
 
-    ``304 Not Modified`` 时返回缓存正文；否则按 ``response.content`` 手动
-    UTF-8 解码（响应无 charset 头，读 ``.text`` 会乱码）。
+    ``lang`` 选择中/英文主站与对应缓存（未知值回退 zh）；``304 Not Modified``
+    时返回缓存正文；否则按 ``response.content`` 手动 UTF-8 解码（响应无
+    charset 头，读 ``.text`` 会乱码）。
     """
     session = session if session is not None else http_session()
     if refresh:
-        _drop_cache()
-    cached = _cache.load_json(CACHE_NAME, default=None) or {}
+        _drop_cache(lang)
+    cache_name = CACHE_BY_LANG.get(lang, CACHE_NAME)
+    cached = _cache.load_json(cache_name, default=None) or {}
     headers = {"If-None-Match": cached["etag"]} if cached.get("etag") else {}
 
     response = _request(
-        session, EVENTS_URL, headers=headers, timeout=timeout, what="活动预告列表页"
+        session,
+        EVENTS_URLS.get(lang, EVENTS_URL),
+        headers=headers,
+        timeout=timeout,
+        what="活动预告列表页",
     )
     if response.status_code == 304 and cached.get("body"):
         return cached["body"]
@@ -344,7 +364,7 @@ def _fetch_list_html(
     body = response.content.decode("utf-8")
     etag = response.headers.get("ETag")
     if etag:
-        _cache.save_json(CACHE_NAME, {"etag": etag, "body": body})
+        _cache.save_json(cache_name, {"etag": etag, "body": body})
     return body
 
 
@@ -387,6 +407,7 @@ def load_events(
     session: requests.Session | None = None,
     timeout: float | None = None,
     refresh: bool = False,
+    lang: str = "zh",
 ) -> list[EventItem]:
     """抓取并过滤活动预告列表。
 
@@ -395,13 +416,17 @@ def load_events(
 
     Args:
         event_type: 只保留该活动类型（与 ``type`` 字段**精确匹配**，如
-            ``"名家讲座"``）；``None`` 表示不过滤。
+            ``"名家讲座"``）；``None`` 表示不过滤。``lang="en"`` 时该字段是
+            英文原始值（如 ``"Seminar"``）。
         since: 只保留开始日期 ``>= since`` 的活动。
         until: 只保留开始日期 ``<= until`` 的活动。
         limit: 最多返回条数（在过滤后按页面原顺序截断）；``None`` 表示不限。
         session: 可注入的 :class:`requests.Session`（测试用）。
         timeout: 请求超时（秒）。
         refresh: 为 ``True`` 时先清掉本地 ETag 缓存再请求。
+        lang: ``"zh"``（默认）抓中文主站；``"en"`` 抓英文主站
+            en.westlake.edu.cn，条目的类型/地点/主办为英文原始值（未知值
+            回退 zh）。
 
     Returns:
         过滤后的活动列表，保持页面原顺序（大致为开始时间降序）。
@@ -411,7 +436,7 @@ def load_events(
         ParseError: HTTP 4xx/5xx，或页面结构与预期不符。
         OffCampusError: 被校外访问网关拦截。
     """
-    html = _fetch_list_html(session=session, timeout=timeout, refresh=refresh)
+    html = _fetch_list_html(session=session, timeout=timeout, refresh=refresh, lang=lang)
     items = parse_events(html)
     if event_type is not None:
         items = [item for item in items if item.event_type == event_type]
@@ -431,6 +456,7 @@ def upcoming(
     timeout: float | None = None,
     refresh: bool = False,
     today: date | None = None,
+    lang: str = "zh",
 ) -> list[EventItem]:
     """返回从今天起 ``days`` 天内（含首尾）的活动，按开始时间升序。
 
@@ -440,6 +466,7 @@ def upcoming(
         timeout: 请求超时（秒）。
         refresh: 为 ``True`` 时先清掉本地 ETag 缓存再请求。
         today: 窗口起点，缺省为今天（测试用）。
+        lang: 同 :func:`load_events`（``"zh"`` 中文主站 / ``"en"`` 英文主站）。
 
     Raises:
         ValueError: ``days`` 小于 0。
@@ -454,6 +481,7 @@ def upcoming(
         session=session,
         timeout=timeout,
         refresh=refresh,
+        lang=lang,
     )
     return sorted(items, key=lambda item: item.date)
 
@@ -490,14 +518,21 @@ def _handle_errors(func):
     help="活动预告：讲座 / 学术会议 / 演出等。",
     invoke_without_command=True,
 )
-@click.option("--type", "event_type", default=None, help="只看某类型活动（如「名家讲座」）。")
+@click.option("--type", "event_type", default=None, help="只看某类型活动（如「名家讲座」；en 模式用英文原始值）。")
 @click.option("--days", type=int, default=14, show_default=True, help="只看未来 N 天（含今天）。")
 @click.option("--limit", type=int, default=20, show_default=True, help="最多显示条数。")
+@click.option(
+    "--lang",
+    type=click.Choice(["zh", "en"]),
+    default="zh",
+    show_default=True,
+    help="语言：zh=中文主站 en=英文主站。",
+)
 @click.pass_context
 def cli_group(
-    ctx: click.Context, event_type: str | None, days: int, limit: int
+    ctx: click.Context, event_type: str | None, days: int, limit: int, lang: str
 ) -> None:
-    """``westlake events [--type T] [--days N] [--limit N]``。
+    """``westlake events [--type T] [--days N] [--limit N] [--lang en]``。
 
     不带子命令时展示未来 ``--days`` 天的活动预告；``westlake events detail
     <url>`` 查看单条活动详情。
@@ -506,7 +541,7 @@ def cli_group(
         return
     if days < 0:
         raise click.UsageError(f"--days 必须 >= 0，得到 {days}")
-    _run_list(event_type=event_type, days=days, limit=limit)
+    _run_list(event_type=event_type, days=days, limit=limit, lang=lang)
 
 
 @cli_group.command(name="detail")
@@ -536,11 +571,11 @@ def events_detail(url: str) -> None:
 
 
 @_handle_errors
-def _run_list(*, event_type: str | None, days: int, limit: int) -> None:
+def _run_list(*, event_type: str | None, days: int, limit: int, lang: str = "zh") -> None:
     """展示未来 ``days`` 天的活动预告表格（表格工具惰性导入）。"""
     from westlake_survival.cli.main import _print_table
 
-    items = upcoming(days)
+    items = upcoming(days, lang=lang)
     if event_type is not None:
         items = [item for item in items if item.event_type == event_type]
     if not items:
