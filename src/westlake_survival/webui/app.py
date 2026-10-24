@@ -1151,6 +1151,22 @@ def create_app() -> Flask:
             # 避免重复构造与重复加载校历 / 班车。verbose 字段无数据时模板显示
             # 「—」。
             data = _context_data("verbose")
+            # 门户个人卡片（未读邮件/在借/待办）——失败静默降级
+            portal_cards = {}
+            portal_mod = _import_module("portal")
+            if portal_mod is not None:
+                try:
+                    cards = portal_mod.fetch_cards()
+                    portal_cards = {
+                        "unread_email": cards.unread_email,
+                        "borrowed_books": cards.borrowed_books,
+                        "todo_pending": cards.todo_pending,
+                        "todo_started": cards.todo_started,
+                        "todo_done": cards.todo_done,
+                    }
+                except Exception:
+                    portal_cards = {}
+            data.setdefault("extras", {})["portal"] = portal_cards
         except Exception as exc:
             # Context 内部已优雅降级，这里兜住任何意外，转成中文错误页。
             return (

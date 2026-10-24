@@ -23,6 +23,16 @@
 </div>
 <h1 class="page" style="display:none">现在</h1>
 
+{% set portal = ctx.get('extras', {}).get('portal', {}) if ctx is mapping else {} %}
+{% if portal %}
+<div class="grid cols-4" style="margin-bottom:.9rem">
+  <div class="card"><div class="label">未读邮件</div><div class="value">{{ portal.unread_email or '—' }}</div></div>
+  <div class="card"><div class="label">在借图书</div><div class="value">{{ portal.borrowed_books or '—' }}</div></div>
+  <div class="card"><div class="label">待办（待办理）</div><div class="value">{{ portal.todo_pending or '—' }}</div></div>
+  <div class="card"><div class="label">已发起 / 已处理</div><div class="value small">{{ portal.todo_started or '—' }} / {{ portal.todo_done or '—' }}</div></div>
+</div>
+{% endif %}
+
 {% if not available %}
   <div class="note">context 模块暂不可用（或数据源缺失），卡片以「—」占位。页面其余功能不受影响。</div>
 {% endif %}

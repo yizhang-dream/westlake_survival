@@ -203,3 +203,14 @@ def test_webui_services_registry_is_complete() -> None:
     hosts = " ".join(h for h, _, _ in SERVICE_REGISTRY)
     for must in ("brcf", "larc", "nanolab", "share", "huxin", "osa", "chatbot"):
         assert must in hosts, must
+
+
+def test_live_portal_cards_and_chatbot() -> None:
+    """门户个人卡片真数据 + AI 助手直链（复用登录浏览器会话）。"""
+    from westlake_survival.portal import chatbot_link, fetch_cards
+
+    cards = fetch_cards()
+    # 数值可空（隐私脱敏 **）但待办三项应为数字形态
+    assert cards.todo_pending != "" or cards.todo_started != ""
+    link = chatbot_link()
+    assert link.startswith("https://chatbot.westlake.edu.cn/")
