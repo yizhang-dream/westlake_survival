@@ -16,4 +16,20 @@
   <tbody>{% for d in deadlines %}<tr><td>{{ d.title }}</td><td class="time">{{ d.due }}</td><td><a href="{{ d.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
 </table>
 {% elif not error %}<p class="muted">暂无未来截止。</p>{% endif %}
+
+{% if exams %}
+<h2 class="section">考试（{{ exams | length }}）</h2>
+<table class="data">
+  <thead><tr><th>考试</th><th>开始</th><th>链接</th></tr></thead>
+  <tbody>{% for e in exams %}<tr><td>{{ e.title }}</td><td class="time">{{ e.start }}</td><td><a href="{{ e.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
+</table>
+{% elif not error %}<p class="muted">暂无已排期考试。</p>{% endif %}
+
+{% if quizzes %}
+<h2 class="section">测验（{{ quizzes | length }}）</h2>
+<table class="data">
+  <thead><tr><th>测验</th><th>截止</th><th>链接</th></tr></thead>
+  <tbody>{% for q in quizzes %}<tr><td>{{ q.title }}</td><td class="time">{{ q.due }}</td><td><a href="{{ q.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
+</table>
+{% elif not error %}<p class="muted">暂无测验。</p>{% endif %}
 {% endblock %}
