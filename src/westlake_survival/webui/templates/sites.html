@@ -13,50 +13,152 @@
   <div class="stat"><div class="label">条目总数</div><div class="value" data-count="{{ stats.entry_count }}">{{ stats.entry_count }}</div></div>
 </div>
 
-<nav class="anchor-nav lv2">
-  {% for g in groups %}
-  <span class="nav-grp">
-    <a href="#grp-{{ loop.index }}">{{ g.name }}</a>
-    <span class="sub">
-      {% for c in g.sites %}<a href="#site-{{ c.key }}">{{ c.name | truncate(10, true) }}</a>{% endfor %}
-    </span>
-  </span>
-  {% endfor %}
-</nav>
-
-{% for g in groups %}
-<section id="grp-{{ loop.index }}" class="reveal">
-<h2 class="section">{{ g.name }}（{{ g.sites | length }} 站）</h2>
-{% for c in g.sites %}
-<details class="fold" id="site-{{ c.key }}" data-fold-key="sites-{{ c.key }}"{% if c.default_open %} data-should-open="1"{% endif %}>
-  <summary>{{ c.name }}{% if c.n_items %}<span class="chip">{{ c.n_sections }} 栏</span><span class="chip ok">{{ c.n_items }} 条</span>{% else %}<span class="chip plain">简介</span>{% endif %}</summary>
-  <div class="fold-body">
-    {% if c.error %}<div class="callout warn"><span>抓取异常：{{ c.error }}</span></div>{% endif %}
-    {% if c.intro %}<div class="callout"><span>{{ c.intro }} <a href="{{ c.url }}" target="_blank" rel="noopener">进入站点 →</a></span></div>{% endif %}
-    {% for sec in c.sections %}
-      {% if sec.entries %}
-      <h3 class="sub">{{ sec.label }}<span class="count">{{ sec.entries | length }}</span></h3>
-      <table class="data">
-        <tbody>{% for i in sec.entries %}<tr data-detail-url="{{ i.url }}"><td class="time">{{ i.date }}</td><td><a href="{{ i.url }}" target="_blank" rel="noopener">{{ i.title }}</a></td><td class="exp"><button class="btn ghost tiny" type="button">详情</button></td></tr>{% endfor %}</tbody>
-      </table>
-      {% elif sec.label %}
-      <div class="callout mute"><span>{{ sec.label }}：暂无条目。</span></div>
-      {% endif %}
+<div class="sites-layout">
+  <aside class="toc-side" id="tocSide" aria-label="站点目录">
+    <div class="toc-title">目录 · {{ stats.total }} 站</div>
+    <input class="toc-search" id="tocSearch" type="search" placeholder="搜索站点…" autocomplete="off">
+    {% for g in groups %}
+    <details class="toc-grp"{% if loop.first %} open{% endif %}>
+      <summary>{{ g.name }}<span class="n">{{ g.sites | length }}</span></summary>
+      {% for c in g.sites %}
+      <a class="toc-site" href="#site-{{ c.key }}" data-site="{{ c.key }}">
+        <span>{{ c.name }}</span><span class="n">{{ c.n_items if c.n_items else '—' }}</span>
+      </a>
+      {% endfor %}
+    </details>
     {% endfor %}
-    {% if not c.sections and not c.intro %}
-    <div class="callout mute"><span>栏目为流程文档，<a href="{{ c.url }}" target="_blank" rel="noopener">直达站点</a>。</span></div>
-    {% endif %}
+  </aside>
+  <button class="toc-fab" id="tocFab" type="button">☰ 目录</button>
+  <div class="toc-main" style="min-width:0">
+  {% for g in groups %}
+  <section id="grp-{{ loop.index }}" class="reveal">
+  <h2 class="section">{{ g.name }}（{{ g.sites | length }} 站）</h2>
+  {% for c in g.sites %}
+  <details class="fold" id="site-{{ c.key }}" data-fold-key="sites-{{ c.key }}"{% if c.default_open %} data-should-open="1"{% endif %}>
+    <summary>{{ c.name }}{% if c.n_items %}<span class="chip">{{ c.n_sections }} 栏</span><span class="chip ok">{{ c.n_items }} 条</span>{% else %}<span class="chip plain">简介</span>{% endif %}</summary>
+    <div class="fold-body">
+      {% if c.error %}<div class="callout warn"><span>抓取异常：{{ c.error }}</span></div>{% endif %}
+      {% if c.intro %}<div class="callout"><span>{{ c.intro }} <a href="{{ c.url }}" target="_blank" rel="noopener">进入站点 →</a></span></div>{% endif %}
+      {% for sec in c.sections %}
+        {% if sec.entries %}
+        <h3 class="sub">{{ sec.label }}<span class="count">{{ sec.entries | length }}</span></h3>
+        <table class="data">
+          <tbody>{% for i in sec.entries %}<tr data-detail-url="{{ i.url }}"><td class="time">{{ i.date }}</td><td><a href="{{ i.url }}" target="_blank" rel="noopener">{{ i.title }}</a></td><td class="exp"><button class="btn ghost tiny" type="button">详情</button></td></tr>{% endfor %}</tbody>
+        </table>
+        {% elif sec.label %}
+        <div class="callout mute"><span>{{ sec.label }}：暂无条目。</span></div>
+        {% endif %}
+      {% endfor %}
+      {% if not c.sections and not c.intro %}
+      <div class="callout mute"><span>栏目为流程文档，<a href="{{ c.url }}" target="_blank" rel="noopener">直达站点</a>。</span></div>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+  </section>
+  {% endfor %}
   </div>
-</details>
-{% endfor %}
-</section>
-{% endfor %}
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function () {
-  // 行内详情（深挖层 2）：点「详情」拉取摘要+附件，展开成一条子行
+  // ---------- 目录树：搜索过滤 ----------
+  var search = document.getElementById('tocSearch');
+  var links = Array.prototype.slice.call(document.querySelectorAll('a.toc-site'));
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      links.forEach(function (a) {
+        var hit = !q || a.textContent.toLowerCase().indexOf(q) > -1
+          || (a.getAttribute('data-site') || '').indexOf(q) > -1;
+        a.classList.toggle('hide', !hit);
+      });
+      document.querySelectorAll('details.toc-grp').forEach(function (d) {
+        var any = d.querySelectorAll('a.toc-site:not(.hide)').length > 0;
+        d.classList.toggle('hide', !any);
+        if (q && any) d.open = true;
+      });
+    });
+  }
+
+  // ---------- 点击：平滑滚动 + 自动展开目标站 + 收起移动端抽屉 ----------
+  var side = document.getElementById('tocSide');
+  links.forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var fold = document.getElementById('site-' + a.getAttribute('data-site'));
+      if (!fold) return;
+      fold.open = true;
+      var top = fold.getBoundingClientRect().top + window.scrollY
+        - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 47) - 12;
+      window.scrollTo({ top: top, behavior: 'smooth' });
+      if (side) side.classList.remove('show');
+    });
+  });
+
+  // ---------- 滚动高亮当前站（rAF 计算式；百分比 rootMargin 在部分环境不触发） ----------
+  var byId = {};
+  links.forEach(function (a) { byId['site-' + a.getAttribute('data-site')] = a; });
+  var folds = Array.prototype.slice.call(document.querySelectorAll('details.fold[id^="site-"]'));
+  var ticking = false;
+  function highlight() {
+    var line = (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h'), 10) || 47) + 96;
+    var best = null, bestTop = -1e9;
+    folds.forEach(function (f) {
+      var top = f.getBoundingClientRect().top;
+      if (top <= line && top > bestTop) { best = f; bestTop = top; }
+    });
+    if (!best) {  // 页面顶部：取第一个折叠块
+      folds.some(function (f) {
+        if (f.getBoundingClientRect().top > line) { best = f; return true; }
+        return false;
+      });
+    }
+    links.forEach(function (a) { a.classList.remove('active'); });
+    var a = best && byId[best.id];
+    if (a) {
+      a.classList.add('active');
+      if (side) {
+        var sb = side.getBoundingClientRect();
+        var ab = a.getBoundingClientRect();
+        if (ab.top < sb.top + 8 || ab.bottom > sb.bottom - 8) a.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () { highlight(); ticking = false; });
+  }, { passive: true });
+  highlight();
+
+  // ---------- 移动端抽屉开关 ----------
+  var fab = document.getElementById('tocFab');
+  if (fab && side) {
+    fab.addEventListener('click', function () { side.classList.toggle('show'); });
+    document.addEventListener('click', function (e) {
+      if (side.classList.contains('show') && !side.contains(e.target) && e.target !== fab) {
+        side.classList.remove('show');
+      }
+    });
+  }
+
+  // ---------- 折叠记忆：手动开过的记住，没动过的按默认 ----------
+  document.querySelectorAll('details.fold[data-fold-key]').forEach(function (d) {
+    var key = 'fold-' + d.getAttribute('data-fold-key');
+    var saved = null;
+    try { saved = localStorage.getItem(key); } catch (e) {}
+    if (saved === '1') d.open = true;
+    else if (saved === '0') d.open = false;
+    else d.open = d.hasAttribute('data-should-open');
+    d.addEventListener('toggle', function () {
+      try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) {}
+    });
+  });
+
+  // ---------- 行内详情（深挖层 2） ----------
   document.querySelectorAll('tr[data-detail-url]').forEach(function (tr) {
     var btn = tr.querySelector('.exp button');
     if (!btn) return;
@@ -93,39 +195,6 @@
       }
     });
   });
-
-  // 折叠记忆：用户手动开过的记住，没动过的按 data-should-open 默认值
-  document.querySelectorAll('details.fold[data-fold-key]').forEach(function (d) {
-    var key = 'fold-' + d.getAttribute('data-fold-key');
-    var saved = null;
-    try { saved = localStorage.getItem(key); } catch (e) {}
-    if (saved === '1') d.open = true;
-    else if (saved === '0') d.open = false;
-    else d.open = d.hasAttribute('data-should-open');
-    d.addEventListener('toggle', function () {
-      try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) {}
-    });
-  });
-
-  var nav = document.querySelector('.anchor-nav');
-  if (!nav || !('IntersectionObserver' in window)) return;
-  var links = Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]'));
-  if (!links.length) return;
-  var map = {};
-  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
-  var spy = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) {
-      if (e.isIntersecting) {
-        links.forEach(function (a) { a.classList.remove('active'); });
-        var a = map[e.target.id];
-        if (a) a.classList.add('active');
-      }
-    });
-  }, { rootMargin: '-25% 0px -65% 0px' });
-  document.querySelectorAll('section[id]').forEach(function (sec) {
-    if (map[sec.id]) spy.observe(sec);
-  });
-  if (links[0]) links[0].classList.add('active');
 })();
 </script>
 {% endblock %}
