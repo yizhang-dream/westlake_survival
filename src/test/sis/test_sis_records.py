@@ -94,7 +94,7 @@ def test_dormitory_real_fixture(monkeypatch):
     assert first.reason == "学习"
     assert first.date_time == "2026/07/05 21:41:19"
     assert first.status == "Passed"
-    assert record.info["On Campus Dormitory"].startswith("Yungu Campus")
+    assert record.info["On Campus Dormitory"].startswith("示例校区")
 
 
 def test_dormitory_info_is_dict_and_raw_kept(monkeypatch):
