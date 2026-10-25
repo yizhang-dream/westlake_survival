@@ -26,3 +26,9 @@ htmlcov/
 *.log
 .idea/
 .vscode/
+
+# 过程产物（截图/验证码/浏览器工具目录）
+.playwright-mcp/
+shot_*
+.vpn_*
+*.png.tmp
