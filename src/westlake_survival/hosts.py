@@ -214,43 +214,85 @@ def cached_content(host: str) -> dict | None:
     return load_cached(key, CONTENT_TTL)
 
 
-def content(host: str, refresh: bool = False, column_limit: int = 8) -> dict:
-    """单个站点的栏目与条目（首页导航 + 每栏第一页）。"""
+def content(host: str, refresh: bool = False, column_limit: int = 8, render: bool = False) -> dict:
+    """单个站点的栏目与条目（首页导航 + 每栏第一页）。
+
+    Args:
+        render: 用无头 Chromium 渲染（JS 站；工程/医学院这类 SPA）。
+            默认 requests 直取，快但拿不到前端渲染的列表。
+    """
     key = f"hosts/content_{host.replace('.', '_')}.json"
     if not refresh:
         cached = load_cached(key, CONTENT_TTL)
         if cached is not None:
             return cached
-    session = _session()
-    import urllib3
-
-    urllib3.disable_warnings()
     fqdn = host if "." in host else f"{host}.westlake.edu.cn"
-    entry = ""
-    html = ""
-    for scheme in ("https", "http"):
-        try:
-            response = session.get(
-                f"{scheme}://{fqdn}/", timeout=(3, 6), allow_redirects=True, verify=False
-            )
-            entry = response.url
-            html = _decode(response)
-            break
-        except Exception:
-            continue
-    if not entry:
-        return {"host": host, "url": "", "title": "", "columns": [], "error": "unreachable"}
-    title_match = _TITLE_RE.search(html[:30000])
-    title = _TAG_RE.sub("", title_match.group(1)).strip()[:80] if title_match else ""
 
-    columns = []
-    for label, url in _nav_columns(html, entry, column_limit):
+    if render:
         try:
-            response = session.get(url, timeout=(3, 6), allow_redirects=True, verify=False)
-            page = _decode(response)
-        except Exception:
-            page = ""
-        columns.append({"name": label, "url": url, "items": _items(page, url)})
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            render = False
+
+    if render:
+        from playwright.sync_api import sync_playwright
+
+        columns = []
+        entry = ""
+        title = ""
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            context = browser.new_context()
+            page = context.new_page()
+            try:
+                page.goto(f"https://{fqdn}/", timeout=45000, wait_until="domcontentloaded")
+                page.wait_for_timeout(3000)
+                entry = page.url
+                title = (page.title() or "")[:80]
+                html = page.content()
+                for label, url in _nav_columns(html, entry, column_limit):
+                    try:
+                        page.goto(url, timeout=30000, wait_until="domcontentloaded")
+                        page.wait_for_timeout(1200)
+                        items = _items(page.content(), url)
+                    except Exception:
+                        items = []
+                    columns.append({"name": label, "url": url, "items": items})
+            finally:
+                context.close()
+                browser.close()
+        if not entry:
+            return {"host": host, "url": "", "title": "", "columns": [], "error": "unreachable"}
+    else:
+        session = _session()
+        import urllib3
+
+        urllib3.disable_warnings()
+        entry = ""
+        html = ""
+        for scheme in ("https", "http"):
+            try:
+                response = session.get(
+                    f"{scheme}://{fqdn}/", timeout=(3, 6), allow_redirects=True, verify=False
+                )
+                entry = response.url
+                html = _decode(response)
+                break
+            except Exception:
+                continue
+        if not entry:
+            return {"host": host, "url": "", "title": "", "columns": [], "error": "unreachable"}
+        title_match = _TITLE_RE.search(html[:30000])
+        title = _TAG_RE.sub("", title_match.group(1)).strip()[:80] if title_match else ""
+
+        columns = []
+        for label, url in _nav_columns(html, entry, column_limit):
+            try:
+                response = session.get(url, timeout=(3, 6), allow_redirects=True, verify=False)
+                page_html = _decode(response)
+            except Exception:
+                page_html = ""
+            columns.append({"name": label, "url": url, "items": _items(page_html, url)})
 
     payload = {
         "host": host,
@@ -286,7 +328,8 @@ def _cli():
     @click.argument("host", required=False)
     @click.option("--all", "mine_all", is_flag=True, help="挖掘所有未配置的存活站点。")
     @click.option("--refresh", is_flag=True)
-    def mine_cmd(host: str | None, mine_all: bool, refresh: bool) -> None:
+    @click.option("--render", is_flag=True, help="用无头浏览器渲染（JS 站）。")
+    def mine_cmd(host: str | None, mine_all: bool, refresh: bool, render: bool) -> None:
         """挖掘一个或全部站点的栏目与条目。"""
         if mine_all:
             targets = [r["host"] for r in sweep() if r["live"] and not r.get("sites_key")]
@@ -297,7 +340,7 @@ def _cli():
         from concurrent.futures import ThreadPoolExecutor
 
         with ThreadPoolExecutor(max_workers=6) as pool:
-            results = list(pool.map(lambda h: content(h, refresh=refresh), targets))
+            results = list(pool.map(lambda h: content(h, refresh=refresh, render=render), targets))
         for item in results:
             click.echo(
                 f"  {item['host']:22} 栏目 {len(item.get('columns') or []):>2}"
@@ -307,9 +350,10 @@ def _cli():
     @group.command(name="show")
     @click.argument("host")
     @click.option("--refresh", is_flag=True)
-    def show_cmd(host: str, refresh: bool) -> None:
+    @click.option("--render", is_flag=True, help="用无头浏览器渲染（JS 站）。")
+    def show_cmd(host: str, refresh: bool, render: bool) -> None:
         """显示某站点挖到的栏目与条目。"""
-        data = content(host, refresh=refresh)
+        data = content(host, refresh=refresh, render=render)
         click.echo(f"{data.get('title') or host}　{data.get('url', '')}")
         for column in data.get("columns") or []:
             click.echo(f"  [{column['name']}] {column['url']}")
