@@ -32,16 +32,47 @@
   {% endif %}
 </div>
 
-{# —— 吸顶锚点导航 —— #}
-<nav class="anchor-nav" id="sis-nav">
-  <a href="#sched">课表</a>
-  <a href="#grades">成绩</a>
-  <a href="#exams">考试</a>
-  <a href="#evals">评教</a>
-  <a href="#archive">学籍档案</a>
-  <a href="#campus">校园记录</a>
-  <a href="#orgs">社团与资助</a>
-</nav>
+{# —— 左侧常驻目录树（组→块二级，2026-10-25 重设计）—— #}
+<div class="sites-layout">
+<aside class="toc-side" id="sisToc" aria-label="学业目录">
+  <div class="toc-title">目录 · 21 块</div>
+  <input class="toc-search" id="sisTocSearch" type="search" placeholder="搜索区块…" autocomplete="off">
+  <details class="toc-grp" open>
+    <summary>学业核心<span class="n">4</span></summary>
+    <a class="toc-site" href="#sched"><span>课表</span></a>
+    <a class="toc-site" href="#grades"><span>成绩 / GPA</span></a>
+    <a class="toc-site" href="#exams"><span>考试安排</span></a>
+    <a class="toc-site" href="#evals"><span>待评教</span></a>
+  </details>
+  <details class="toc-grp">
+    <summary>学籍档案<span class="n">5</span></summary>
+    <a class="toc-site" href="#f-personal"><span>个人信息</span></a>
+    <a class="toc-site" href="#f-academic"><span>学籍信息</span></a>
+    <a class="toc-site" href="#f-ext"><span>扩展信息</span></a>
+    <a class="toc-site" href="#f-reg"><span>学期注册缴费</span></a>
+    <a class="toc-site" href="#f-src"><span>生源信息确认</span></a>
+  </details>
+  <details class="toc-grp">
+    <summary>校园记录<span class="n">8</span></summary>
+    <a class="toc-site" href="#f-dorm"><span>住宿</span></a>
+    <a class="toc-site" href="#f-vol"><span>志愿服务</span></a>
+    <a class="toc-site" href="#f-honor"><span>荣誉</span></a>
+    <a class="toc-site" href="#f-leave"><span>请假</span></a>
+    <a class="toc-site" href="#f-practice"><span>社会实践</span></a>
+    <a class="toc-site" href="#f-disc"><span>违纪</span></a>
+    <a class="toc-site" href="#f-appt"><span>心理预约</span></a>
+    <a class="toc-site" href="#f-leavecheck"><span>离校检查</span></a>
+  </details>
+  <details class="toc-grp">
+    <summary>社团与资助<span class="n">4</span></summary>
+    <a class="toc-site" href="#f-clubs"><span>我的社团</span></a>
+    <a class="toc-site" href="#f-clubdir"><span>社团目录</span></a>
+    <a class="toc-site" href="#f-acts"><span>社团活动</span></a>
+    <a class="toc-site" href="#f-aid"><span>贷款 / 勤工助学</span></a>
+  </details>
+</aside>
+<button class="toc-fab" id="sisTocFab" type="button">☰ 目录</button>
+<div class="toc-main" style="min-width:0">
 
 {# ============================ 课表 ============================ #}
 <section id="sched" class="reveal">
@@ -113,8 +144,7 @@
 
 {% set pf = blocks.get('profile') %}
 {% if pf and not pf.error %}
-<details class="fold" open>
-  <summary>个人信息<span class="chip">{{ pf | length }} 项</span></summary>
+<details class="fold" open id="f-personal"><summary>个人信息<span class="chip">{{ pf | length }} 项</span></summary>
   <div class="fold-body">
     <div class="grid cols-2">
       {% for k, v in pf.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
@@ -125,8 +155,7 @@
 
 {% set ac = blocks.get('academic') %}
 {% if ac and not ac.error %}
-<details class="fold" open>
-  <summary>学籍信息<span class="chip">{{ ac | length }} 项</span></summary>
+<details class="fold" open id="f-academic"><summary>学籍信息<span class="chip">{{ ac | length }} 项</span></summary>
   <div class="fold-body">
     <div class="grid cols-2">
       {% for k, v in ac.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
@@ -137,8 +166,7 @@
 
 {% set ext = blocks.get('extended') %}
 {% if ext is not none and not (ext and ext.error) %}
-<details class="fold">
-  <summary>扩展信息<span class="chip">{{ ext | length if ext else 0 }} 项 · 联系方式与户籍</span></summary>
+<details class="fold" id="f-ext"><summary>扩展信息<span class="chip">{{ ext | length if ext else 0 }} 项 · 联系方式与户籍</span></summary>
   <div class="fold-body">
     <div class="grid cols-2">
       {% for k, v in (ext or {}).items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
@@ -148,8 +176,7 @@
 {% elif ext and ext.error %}<div class="note">扩展信息不可用：{{ ext.error }}</div>{% endif %}
 
 {% if reg is not none and not (reg and reg.error) %}
-<details class="fold">
-  <summary>学期注册缴费<span class="chip">{{ reg.fields.get('Payment Academic Year') or '—' }}</span>{% if reg.notice %}<span class="chip warn">未开放</span>{% endif %}</summary>
+<details class="fold" id="f-reg"><summary>学期注册缴费<span class="chip">{{ reg.fields.get('Payment Academic Year') or '—' }}</span>{% if reg.notice %}<span class="chip warn">未开放</span>{% endif %}</summary>
   <div class="fold-body">
     <div class="grid cols-2">
       {% for k, v in reg.fields.items() %}{% if v %}<div class="card"><div class="label">{{ k }}</div><div class="value small">{{ v }}</div></div>{% endif %}{% endfor %}
@@ -161,8 +188,7 @@
 
 {% set src = blocks.get('source') %}
 {% if src is not none and not (src and src.error) %}
-<details class="fold">
-  <summary>生源信息确认{% if src.message and 'Not yet open' in src.message %}<span class="chip warn">未开放</span>{% endif %}</summary>
+<details class="fold" id="f-src"><summary>生源信息确认{% if src.message and 'Not yet open' in src.message %}<span class="chip warn">未开放</span>{% endif %}</summary>
   <div class="fold-body"><div class="callout"><span>{{ src.message or '状态未知' }}</span></div></div>
 </details>
 {% elif src and src.error %}<div class="note">生源信息不可用：{{ src.error }}</div>{% endif %}
@@ -174,8 +200,7 @@
 
 {% set dorm = blocks.get('dorm') %}
 {% if dorm and not dorm.error %}
-<details class="fold" open>
-  <summary>住宿{% if dorm.info.get('On Campus Dormitory') %}<span class="chip">{{ dorm.info.get('On Campus Dormitory') }}</span>{% endif %}</summary>
+<details class="fold" open id="f-dorm"><summary>住宿{% if dorm.info.get('On Campus Dormitory') %}<span class="chip">{{ dorm.info.get('On Campus Dormitory') }}</span>{% endif %}</summary>
   <div class="fold-body">
     {% if dorm.applications %}
     <table class="data">
@@ -188,8 +213,7 @@
 {% elif dorm and dorm.error %}<div class="note">住宿信息不可用：{{ dorm.error }}</div>{% endif %}
 
 {% if vh is not none and not (vh and vh.error) %}
-<details class="fold" open>
-  <summary>志愿服务<span class="chip">总时长 {{ vh.total_time or '—' }} · {{ vh.entries | length }} 条</span></summary>
+<details class="fold" open id="f-vol"><summary>志愿服务<span class="chip">总时长 {{ vh.total_time or '—' }} · {{ vh.entries | length }} 条</span></summary>
   <div class="fold-body">
     {% if vh.entries %}
     <table class="data">
@@ -203,8 +227,7 @@
 
 {% set ho = blocks.get('honors') %}
 {% if ho is not none and not (ho and ho.error) %}
-<details class="fold">
-  <summary>荣誉{% if ho %}<span class="chip">{{ ho | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+<details class="fold" id="f-honor"><summary>荣誉{% if ho %}<span class="chip">{{ ho | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
   <div class="fold-body">
     {% if ho %}
     <table class="data">
@@ -218,8 +241,7 @@
 
 {% set lv = blocks.get('leave') %}
 {% if lv is not none and not (lv and lv.error) %}
-<details class="fold">
-  <summary>请假{% if lv %}<span class="chip">{{ lv | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+<details class="fold" id="f-leave"><summary>请假{% if lv %}<span class="chip">{{ lv | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
   <div class="fold-body">
     {% if lv %}
     <table class="data">
@@ -233,8 +255,7 @@
 
 {% set pr = blocks.get('practice') %}
 {% if pr is not none and not (pr and pr.error) %}
-<details class="fold">
-  <summary>社会实践{% if pr %}<span class="chip">{{ pr | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+<details class="fold" id="f-practice"><summary>社会实践{% if pr %}<span class="chip">{{ pr | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
   <div class="fold-body">
     {% if pr %}
     <table class="data">
@@ -248,8 +269,7 @@
 
 {% set dc = blocks.get('discipline') %}
 {% if dc is not none and not (dc and dc.error) %}
-<details class="fold">
-  <summary>违纪{% if dc %}<span class="chip warn">{{ dc | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+<details class="fold" id="f-disc"><summary>违纪{% if dc %}<span class="chip warn">{{ dc | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
   <div class="fold-body">
     {% if dc %}
     <table class="data">
@@ -263,8 +283,7 @@
 
 {% set ap = blocks.get('appointments') %}
 {% if ap is not none and not (ap and ap.error) %}
-<details class="fold">
-  <summary>心理预约{% if ap.entries %}<span class="chip">{{ ap.entries | length }} 个时段</span>{% else %}<span class="chip">{{ ap.week or '本周' }} 无预约</span>{% endif %}</summary>
+<details class="fold" id="f-appt"><summary>心理预约{% if ap.entries %}<span class="chip">{{ ap.entries | length }} 个时段</span>{% else %}<span class="chip">{{ ap.week or '本周' }} 无预约</span>{% endif %}</summary>
   <div class="fold-body">
     {% if ap.entries %}
     <table class="data">
@@ -278,8 +297,7 @@
 
 {% set le = blocks.get('leaving') %}
 {% if le is not none and not (le and le.error) %}
-<details class="fold">
-  <summary>离校检查{% if le.message and 'no task' in le.message %}<span class="chip">无离校任务</span>{% endif %}</summary>
+<details class="fold" id="f-leavecheck"><summary>离校检查{% if le.message and 'no task' in le.message %}<span class="chip">无离校任务</span>{% endif %}</summary>
   <div class="fold-body"><div class="callout"><span>{{ le.message or '状态未知' }}</span></div></div>
 </details>
 {% elif le and le.error %}<div class="note">离校检查不可用：{{ le.error }}</div>{% endif %}
@@ -290,8 +308,7 @@
 <h2 class="section">社团与资助</h2>
 
 {% if cl is not none and not (cl and cl.error) %}
-<details class="fold" open>
-  <summary>我的社团<span class="chip">{{ cl | length }} 个</span></summary>
+<details class="fold" open id="f-clubs"><summary>我的社团<span class="chip">{{ cl | length }} 个</span></summary>
   <div class="fold-body">
     {% if cl %}
     <table class="data">
@@ -305,8 +322,7 @@
 
 {% set og = blocks.get('orgs') %}
 {% if og is not none and not (og and og.error) %}
-<details class="fold">
-  <summary>社团目录<span class="chip">{{ og | length }} 个</span></summary>
+<details class="fold" id="f-clubdir"><summary>社团目录<span class="chip">{{ og | length }} 个</span></summary>
   <div class="fold-body">
     {% if og %}<div class="chip-cloud">{% for o in og %}<span class="chip{% if 'Outstanding' in o.name or 'Vibrant' in o.name %} star{% endif %}{% if '链接' in o.name or 'link' in o.name %} outlink{% endif %}">{{ o.name }}</span>{% endfor %}</div>
     {% else %}<div class="callout mute"><span>目录为空。</span></div>{% endif %}
@@ -316,8 +332,7 @@
 
 {% set at = blocks.get('activities') %}
 {% if at is not none and not (at and at.error) %}
-<details class="fold">
-  <summary>社团活动{% if at %}<span class="chip">{{ at | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
+<details class="fold" id="f-acts"><summary>社团活动{% if at %}<span class="chip">{{ at | length }} 条</span>{% else %}<span class="chip">暂无</span>{% endif %}</summary>
   <div class="fold-body">
     {% if at %}<div class="chip-cloud">{% for a in at[:30] %}<span class="chip">{{ a.name or a.title or a }}</span>{% endfor %}</div>
     {% else %}<div class="callout mute"><span>暂无活动报名记录。</span></div>{% endif %}
@@ -327,8 +342,7 @@
 
 {% set ad = blocks.get('aid') %}
 {% if ad is not none and not (ad and ad.error) %}
-<details class="fold">
-  <summary>贷款 / 勤工助学 / 海外交流<span class="chip">贷款 {{ ad.loans | length }} · 岗位 {{ ad.jobs | length }} · 交流 {{ (ad.outbound | length) + (ad.exchange | length) }}</span></summary>
+<details class="fold" id="f-aid"><summary>贷款 / 勤工助学 / 海外交流<span class="chip">贷款 {{ ad.loans | length }} · 岗位 {{ ad.jobs | length }} · 交流 {{ (ad.outbound | length) + (ad.exchange | length) }}</span></summary>
   <div class="fold-body">
     <div class="stats">
       <div class="stat"><div class="label">贷款援助</div><div class="value">{{ ad.loans | length }}<small> 条</small></div></div>
@@ -343,9 +357,85 @@
 </details>
 {% elif ad and ad.error %}<div class="note">资助信息不可用：{{ ad.error }}</div>{% endif %}
 </section>
+</div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script>
+(function () {
+  // —— 左侧目录树交互：搜索 / 点击滚动+展开 / 滚动高亮 / 移动端抽屉 ——
+  var side = document.getElementById('sisToc');
+  var links = Array.prototype.slice.call(document.querySelectorAll('#sisToc a.toc-site'));
+  var search = document.getElementById('sisTocSearch');
+  if (side && links.length) {
+    if (search) {
+      search.addEventListener('input', function () {
+        var q = search.value.trim().toLowerCase();
+        links.forEach(function (a) {
+          a.classList.toggle('hide', !!q && a.textContent.toLowerCase().indexOf(q) === -1);
+        });
+        document.querySelectorAll('#sisToc details.toc-grp').forEach(function (d) {
+          var any = d.querySelectorAll('a.toc-site:not(.hide)').length > 0;
+          d.classList.toggle('hide', !any);
+          if (q && any) d.open = true;
+        });
+      });
+    }
+    links.forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var id = a.getAttribute('href').slice(1);
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (el.tagName === 'DETAILS') el.open = true;
+        var top = el.getBoundingClientRect().top + window.scrollY
+          - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h'), 10) || 47) - 12;
+        window.scrollTo({ top: top, behavior: 'smooth' });
+        side.classList.remove('show');
+      });
+    });
+    var targets = links.map(function (a) {
+      return document.getElementById(a.getAttribute('href').slice(1));
+    }).filter(Boolean);
+    var ticking = false;
+    function highlight() {
+      var line = (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h'), 10) || 47) + 96;
+      var best = null, bestTop = -1e9;
+      targets.forEach(function (el) {
+        var top = el.getBoundingClientRect().top;
+        if (top <= line && top > bestTop) { best = el; bestTop = top; }
+      });
+      if (!best) targets.some(function (el) {
+        if (el.getBoundingClientRect().top > line) { best = el; return true; }
+        return false;
+      });
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (best) {
+        var a = side.querySelector('a[href="#' + best.id + '"]');
+        if (a) {
+          a.classList.add('active');
+          var sb = side.getBoundingClientRect(), ab = a.getBoundingClientRect();
+          if (ab.top < sb.top + 8 || ab.bottom > sb.bottom - 8) a.scrollIntoView({ block: 'nearest' });
+        }
+      }
+    }
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () { highlight(); ticking = false; });
+    }, { passive: true });
+    highlight();
+    var fab = document.getElementById('sisTocFab');
+    if (fab) {
+      fab.addEventListener('click', function () { side.classList.toggle('show'); });
+      document.addEventListener('click', function (e) {
+        if (side.classList.contains('show') && !side.contains(e.target) && e.target !== fab) side.classList.remove('show');
+      });
+    }
+  }
+})();
+</script>
 <script>
 (function () {
   // —— 成绩表筛选：课程名/等级搜索 + 学期下拉 ——

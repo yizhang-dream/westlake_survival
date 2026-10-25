@@ -39,9 +39,16 @@
     <div class="fold-body">
       {% if c.error %}<div class="callout warn"><span>抓取异常：{{ c.error }}</span></div>{% endif %}
       {% if c.intro %}<div class="callout"><span>{{ c.intro }} <a href="{{ c.url }}" target="_blank" rel="noopener">进入站点 →</a></span></div>{% endif %}
+      {% if c.sections | length > 4 %}
+      <div class="chip-cloud sec-nav">
+        {% for sec in c.sections %}{% if sec.entries %}
+        <a class="chip" href="#sec-{{ c.key }}-{{ loop.index }}">{{ sec.label }}</a>
+        {% endif %}{% endfor %}
+      </div>
+      {% endif %}
       {% for sec in c.sections %}
         {% if sec.entries %}
-        <h3 class="sub">{{ sec.label }}<span class="count">{{ sec.entries | length }}</span></h3>
+        <h3 class="sub" id="sec-{{ c.key }}-{{ loop.index }}">{{ sec.label }}<span class="count">{{ sec.entries | length }}</span></h3>
         <table class="data">
           <tbody>{% for i in sec.entries %}<tr data-detail-url="{{ i.url }}"><td class="time">{{ i.date }}</td><td><a href="{{ i.url }}" target="_blank" rel="noopener">{{ i.title }}</a></td><td class="exp"><button class="btn ghost tiny" type="button">详情</button></td></tr>{% endfor %}</tbody>
         </table>
