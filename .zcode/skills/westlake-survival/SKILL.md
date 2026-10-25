@@ -131,8 +131,12 @@ westlake contact phones
 westlake map                                  # 三校区：地址/地图图片/全景/交通
 westlake map --campus 云谷
 westlake sso creds show                       # 终端显示已存教务学号/密码（忘记 SIS 密码时找回）
-westlake map status                           # 只报凭据/令牌有无
-westlake map poi 图书馆                        # 离线查楼宇/设施（随包数据集，无需登录）
+westlake vpn login                            # SSL VPN：弹窗手动输验证码，会话落盘复用
+westlake vpn status                           # 只报会话有效/失效（不打印令牌）
+westlake vpn resources                        # 隧道实际推送的内网主机路由
+westlake sites list                           # 37 个站点索引；sites site <key> 看栏目
+westlake sites detail <url>                   # 条目详情：正文摘要 / 表格 / 附件
+westlake hpc ai                               # Westlake AI 大模型网关（OpenAI 兼容）
 westlake pms stations
 westlake probe
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
