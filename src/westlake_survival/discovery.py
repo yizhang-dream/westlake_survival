@@ -212,34 +212,40 @@ def app_directory(
 
 
 def portal_services() -> list[dict]:
-    """登录门户（统一会话浏览器）取服务大厅部门/应用目录。
+    """登录门户取服务大厅部门/应用目录（18 项）。
 
     数据源：``my.westlake.edu.cn`` 主门户 ``getSiteMap``/``getWestLakeList``
-    接口（2026-10-24 实测 18 项，含 9 个此前未知的部门域名）。需要
-    Playwright 与已配置的统一凭据；会话持久化在 taskcenter profile。
+    接口。门户 API 需要 SPA 自己换到的会话（纯 requests 只拿到
+    ``BOOT_1006``），所以这里用**一次性无头 Chromium**（不碰本机 Chrome、
+    不复用旧 profile）：表单登录一次 → 监听接口响应 → 解析。
 
     Raises:
-        WestlakeError: Playwright 缺失或网络失败。
-        AuthError: 登录失败。
+        WestlakeError: Playwright 缺失、登录失败或站点图为空。
+        AuthError: 账号密码被拒。
     """
     import json as _json
-    import re as _re
+
     from westlake_survival.sso import read_credentials
-    from westlake_survival.taskcenter import PROFILE_DIR, _browser, _ensure_session, _fetch_api
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:  # pragma: no cover - 环境缺依赖
+        raise WestlakeError(
+            "门户站点图需要 Playwright：pip install playwright && playwright install chromium"
+        ) from exc
 
     sid, password = read_credentials()
-    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-    with _browser() as playwright:
-        context = playwright.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=True, viewport={"width": 1280, "height": 800}
-        )
-        page = context.pages[0] if context.pages else context.new_page()
-        captured: dict[str, str] = {}
+    captured: dict[str, str] = {}
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context()
+        page = context.new_page()
 
         def grab(response):
             if "getSiteMap" in response.url or "getWestLakeList" in response.url:
                 try:
-                    captured[response.url.split("get")[-1]] = response.text()[:200000]
+                    captured[response.url] = response.text()[:200000]
                 except Exception:
                     pass
 
@@ -247,13 +253,18 @@ def portal_services() -> list[dict]:
         try:
             page.goto("https://my.westlake.edu.cn/", timeout=60000)
             page.wait_for_timeout(3000)
-            # 门户是独立 OAuth client；复用 IAM 会话可能直接过，否则填表一次
             if "iam.westlake.edu.cn" in page.url:
-                page.wait_for_selector('input[placeholder*="用户名/手机号/邮箱"]', timeout=15000)
+                try:
+                    page.wait_for_selector(
+                        'input[placeholder*="用户名/手机号/邮箱"]', timeout=15000
+                    )
+                except Exception as exc:
+                    raise AuthError("门户登录页未出现用户名输入框") from exc
                 page.fill('input[placeholder*="用户名/手机号/邮箱"]', sid)
                 page.fill('input[placeholder*="密码"]', password)
-                page.locator('span:has-text("立即登录")').first.click(force=True)
-            page.wait_for_timeout(10000)
+                page.locator('button.content_submit').first.click(timeout=10000)
+            page.wait_for_timeout(12000)
+
             rows: list[dict] = []
             for body in captured.values():
                 try:
@@ -269,6 +280,7 @@ def portal_services() -> list[dict]:
             return rows
         finally:
             context.close()
+            browser.close()
 
 
 # --------------------------------------------------------------------------- #
@@ -474,6 +486,14 @@ def _cli():
         for item in items[: max(0, limit)]:
             dept = f"　[{item.department}]" if item.department else ""
             click.echo(f"  {item.name}{dept}")
+
+    @group.command(name="portal")
+    def portal_cmd() -> None:
+        """登录门户取服务大厅 18 项部门/应用目录（统一密码）。"""
+        rows = portal_services()
+        click.echo(f"门户服务目录：{len(rows)} 项")
+        for item in rows:
+            click.echo(f"  {item['name']}　{item['url']}")
 
     @group.command(name="links")
     def links_cmd() -> None:

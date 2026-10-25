@@ -649,7 +649,7 @@ def _setup_context() -> dict:
 
 
 def _sis_context() -> dict:
-    """学业页：21 块全量（课表/成绩/考试/评教 + 学籍档案 + 校园记录 + 社团与资助）。
+    """学业页：24 块全量（课表/成绩/考试/评教 + 第二课堂 + 学业导师 + 其他申请 + 学籍档案 + 校园记录 + 社团与资助）。
 
     首块串行预热（确保 IAM 登录完成后共享会话），其余块 6 线程并行抓取；
     每块独立降级，单块失败不影响整页。
@@ -660,6 +660,23 @@ def _sis_context() -> dict:
         import importlib
 
         return importlib.import_module(f"westlake_survival.sis.{name}")
+
+    def _cached_block(name: str, ttl: float, loader):
+        """学业页大块短时缓存（导师名单 878KB、第二课堂 6 次跳转，重抓很贵）。
+
+        TTL 内直接读磁盘；超过 TTL 或缓存损坏则重抓并回写。凭据/会话从不落盘。
+        """
+        from westlake_survival._cache import load_cached, save_cached
+
+        cached = load_cached(f"sis/{name}.json", ttl)
+        if cached is not None:
+            return cached
+        data = loader()
+        try:
+            save_cached(f"sis/{name}.json", data)
+        except OSError:
+            pass
+        return data
 
     _TERM_ZH = {"Fall Term": "秋季学期", "Spring Term": "春季学期",
                 "Summer Term": "夏季学期", "Winter Term": "冬季学期"}
@@ -756,6 +773,21 @@ def _sis_context() -> dict:
             {"name": e.course_title, "term": _term_zh(e.term), "period": e.period_raw}
             for e in _sis_module("evals").pending_evaluations()
         ],
+        # 第二课堂（首页瓦片入口，左侧导航菜单里没有）
+        "second_class": lambda: _cached_block(
+            "second_class", 3600,
+            lambda: _sis_module("second_class").second_classroom().to_dict(),
+        ),
+        # 学业导师（首页瓦片入口；两轮名单 + 分配结果）
+        "advisor": lambda: _cached_block(
+            "advisor", 6 * 3600,
+            lambda: _sis_module("advisor").advising().to_dict(),
+        ),
+        # 其余申请类（学籍异动 / 困难认定 / 本博衔接 / 就业 / 学术进度）
+        "other_apps": lambda: _cached_block(
+            "other_applications", 3600,
+            lambda: _sis_module("applications").other_applications().to_dict(),
+        ),
         # 学籍档案
         "profile": lambda: _sis_module("profile").personal_info(),
         "academic": lambda: _sis_module("profile").academic_record().get("fields", {}),
@@ -885,6 +917,47 @@ def _canvas_context() -> dict:
             }
             for a in client.upcoming_deadlines(limit=15)
         ]
+        # Canvas 待办（users/self/todo）
+        try:
+            context["todo"] = [
+                {
+                    "course": _clean_name(row.get("course", "")),
+                    "type": row.get("type", ""),
+                    "title": row.get("title", ""),
+                    "due": row.get("due_at", "").replace("Z", "").replace("T", " ")[:16],
+                    "url": row.get("url", ""),
+                }
+                for row in client.todo(limit=20)
+            ]
+        except Exception:
+            context["todo"] = []
+        # 课程内容：模块 / 文件 / 讨论（前 6 门并行，避免 10 门 × 3 接口拖慢）
+        def _course_extra(course):
+            extra = {"id": course.id, "name": name_by_id.get(course.id, str(course.id)),
+                     "modules": [], "files": [], "discussions": []}
+            try:
+                extra["modules"] = client.modules(course.id)
+            except Exception:
+                pass
+            try:
+                extra["files"] = [
+                    {"name": f.display_name or "", "size": f.size or 0,
+                     "url": f.url or ""}
+                    for f in client.list_files(course.id)[:5]
+                ]
+            except Exception:
+                pass
+            try:
+                extra["discussions"] = client.discussions(course.id)[:3]
+            except Exception:
+                pass
+            return extra
+
+        try:
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                context["course_content"] = list(pool.map(_course_extra, courses[:6]))
+        except Exception:
+            context["course_content"] = []
     except Exception as exc:  # pragma: no cover - 降级
         context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
     return context
@@ -975,19 +1048,149 @@ def _finance_context() -> dict:
     return context
 
 
-def _mirrors_context() -> dict:
-    context: dict = {"repos": [], "error": None, "base": ""}
-    module = _import_module("mirrors")
-    if module is None:
-        context["error"] = "mirrors 模块不可用"
-        return context
-    context["base"] = getattr(module, "MIRRORS_URL", "https://mirrors.westlake.edu.cn/")
+def _cached_json(name: str, ttl: float, loader):
+    """通用短时磁盘缓存（门户站点图等慢查询）。"""
+    from westlake_survival._cache import load_cached, save_cached
+
+    cached = load_cached(name, ttl)
+    if cached is not None:
+        return cached
+    data = loader()
     try:
-        context["repos"] = [
-            {"name": r.name, "url": r.url, "help": r.help_url} for r in module.repos()
+        save_cached(name, data)
+    except OSError:
+        pass
+    return data
+
+
+def _reachable(url: str, timeout: float = 3.0) -> bool:
+    """快速判断主机端口是否可达（内网服务离线时别让页面等满超时）。"""
+    import socket
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if not host:
+        return False
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def _lib_context(query: str = "") -> dict:
+    """图书馆页：书目检索 + 我的借阅 + 新书（OPAC 需校园网/VPN）。"""
+    context: dict = {
+        "query": query, "books": [], "loans": [], "new_books": [],
+        "error": None, "loans_error": None, "new_error": None,
+    }
+    module = _import_module("lib")
+    if module is None:
+        context["error"] = "lib 模块不可用"
+        return context
+    opac = getattr(module, "OPAC_BASE", None)
+    if not opac:
+        try:
+            from westlake_survival.lib.opac import OPAC_BASE as opac
+        except Exception:
+            opac = "http://172.16.10.223:8180/opac"
+    if not _reachable(opac):
+        message = "OPAC 仅校园网/VPN 内可达，请先连接学校 VPN"
+        context["error"] = message
+        context["loans_error"] = message
+        context["new_error"] = message
+        return context
+    if query:
+        try:
+            context["books"] = [
+                {
+                    "title": b.title, "author": b.author, "call_no": b.call_no,
+                    "location": b.location, "year": b.publish_year,
+                    "status": b.holding_status, "url": b.detail_url,
+                }
+                for b in module.search(query)
+            ]
+        except Exception as exc:
+            context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    try:
+        context["loans"] = [
+            {
+                "title": loan.title, "due": loan.due_date, "renewable": loan.renewable,
+                "location": loan.location, "barcode": loan.barcode,
+            }
+            for loan in module.my_loans()
         ]
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
+        context["loans_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+    try:
+        context["new_books"] = [
+            {"title": b.title, "author": b.author, "url": b.detail_url}
+            for b in module.new_books(limit=12)
+        ]
+    except Exception as exc:
+        context["new_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+    return context
+
+
+def _pms_context() -> dict:
+    """自助文印页：网点列表 + 我的打印任务 + 用量统计（需校园网/VPN）。"""
+    context: dict = {
+        "stations": [], "jobs": [], "usage": [],
+        "error": None, "jobs_error": None, "usage_error": None,
+    }
+    module = _import_module("pms")
+    if module is None or not hasattr(module, "pms"):
+        context["error"] = "pms 模块不可用"
+        return context
+    try:
+        from westlake_survival.pms.client import resolve_base_url
+
+        base_url = resolve_base_url()
+    except Exception:
+        base_url = "http://print.lib.westlake.edu.cn:9130"
+    if not _reachable(base_url):
+        message = "打印系统仅校园网/VPN 内可达，请先连接学校 VPN"
+        context["error"] = message
+        context["jobs_error"] = message
+        context["usage_error"] = message
+        return context
+    client = module.pms()
+    try:
+        context["stations"] = [
+            {
+                "name": station.name, "campus": station.campus,
+                "position": station.position or station.room_name,
+                "status": station.status_text or ("空闲" if station.is_idle else ""),
+                "papers": station.papers,
+            }
+            for station in client.list_stations()
+        ]
+    except Exception as exc:
         context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    try:
+        context["jobs"] = [
+            {
+                "name": job.name, "status": job.status_text or "—",
+                "pages": job.pages, "copies": job.copies,
+                "created": f"{job.created_date or ''} {job.created_time or ''}".strip(),
+            }
+            for job in client.list_print_jobs()
+        ]
+    except Exception as exc:
+        context["jobs_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+    try:
+        kind_names = {1: "打印", 2: "复印", 3: "扫描"}
+        context["usage"] = [
+            {
+                "kind": kind_names.get(item.type, str(item.type)),
+                "times": item.times, "pages": item.pages, "cost": round(item.cost, 2),
+            }
+            for item in client.usage_stat()
+        ]
+    except Exception as exc:
+        context["usage_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
     return context
 
 
@@ -1071,7 +1274,8 @@ def _affairs_context() -> dict:
     context: dict = {
         "error": None, "apps": [], "links": [],
         "source_url": "one.westlake.edu.cn/taskcenter",
-        "todo": [], "todo_error": None, "doing": [],
+        "todo": [], "todo_error": None, "doing": [], "done": [], "cc": [],
+        "portal": [], "portal_error": None,
     }
     tc = _import_module("taskcenter")
     if tc is not None:
@@ -1085,6 +1289,14 @@ def _affairs_context() -> dict:
             context["doing"] = [{"title": d.title, "status": d.status} for d in tc.doing()]
         except Exception:
             context["doing"] = []
+        try:
+            context["done"] = [{"title": d.title, "status": d.status} for d in tc.done()]
+        except Exception:
+            context["done"] = []
+        try:
+            context["cc"] = [{"title": c.title, "status": c.status} for c in tc.cc()]
+        except Exception:
+            context["cc"] = []
     module = _import_module("discovery")
     if module is not None and hasattr(module, "app_directory"):
         try:
@@ -1095,6 +1307,13 @@ def _affairs_context() -> dict:
             ]
         except Exception as exc:  # pragma: no cover - 数据源异常时降级
             context["error"] = f"办事大厅目录暂时不可用：{exc.__class__.__name__}"
+    if module is not None and hasattr(module, "portal_services"):
+        try:
+            context["portal"] = _cached_json(
+                "portal/services.json", 6 * 3600, module.portal_services
+            )
+        except Exception as exc:
+            context["portal_error"] = f"{exc.__class__.__name__}"[:60]
     context["links"] = [
         {"title": "网上办事大厅", "url": module.TASKCENTER_BASE, "note": "待办/发起流程（统一认证登录）"}
         if module is not None else {},
@@ -1682,6 +1901,14 @@ def create_app() -> Flask:
     @app.route("/mirrors")
     def mirrors_page():
         return render_template("mirrors.html", **_mirrors_context())
+
+    @app.route("/lib")
+    def lib_page():
+        return render_template("lib.html", **_lib_context(request.args.get("q", "").strip()))
+
+    @app.route("/pms")
+    def pms_page():
+        return render_template("pms.html", **_pms_context())
 
     # -- 学术资源页（订阅库 / CARSI / DOI） ---------------------------------- #
     @app.route("/scholar")

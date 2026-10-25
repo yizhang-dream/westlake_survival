@@ -588,6 +588,48 @@ def canvas_deadlines(limit: int) -> None:
     _print_table(rows, ("截止时间", "作业", "链接"))
 
 
+@canvas_cmd.command(name="todo")
+@click.option("--limit", type=int, default=20, show_default=True, help="返回条数。")
+@_handle_canvas_errors
+def canvas_todo(limit: int) -> None:
+    """列出 Canvas 待办（users/self/todo）。"""
+    from westlake_survival.canvas import canvas
+
+    items = canvas().todo(limit=limit)
+    if not items:
+        click.echo("暂无待办")
+        return
+    rows = [
+        (
+            item["due_at"].replace("Z", "").replace("T", " ")[:16] or "—",
+            item["course"] or "—",
+            item["title"] or "—",
+            item["url"] or "",
+        )
+        for item in items
+    ]
+    _print_table(rows, ("截止", "课程", "事项", "链接"))
+
+
+@canvas_cmd.command(name="modules")
+@click.argument("course")
+@_handle_canvas_errors
+def canvas_modules(course: str) -> None:
+    """列出某课程的模块与条目（COURSE 可为 id 或名称关键词）。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    target = client.find_course(course)
+    modules = client.modules(target.id)
+    if not modules:
+        click.echo("该课程没有模块或未开放")
+        return
+    for index, module in enumerate(modules, 1):
+        click.secho(f"{index}. {module['name']}（{module['count']} 项）", bold=True)
+        for item in module["items"]:
+            click.echo(f"   - [{item['type']}] {item['title']} {item['url']}")
+
+
 @canvas_cmd.command(name="exams")
 @click.option("--days", type=int, default=None, help="只看未来 N 天（含今天）；缺省不过滤。")
 @_handle_canvas_errors

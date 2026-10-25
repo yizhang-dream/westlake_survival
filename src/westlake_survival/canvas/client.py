@@ -345,6 +345,80 @@ class CanvasClient:
             )
         return sorted(rows, key=lambda r: r["name"])
 
+    def todo(self, limit: int = 20) -> list[dict]:
+        """Canvas 待办（``GET /users/self/todo``）。
+
+        每条待办带 ``context_name``（课程名）与内嵌 ``assignment``；按截止
+        时间升序、无截止时间的排最后。
+
+        Returns:
+            ``[{type, course, title, due_at, url}]``。
+        """
+        rows: list[dict] = []
+        for item in self._paginate("/users/self/todo"):
+            if not isinstance(item, dict):
+                continue
+            assignment = item.get("assignment") or {}
+            rows.append(
+                {
+                    "type": item.get("type") or "",
+                    "course": item.get("context_name") or "",
+                    "title": assignment.get("name") or item.get("title") or "",
+                    "due_at": assignment.get("due_at") or item.get("due_at") or "",
+                    "url": item.get("html_url") or assignment.get("html_url") or "",
+                }
+            )
+        rows.sort(key=lambda row: row["due_at"] or "9999")
+        return rows[:limit]
+
+    def modules(self, course_id: int | str) -> list[dict]:
+        """课程模块与条目（``GET /courses/:id/modules?include[]=items``）。
+
+        Returns:
+            ``[{name, count, items: [{title, type, url}]}]``，按模块顺序。
+        """
+        params = {"include[]": "items", "per_page": 100}
+        result: list[dict] = []
+        for module in self._paginate(f"/courses/{course_id}/modules", params):
+            if not isinstance(module, dict):
+                continue
+            items = [
+                {
+                    "title": item.get("title") or "",
+                    "type": item.get("type") or "",
+                    "url": item.get("html_url") or item.get("external_url") or "",
+                }
+                for item in (module.get("items") or [])
+                if isinstance(item, dict)
+            ]
+            result.append(
+                {"name": module.get("name") or "", "count": len(items), "items": items}
+            )
+        return result
+
+    def discussions(self, course_id: int | str) -> list[dict]:
+        """课程讨论（``GET /courses/:id/discussion_topics``）。
+
+        Returns:
+            ``[{title, unread, replies, posted, url}]``。
+        """
+        rows: list[dict] = []
+        for item in self._paginate(
+            f"/courses/{course_id}/discussion_topics", {"per_page": 20}
+        ):
+            if not isinstance(item, dict):
+                continue
+            rows.append(
+                {
+                    "title": item.get("title") or "",
+                    "unread": item.get("unread_count") or 0,
+                    "replies": item.get("discussion_subentry_count") or 0,
+                    "posted": item.get("posted_at") or "",
+                    "url": item.get("html_url") or "",
+                }
+            )
+        return rows
+
     def list_assignments(
         self,
         course_id: int | str,

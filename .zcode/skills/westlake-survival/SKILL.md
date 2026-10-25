@@ -1,6 +1,6 @@
 ---
 name: westlake-survival
-description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、交作业（写操作）；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、87 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
+description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、交作业（写操作）；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、87 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
 ---
 
 # 西湖大学生存手册（westlake-survival）
@@ -20,6 +20,9 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 每日晨报（快照+活动+班车+周次+Canvas） | `westlake digest` |
 | 我的课表 / 成绩 / 考试安排 | `westlake sis schedule` / `grades` / `exams` |
 | 待评教任务 | `westlake sis-evals list --pending` |
+| 第二课堂成绩单（5 维度 + 每项进度） | `westlake records second-class` |
+| 学业导师（分配结果 + 两轮名单） | `westlake records advisor` |
+| 学籍异动流程 / 困难认定 / 本博衔接 / 就业状态 | `westlake records other-apps` |
 | 我的个人信息 / 学籍 / 紧急联系人 | `westlake profile info` / `academic` / `extended` |
 | 住宿 / 请假 / 荣誉 / 志愿 / 实践 / 违纪 | `westlake records dorm` 等（见下） |
 | 贷款 / 勤工助学 / 海外交流 / 社团 | `westlake aid loans` 等（见下） |
@@ -43,15 +46,16 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 报销/财务制度/科研经费文档 | `westlake finance sections/articles`，网页 `/finance` |
 | 镜像仓库目录与换源 | `westlake mirrors`，网页 `/mirrors` |
 | 全站服务注册表与在线普查 | 网页 `/services`（30 项全接入：方式徽标+扫描按钮） |
-| 我的待办 / 进行中流程（办事大厅） | `westlake todo list|doing`，网页 `/affairs` 顶部（统一密码自动登录） |
+| 待办 / 进行中 / 已处理 / 抄送 / 我的应用（办事大厅） | `westlake todo list|doing|done|cc|apps`，网页 `/affairs`（统一密码，请求直登） |
+| 门户服务目录（18 部门站点） | `westlake affairs portal`，网页 `/affairs`「门户服务」 |
 | 理论科学研究院新闻/学术活动 | `westlake institute news|events`，网页 `/institute` |
 | 五学院官网最新新闻（理/生/工/医/理论院） | `westlake schools news <学院>`，网页 `/schools` |
 | 服务全景普查（直连子域+办事目录） | `westlake probe scan [--full]`，网页版在 `/capabilities`「运行普查」 |
-| 课表/成绩/考试/待评教（网页） | WebUI `/sis` |
-| Canvas 课程与截止（网页） | WebUI `/canvas` |
+| 课表/成绩/考试/待评教/第二课堂/导师（网页） | WebUI `/sis`（24 块） |
+| Canvas 课程/截止/待办/模块文件（网页） | WebUI `/canvas`；待办 `westlake canvas todo`，模块 `canvas modules <课程>` |
 | 招聘岗位（网页） | WebUI `/careers` |
-| 打印网点 / 我的打印任务 | `westlake pms stations` / `jobs` |
-| 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`（OPAC 服务端当前 404，可能不可用） |
+| 打印网点 / 我的打印任务 | `westlake pms stations` / `jobs`，网页 `/pms` |
+| 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`，网页 `/lib`（OPAC 需校园网/VPN） |
 | 学术数据库清单与访问通道 | `westlake scholar dbs [-k 关键词]`，网页 `/scholar` |
 | 某篇论文（DOI）的题录/PDF | `westlake scholar doi <doi> [-o out.pdf]`（校园网内走订阅通道直下） |
 | 当前 IP 能否直连订阅库 | `westlake scholar campus`（信标探测，缓存 30 分钟） |
@@ -157,7 +161,7 @@ westlake sis exams
 westlake sis ical --out schedule.ics
 westlake sis-evals list --pending
 westlake profile info                        # info|academic|extended
-westlake records dorm                        # dorm|leave|honors|volunteer|practice|discipline
+westlake records dorm                        # dorm|leave|honors|volunteer|practice|discipline|second-class|advisor|other-apps
 westlake aid loans                           # loans|jobs|outbound|exchange|orgs|activities
 westlake lib search 数据结构 --page 1
 westlake lib loans
@@ -216,7 +220,7 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 34 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业 `canvas_deadlines`/`canvas_submit`）。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 46 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业 `canvas_deadlines`/`canvas_submit`）。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}

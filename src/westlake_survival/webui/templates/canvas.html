@@ -16,6 +16,7 @@
   <div class="stat"><div class="label">考试</div><div class="value" data-count="{{ exams | length }}">{{ exams | length }}</div></div>
   <div class="stat"><div class="label">测验</div><div class="value" data-count="{{ quizzes | length }}">{{ quizzes | length }}</div></div>
   <div class="stat"><div class="label">最新公告</div><div class="value">{{ announcements | length if announcements is defined else 0 }}<small> 条</small></div></div>
+  <div class="stat"><div class="label">待办</div><div class="value">{{ todo | length if todo is defined else 0 }}</div></div>
 </div>
 
 {# 旧锚点导航已由全局自动目录替代（2026-10-25） #}
@@ -77,6 +78,54 @@
   <tbody>{% for a in announcements %}<tr><td>{{ a.course }}</td><td>{{ a.title }}</td><td class="time">{{ a.posted }}</td><td><a href="{{ a.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
 </table>
 {% elif not error %}<div class="callout mute"><span>近 6 门课程暂无公告。</span></div>{% endif %}
+</section>
+
+<section id="cv-todo" class="reveal">
+<h2 class="section">待办（{{ todo | length if todo is defined else 0 }}）</h2>
+{% if todo is defined and todo %}
+<table class="data">
+  <thead><tr><th>课程</th><th>类型</th><th>事项</th><th>截止</th><th>链接</th></tr></thead>
+  <tbody>{% for t in todo %}<tr>
+    <td>{{ t.course }}</td><td>{{ t.type }}</td><td>{{ t.title }}</td>
+    <td class="time">{{ t.due or '—' }}</td>
+    <td>{% if t.url %}<a href="{{ t.url }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% elif not error %}<div class="callout mute"><span>暂无待办。</span></div>{% endif %}
+</section>
+
+<section id="cv-content" class="reveal">
+<h2 class="section">课程内容（模块 / 文件 / 讨论）</h2>
+{% if course_content is defined and course_content %}
+{% for c in course_content %}
+<details class="fold"{% if loop.first %} open{% endif %}>
+  <summary>{{ c.name }}<span class="chip">{{ c.modules | length }} 模块 · {{ c.files | length }} 文件{% if c.discussions %} · {{ c.discussions | length }} 讨论{% endif %}</span></summary>
+  <div class="fold-body">
+    {% for m in c.modules %}
+    <div class="callout"><span>模块 {{ loop.index }}：{{ m.name }}（{{ m.count }} 项）</span></div>
+    {% if m['items'] %}
+    <table class="data">
+      <thead><tr><th>条目</th><th>类型</th><th>链接</th></tr></thead>
+      <tbody>{% for it in m['items'] %}<tr><td>{{ it.title }}</td><td>{{ it.type }}</td><td>{% if it.url %}<a href="{{ it.url }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% endif %}
+    {% endfor %}
+    {% if c.files %}
+    <table class="data">
+      <thead><tr><th>文件</th><th>大小</th><th>下载</th></tr></thead>
+      <tbody>{% for f in c.files %}<tr><td>{{ f.name }}</td><td>{{ (f.size / 1024) | round(0) | int }} KB</td><td>{% if f.url %}<a href="{{ f.url }}" target="_blank" rel="noopener">下载</a>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% endif %}
+    {% if c.discussions %}
+    <table class="data">
+      <thead><tr><th>讨论</th><th>未读</th><th>回复</th><th>链接</th></tr></thead>
+      <tbody>{% for d in c.discussions %}<tr><td>{{ d.title }}</td><td>{{ d.unread }}</td><td>{{ d.replies }}</td><td><a href="{{ d.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
+    </table>
+    {% endif %}
+  </div>
+</details>
+{% endfor %}
+{% elif not error %}<div class="callout mute"><span>未获取到课程内容。</span></div>{% endif %}
 </section>
 
 <section id="cv-courses" class="reveal">

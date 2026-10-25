@@ -233,9 +233,12 @@ def test_sis_profile_blocks_full_render(server: str) -> None:
 
 
 def test_sis_all_blocks_render(server: str) -> None:
-    """21 块全接线：新增的注册/志愿历史/预约/离校/生源/社团/资助块都上页面。"""
+    """24 块全接线：注册/志愿/预约/离校/社团/资助/第二课堂/导师/其他申请都上页面。"""
     _, html = _get(server + "/sis")
     for marker in (
+        "第二课堂",           # second_classroom（首页瓦片入口）
+        "学业导师",           # advising（分配结果 + 两轮名单）
+        "学籍异动",           # other_applications（异动流程 tab）
         "学期注册缴费",       # registration（含缴费提示句）
         "生源信息确认",       # source_info_status
         "志愿服务",           # volunteer_history（总时长 + 明细）

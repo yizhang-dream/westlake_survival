@@ -58,6 +58,7 @@ __all__ = [
     "DEFAULT_PORTAL",
     "COMPONENT_URL_TEMPLATE",
     "fetch_page",
+    "form_state",
     "parse_fluid_grid",
     "parse_label_values",
 ]
@@ -418,3 +419,61 @@ def parse_label_values(html: str) -> dict[str, str]:
     parser.feed(html or "")
     parser.close()
     return parser.pairs
+
+
+# --------------------------------------------------------------------------- #
+# PeopleSoft 主表单：动作提交
+# --------------------------------------------------------------------------- #
+_FORM_NAME_RE = re.compile(r"^win\d+$")
+
+
+class _FormParser(HTMLParser):
+    """抓第一个 ``name='winN'`` 主表单的 action 与全部 ``<input>`` 值。
+
+    PeopleSoft 换 tab / 换下拉框都要原样回填表单状态（``ICStateNum`` 等），
+    少一个字段就会被打回登录页或报 ``ICState`` 错误。表单序号随页面变化
+    （实测同一产品里见过 ``win3`` / ``win4``），故按 ``win\\d+`` 匹配。
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.action: str | None = None
+        self.fields: dict[str, str] = {}
+        self._inside = False
+        self._seen = False
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        attrs = {name.lower(): (value or "") for name, value in attrs}
+        if tag == "form" and _FORM_NAME_RE.match(attrs.get("name", "")):
+            if self._seen:  # 只认第一个主表单
+                return
+            self._seen = True
+            self._inside = True
+            self.action = attrs.get("action") or self.action
+            return
+        if tag == "input" and self._inside and attrs.get("name"):
+            self.fields[attrs["name"]] = attrs.get("value", "")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "form" and self._inside:
+            self._inside = False
+
+
+def form_state(html: str) -> tuple[str, dict[str, str]]:
+    """取 PeopleSoft 主表单的 ``(action, 字段表)``，用于回填后 POST。
+
+    Args:
+        html: 组件页 HTML。
+
+    Returns:
+        ``(表单 action URL, {input name: value})``。
+
+    Raises:
+        ParseError: 页面里没有 ``winN`` 表单（结构变化 / 未登录页）。
+    """
+    parser = _FormParser()
+    parser.feed(html or "")
+    parser.close()
+    if not parser.action:
+        raise ParseError("SIS 页面里找不到 winN 主表单，页面结构可能已变化。")
+    return parser.action, parser.fields

@@ -26,10 +26,11 @@ client_id ``0c0b89c56b63e302``，回调 SIS 的 PeopleSoft 落地页）。所以
 from __future__ import annotations
 
 import base64
+import html as _html
 import json
 import logging
 import re
-from urllib.parse import urlencode, urlparse, parse_qs
+from urllib.parse import parse_qs, unquote, urlencode, urlparse
 
 import requests
 
@@ -42,6 +43,7 @@ __all__ = [
     "SIS_OAUTH_CLIENT_ID",
     "authorize_url_for_sis",
     "login",
+    "login_for",
     "exchange_sis_session",
     "canvas_login",
 ]
@@ -299,6 +301,116 @@ def login(
         target = match.group(0) if match else ""
     if target:
         session.get(target, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
+    return session
+
+
+def login_for(
+    entity_url: str,
+    user: str,
+    password: str,
+    *,
+    session: requests.Session | None = None,
+) -> requests.Session:
+    """用统一认证登录任意接了 IAM 的系统（任务中心 / 门户 / …）。
+
+    流程与 SIS 相同，但 ``entityId`` 由目标系统自己的 OAuth 入口给出：
+    ``GET entity_url`` 跟随跳转落到 ``iam.../ac/#/index?lck=…&entityId=…``，
+    认证成功后把 authnEngine 给出的回跳地址跟完，目标系统即建立会话。
+
+    与 :func:`login` 的区别：不做 SIS 专用的 PS_TOKEN 交换，适合
+    infoplus（one.westlake）与门户（my.westlake）这类 OAuth 客户端。
+
+    Raises:
+        AuthError: 账号密码错误或当前处于图形验证码风控态。
+        WestlakeError: 网络/协议异常。
+    """
+    session = session if session is not None else http_session()
+    entry = session.get(entity_url, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
+    match = re.search(r"lck=(context_[A-Za-z0-9_]+)&entityId=([^&]+)", entry.url)
+    if not match:
+        # 已经是登录态（目标系统直接返回）
+        return session
+    lck, entity_id = match.group(1), unquote(match.group(2))
+    referer = f"{IAM_BASE}/ac/"
+
+    chain = _post_json(
+        session,
+        f"{IAM_BASE}/idp/authn/queryAuthMethods",
+        {"lck": lck, "entityId": entity_id},
+        referer=referer,
+    )
+    chain_code = ""
+    for item in chain.get("data") or []:
+        if isinstance(item, dict) and item.get("moduleCode") == "userAndPwd":
+            chain_code = str(item.get("authChainCode") or "")
+            break
+    if not chain_code:
+        raise WestlakeError("未取得 userAndPwd 认证链——IAM 协议可能已变化")
+
+    need = _post_json(
+        session,
+        f"{IAM_BASE}/idp/authn/verifyCodeIsNeed",
+        {
+            "lang": "zh_CN",
+            "loginName": user,
+            "chainCode": chain_code,
+            "authModuleCode": "userAndPwd",
+        },
+        referer=referer,
+    )
+    if need.get("data"):
+        raise AuthError("IAM 当前要求图形验证码（风控态），无头登录被禁。")
+
+    key = _post_json(session, f"{IAM_BASE}/idp/authn/getJsPublicKey", {}, referer=referer)
+    public_b64 = str(key.get("data") or "")
+    if not public_b64:
+        raise WestlakeError("未取得 IAM RSA 公钥")
+
+    execute = _post_json(
+        session,
+        f"{IAM_BASE}/idp/authn/authExecute",
+        {
+            "authModuleCode": "userAndPwd",
+            "authChainCode": chain_code,
+            "entityId": entity_id,
+            "requestType": "chain_type",
+            "lck": lck,
+            "authPara": {
+                "loginName": user,
+                "password": _rsa_encrypt(password, public_b64),
+                "verifyCode": "",
+            },
+        },
+        referer=referer,
+    )
+    message = str(execute.get("message") or execute.get("msg") or "")
+    code = str(execute.get("code") or "")
+    if "成功" not in message or "失败" in message:
+        if code == "4333" or "验证码" in message:
+            raise AuthError(
+                "IAM 当前强制图形验证码（失败计数态）：无头密码登录被禁。"
+            )
+        raise AuthError(f"IAM 登录失败（{code}）：{message or '用户名或密码错误'}")
+    token = str(execute.get("loginToken") or "")
+    if not token:
+        raise WestlakeError("IAM 认证成功但未返回 loginToken——协议可能已变化")
+
+    engine = session.post(
+        f"{IAM_BASE}/idp/authCenter/authnEngine?locale=zh-CN",
+        data={"loginToken": token},
+        headers={
+            "Referer": f"{IAM_BASE}/ac/",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        timeout=DEFAULT_TIMEOUT,
+        allow_redirects=False,
+    )
+    location = engine.headers.get("Location", "")
+    if not location:
+        match = re.search(r'locationValue\s*=\s*"([^"]+)"', engine.text or "")
+        location = _html.unescape(match.group(1)) if match else ""
+    if location:
+        session.get(location, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
     return session
 
 

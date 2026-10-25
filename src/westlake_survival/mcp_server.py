@@ -229,6 +229,27 @@ def _tool_sis_clubs(args: dict) -> Any:
     return [org.to_dict() for org in my_clubs()]
 
 
+def _tool_sis_second_class(args: dict) -> Any:
+    """第二课堂成绩单（5 个维度 + 每项要求进度）。"""
+    from westlake_survival.sis.second_class import second_classroom
+
+    return second_classroom().to_dict()
+
+
+def _tool_sis_advisor(args: dict) -> Any:
+    """学业导师：分配结果 + 各轮名单（配额 / 余量 / 志愿人数）。"""
+    from westlake_survival.sis.advisor import advising
+
+    return advising().to_dict()
+
+
+def _tool_sis_other_applications(args: dict) -> Any:
+    """学籍异动流程 / 困难认定 / 本博衔接 / 就业四类申请状态。"""
+    from westlake_survival.sis.applications import other_applications
+
+    return other_applications().to_dict()
+
+
 def _tool_sites_index(args: dict) -> Any:
     """全部已接入站点索引（key/名称/分组/URL）。"""
     from westlake_survival.sites import sites_index
@@ -671,6 +692,14 @@ def _tool_affairs_apps(args: dict) -> Any:
     }
 
 
+def _tool_affairs_portal(args: dict) -> Any:
+    """门户服务目录（18 项，含各部门站点；需统一密码）。"""
+    from westlake_survival.discovery import portal_services
+
+    rows = portal_services()
+    return {"count": len(rows), "services": rows}
+
+
 def _tool_career_latest(args: dict) -> Any:
     """就业服务网首页三区块（招聘公告/招聘会/宣讲会，免登录公开面）。"""
     from westlake_survival.careersite import announcements
@@ -784,6 +813,14 @@ def _tool_context_snapshot(args: dict) -> Any:
         allowed = " / ".join(item.value for item in Level)
         raise ValueError(f"参数 level 必须是 {allowed} 之一，得到 {level_name!r}") from exc
     return _to_plain(snapshot(level).to_dict())
+
+
+def _tool_canvas_todo(args: dict) -> Any:
+    """Canvas 待办（users/self/todo）：课程 / 类型 / 事项 / 截止 / 链接。"""
+    from westlake_survival.canvas import canvas
+
+    limit = _opt_int(args, "limit", 20, minimum=1, maximum=100)
+    return canvas().todo(limit=limit)
 
 
 def _tool_canvas_deadlines(args: dict) -> Any:
@@ -971,6 +1008,24 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "取我的社团列表（学年 / 社团 / 发起人 / 人数）。",
         "inputSchema": _schema(),
         "handler": _tool_sis_clubs,
+    },
+    {
+        "name": "sis_second_class",
+        "description": "取第二课堂成绩单（5 个维度 + 每项要求进度 + 未完成条数）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_second_class,
+    },
+    {
+        "name": "sis_advisor",
+        "description": "取学业导师：分配结果 + 各轮名单（配额 / 余量 / 志愿人数）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_advisor,
+    },
+    {
+        "name": "sis_other_applications",
+        "description": "取学籍异动流程 / 困难认定 / 本博衔接 / 就业四类申请状态。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_other_applications,
     },
     {
         "name": "sites_index",
@@ -1162,6 +1217,12 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "handler": _tool_affairs_apps,
     },
     {
+        "name": "affairs_portal",
+        "description": "门户服务目录（18 项部门/应用站点，需统一密码）。",
+        "inputSchema": _schema(),
+        "handler": _tool_affairs_portal,
+    },
+    {
         "name": "campus_map",
         "description": "校园地图辅助：三校区地址、官方地图图片、720yun 校园全景与到校交通（含地铁公交首末班）。",
         "inputSchema": _schema(
@@ -1190,6 +1251,14 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             {"days": _int_param("未来天数窗口，默认 14。", minimum=1, maximum=180)}
         ),
         "handler": _tool_canvas_deadlines,
+    },
+    {
+        "name": "canvas_todo",
+        "description": "Canvas 待办列表（课程 / 类型 / 事项 / 截止 / 链接）。",
+        "inputSchema": _schema(
+            {"limit": _int_param("返回条数，默认 20。", minimum=1, maximum=100)}
+        ),
+        "handler": _tool_canvas_todo,
     },
     {
         "name": "canvas_submit",

@@ -1,23 +1,28 @@
-"""网上办事大厅（任务中心）个人数据：我的待办。
+"""网上办事大厅（任务中心）个人数据：待办 / 进行中 / 已处理 / 抄送 / 应用。
 
-解锁方式（2026-10-24 实测）
+解锁方式（2026-10-25 更新）
 ==========================
-requests 走不完 infoplus OAuth 回环（authnEngine → one/infoplus/login?
-retUrl=…/oauth2/authorize → 又回 IAM），但**真浏览器可以**——引擎页的
-auto-submit JS 在浏览器里执行后落地为登录态。因此本模块用 Playwright
-**持久化浏览器配置**（``~/.westlake_survival/taskcenter_profile``）：
+早先 requests 走不完 infoplus OAuth 回环（authnEngine → one/infoplus/login?
+retUrl=…/oauth2/authorize → 又回 IAM），只能靠 Playwright 让引擎页的
+auto-submit JS 自己跑。现在把引擎页里的 ``locationValue`` 直接跟下去即可：
 
-* 首次（或会话失效时）：自动打开 IAM 登录页，用已存统一凭据填表（不打印），
-  浏览器完成全部跳转；
-* 会话有效时：headless 打开即取数，无感。
+1. ``GET /taskcenter/workflow/index`` → 302 authorize → 303 login →
+   IAM ``/ac/#/index?lck=…&entityId=https://one.westlake.edu.cn``；
+2. IAM 认证链（queryAuthMethods → verifyCodeIsNeed → getJsPublicKey →
+   authExecute）拿到 ``loginToken``；
+3. ``POST /idp/authCenter/authnEngine`` 返回的 HTML 里有
+   ``var locationValue = "https://one.westlake.edu.cn/infoplus/login?retUrl=…"``，
+   GET 它即完成 OAuth，会话落进 ``requests.Session``。
 
-数据接口（页面 apiMap 实测）：
+统一封装在 :func:`westlake_survival.iam.login_for`，本模块不再依赖浏览器。
 
-* ``/taskcenter/api/me/tasks/todo`` —— 我的待办；
-* ``/taskcenter/api/me/processes/doing`` —— 进行中流程。
+数据接口（页面网络实测）：
 
-依赖：``pip install playwright && playwright install chromium``。
-无 Playwright 时抛 :class:`WestlakeError` 给出指引。
+* ``api/me/tasks/todo?entrust=true`` —— 我的待办；
+* ``api/me/processes/todo`` / ``doing`` / ``done`` / ``cc``（``unread=true``）；
+* ``api/me/processes/merge`` —— 合并列表；
+* ``api/me/apps`` —— 我有权限发起/访问的应用；
+* ``api/me/preference/FavoriteApps`` —— 常用应用。
 """
 
 from __future__ import annotations
@@ -30,7 +35,17 @@ from pathlib import Path
 from westlake_survival._cache import config_root
 from westlake_survival.exceptions import AuthError, WestlakeError
 
-__all__ = ["TASKCENTER_HOME", "PROFILE_DIR", "TodoTask", "todo", "doing", "cli_group"]
+__all__ = [
+    "TASKCENTER_HOME",
+    "PROFILE_DIR",
+    "TodoTask",
+    "todo",
+    "doing",
+    "done",
+    "cc",
+    "apps",
+    "cli_group",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -120,35 +135,90 @@ def _parse_tasks(payload: dict) -> list[TodoTask]:
 
 
 def _collect(path: str, params: str = "") -> list[TodoTask]:
-    """起持久化浏览器（或复用会话）取一个个人接口。"""
-    from westlake_survival.sso import read_credentials
+    """取一个个人接口（请求直连，2026-10-25 起不再依赖浏览器）。
 
-    try:
-        sid, password = read_credentials()
-    except Exception as exc:
-        raise AuthError("未配置统一凭据；先在网页「设置」页或 westlake setup 配置") from exc
+    任务中心是 infoplus OAuth 客户端；登录走
+    :func:`westlake_survival.iam.login_for`，认证后 authnEngine 回跳落地，
+    会话保存在 ``requests.Session`` 里。
+    """
+    return _parse_tasks(_fetch_json(path, params))
 
-    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-    with _browser() as playwright:
-        context = playwright.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=True, viewport={"width": 1280, "height": 800}
-        )
-        page = context.pages[0] if context.pages else context.new_page()
+
+_SESSION = None
+
+
+def _http_session():
+    """共享的任务中心会话（首次调用时用统一凭据登录 IAM）。"""
+    global _SESSION
+    if _SESSION is None:
+        from westlake_survival import iam
+        from westlake_survival.sso import read_credentials
+
         try:
-            _ensure_session(page, sid, password)
-            return _parse_tasks(_fetch_api(page, path, params))
-        finally:
-            context.close()
+            sid, password = read_credentials()
+        except Exception as exc:
+            raise AuthError("未配置统一凭据；先在网页「设置」页或 westlake setup 配置") from exc
+        _SESSION = iam.login_for(TASKCENTER_HOME, sid, password)
+    return _SESSION
+
+
+def _fetch_json(path: str, params: str = "") -> dict:
+    """请求任务中心接口并返回 JSON；会话失效时重登一次。"""
+    global _SESSION
+    url = f"https://one.westlake.edu.cn/taskcenter/{path.lstrip('/')}"
+    if params:
+        url = f"{url}?{params.lstrip('?')}"
+    for attempt in (0, 1):
+        session = _http_session()
+        response = session.get(url, timeout=30, allow_redirects=True)
+        if "iam.westlake.edu.cn" in response.url or response.status_code in (401, 403):
+            _SESSION = None
+            if attempt == 0:
+                continue
+            raise AuthError("办事大厅会话失效，请重新登录统一认证")
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise WestlakeError(f"任务中心接口返回非 JSON：{response.text[:120]}") from exc
+        return payload
+    raise AuthError("办事大厅会话失效")
 
 
 def todo() -> list[TodoTask]:
     """我的待办任务（可能为空——没有待办是正常状态）。"""
-    return _collect("api/me/tasks/todo")
+    return _collect("api/me/tasks/todo", "entrust=true")
 
 
 def doing() -> list[TodoTask]:
     """我发起的进行中流程。"""
-    return _collect("api/me/processes/doing", "?limit=20&start=0")
+    return _collect("api/me/processes/doing", "limit=20&start=0")
+
+
+def done() -> list[TodoTask]:
+    """我已处理的流程（``processes/done``）。"""
+    return _collect("api/me/processes/done", "limit=20&start=0")
+
+
+def cc() -> list[TodoTask]:
+    """抄送给我的流程（``processes/cc``，只看未读）。"""
+    return _collect("api/me/processes/cc", "limit=10&start=0&unread=true")
+
+
+def apps() -> list[dict]:
+    """我有权限发起/访问的应用（``api/me/apps``）。"""
+    payload = _fetch_json("api/me/apps")
+    rows = []
+    for item in payload.get("entities") or []:
+        if not isinstance(item, dict):
+            continue
+        rows.append(
+            {
+                "name": str(item.get("name") or ""),
+                "code": str(item.get("code") or ""),
+                "uri": str(item.get("uri") or ""),
+            }
+        )
+    return rows
 
 
 # --------------------------------------------------------------------------- #
@@ -197,6 +267,39 @@ def _cli():
             return
         for t in items:
             click.echo(f"  {t.title}　[{t.department}] {t.status}")
+
+    @group.command(name="done")
+    @handle
+    def done_cmd() -> None:
+        """我已处理的流程。"""
+        items = done()
+        if not items:
+            click.echo("没有已处理的流程。")
+            return
+        for t in items:
+            click.echo(f"  {t.title}　[{t.department}] {t.status}")
+
+    @group.command(name="cc")
+    @handle
+    def cc_cmd() -> None:
+        """抄送给我的流程（未读）。"""
+        items = cc()
+        if not items:
+            click.echo("没有抄送事项。")
+            return
+        for t in items:
+            click.echo(f"  {t.title}　[{t.department}] {t.status}")
+
+    @group.command(name="apps")
+    @handle
+    def apps_cmd() -> None:
+        """我有权限发起/访问的应用。"""
+        items = apps()
+        if not items:
+            click.echo("没有可用应用。")
+            return
+        for item in items:
+            click.echo(f"  {item['name']}　{item['uri']}")
 
     return group
 

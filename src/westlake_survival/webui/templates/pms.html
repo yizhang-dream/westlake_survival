@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}自助文印 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">自助文印</h1>
+{% if error %}<div class="note">打印网点不可用：{{ error }}（打印系统仅校园网/VPN 内可达）</div>{% endif %}
+
+<div class="stats">
+  <div class="stat"><div class="label">打印网点</div><div class="value" data-count="{{ stations | length }}">{{ stations | length }}</div></div>
+  <div class="stat"><div class="label">我的任务</div><div class="value" data-count="{{ jobs | length }}">{{ jobs | length }}</div></div>
+  <div class="stat"><div class="label">用量类型</div><div class="value">{{ usage | length }}</div></div>
+</div>
+
+<section id="pms-stations" class="reveal">
+<h2 class="section">打印网点（{{ stations | length }}）</h2>
+{% if stations %}
+<table class="data">
+  <thead><tr><th>网点</th><th>校区</th><th>位置</th><th>状态</th><th>纸型</th></tr></thead>
+  <tbody>{% for s in stations %}<tr>
+    <td>{{ s.name or '—' }}</td><td>{{ s.campus or '—' }}</td><td>{{ s.position or '—' }}</td>
+    <td>{% if s.status %}<span class="chip">{{ s.status }}</span>{% else %}—{% endif %}</td>
+    <td>{{ s.papers | join('、') if s.papers else '—' }}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% elif not error %}
+<div class="callout mute"><span>未获取到网点列表。</span></div>
+{% endif %}
+</section>
+
+<section id="pms-jobs" class="reveal">
+<h2 class="section">我的打印任务（{{ jobs | length }}）</h2>
+{% if jobs %}
+<table class="data">
+  <thead><tr><th>任务</th><th>状态</th><th>页数</th><th>份数</th><th>创建</th></tr></thead>
+  <tbody>{% for j in jobs %}<tr>
+    <td>{{ j.name or '—' }}</td><td>{{ j.status }}</td><td>{{ j.pages or '—' }}</td>
+    <td>{{ j.copies or '—' }}</td><td class="time">{{ j.created or '—' }}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% elif jobs_error %}
+<div class="note">打印任务不可用：{{ jobs_error }}（需打印系统账号与校园网/VPN）</div>
+{% else %}
+<div class="callout mute"><span>当前无打印任务。</span></div>
+{% endif %}
+</section>
+
+<section id="pms-usage" class="reveal">
+<h2 class="section">用量统计（{{ usage | length }}）</h2>
+{% if usage %}
+<table class="data">
+  <thead><tr><th>类型</th><th>次数</th><th>页数</th><th>消费（元）</th></tr></thead>
+  <tbody>{% for u in usage %}<tr><td>{{ u.kind }}</td><td>{{ u.times or 0 }}</td><td>{{ u.pages or 0 }}</td><td>{{ u.cost }}</td></tr>{% endfor %}</tbody>
+</table>
+{% elif usage_error %}
+<div class="note">用量统计不可用：{{ usage_error }}</div>
+{% else %}
+<div class="callout mute"><span>暂无用量数据。</span></div>
+{% endif %}
+</section>
+
+<div class="callout"><span>打印文件可用 <code>westlake pms</code> 命令上传/取件；本页只读展示网点与记录。</span></div>
+{% endblock %}

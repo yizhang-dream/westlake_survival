@@ -106,6 +106,24 @@ from westlake_survival.sis.records import (
     social_practice,
     volunteer_records,
 )
+from westlake_survival.sis.second_class import (
+    SecondClassCategory,
+    SecondClassNode,
+    SecondClassReport,
+    SecondClassRow,
+    second_classroom,
+)
+from westlake_survival.sis.advisor import (
+    Advisor,
+    AdvisorInfo,
+    AdvisorRotation,
+    advising,
+)
+from westlake_survival.sis.applications import (
+    ApplicationStatus,
+    OtherApplications,
+    other_applications,
+)
 
 __all__ = [
     # 客户端
@@ -176,4 +194,19 @@ __all__ = [
     "my_clubs",
     "ActivityRecord",
     "student_activities",
+    # 第二课堂
+    "SecondClassReport",
+    "SecondClassCategory",
+    "SecondClassNode",
+    "SecondClassRow",
+    "second_classroom",
+    # 学业导师
+    "Advisor",
+    "AdvisorRotation",
+    "AdvisorInfo",
+    "advising",
+    # 其他申请（学籍异动 / 困难认定 / 本博衔接 / 就业）
+    "ApplicationStatus",
+    "OtherApplications",
+    "other_applications",
 ]

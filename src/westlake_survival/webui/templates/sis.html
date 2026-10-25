@@ -10,6 +10,9 @@
 {% set reg = blocks.get('registration') %}
 {% set vh = blocks.get('vol_history') %}
 {% set cl = blocks.get('clubs') %}
+{% set sc = blocks.get('second_class') %}
+{% set av = blocks.get('advisor') %}
+{% set oa = blocks.get('other_apps') %}
 
 {# —— 概览数字条：首屏即答案 —— #}
 <div class="stats">
@@ -24,6 +27,12 @@
   {% if vh and not vh.error %}
   <div class="stat"><div class="label">志愿时长</div><div class="value">{% if vh.total_time %}<span data-count="{{ vh.total_time.split(' ')[0] }}">{{ vh.total_time.split(' ')[0] }}</span> <small>{{ vh.total_time.split(' ')[1] }}</small>{% else %}—{% endif %}</div></div>
   {% endif %}
+  {% if sc and not sc.error %}
+  <div class="stat"><div class="label">二课待完成</div><div class="value" data-count="{{ sc.pending }}">{{ sc.pending }}</div></div>
+  {% endif %}
+  {% if av and not av.error and av.assigned %}
+  <div class="stat"><div class="label">学业导师</div><div class="value small">{{ av.assigned }}</div></div>
+  {% endif %}
   {% if cl is not none and not (cl and cl.error) %}
   <div class="stat"><div class="label">我的社团</div><div class="value" data-count="{{ cl | length }}">{{ cl | length }}</div></div>
   {% endif %}
@@ -35,7 +44,7 @@
 {# —— 左侧常驻目录树（组→块二级，2026-10-25 重设计）—— #}
 <div class="sites-layout">
 <aside class="toc-side" id="sisToc" aria-label="学业目录">
-  <div class="toc-title">目录 · 21 块</div>
+  <div class="toc-title">目录 · 24 块</div>
   <input class="toc-search" id="sisTocSearch" type="search" placeholder="搜索区块…" autocomplete="off">
   <details class="toc-grp" open>
     <summary>学业核心<span class="n">4</span></summary>
@@ -44,6 +53,24 @@
     <a class="toc-site" href="#exams"><span>考试安排</span></a>
     <a class="toc-site" href="#evals"><span>待评教</span></a>
   </details>
+  {% if sc and not sc.error and sc.categories %}
+  <details class="toc-grp">
+    <summary>第二课堂<span class="n">{{ sc.categories | length }}</span></summary>
+    {% for c in sc.categories %}<a class="toc-site" href="#f-sc-{{ loop.index0 }}"><span>{{ c.name }}</span></a>{% endfor %}
+  </details>
+  {% endif %}
+  {% if av and not av.error %}
+  <details class="toc-grp">
+    <summary>学业导师<span class="n">{{ av.rotations | length }}</span></summary>
+    {% for r in av.rotations %}<a class="toc-site" href="#f-adv-{{ loop.index0 }}"><span>{{ r.label or '导师名单' }}（{{ r.count }}）</span></a>{% endfor %}
+  </details>
+  {% endif %}
+  {% if oa and not oa.error %}
+  <details class="toc-grp">
+    <summary>其他申请<span class="n">5</span></summary>
+    <a class="toc-site" href="#f-apps"><span>异动 / 困难认定 / 本博 / 就业 / 进度</span></a>
+  </details>
+  {% endif %}
   <details class="toc-grp">
     <summary>学籍档案<span class="n">5</span></summary>
     <a class="toc-site" href="#f-personal"><span>个人信息</span></a>
@@ -136,6 +163,91 @@
 </table>
 {% elif not (ev and ev.error) %}<div class="callout mute"><span>暂无待评教任务。</span></div>{% else %}<div class="note">评教不可用：{{ ev.error }}</div>{% endif %}
 {% endif %}
+</section>
+
+{# ============================ 第二课堂 ============================ #}
+<section id="second-class" class="reveal">
+{% if sc and not sc.error %}
+<h2 class="section">第二课堂（{{ sc.pending }} 项待完成）</h2>
+<div class="term-cards">
+  {% for c in sc.categories %}
+  <div class="card">
+    <div class="label">{{ c.name }}</div>
+    <div class="value">{{ c.percent if c.percent is not none else '—' }}{% if c.percent is not none %}%{% endif %}</div>
+    <div class="progress"><span style="width: {{ c.percent or 0 }}%"></span></div>
+  </div>
+  {% endfor %}
+</div>
+{% for c in sc.categories %}
+<details class="fold" id="f-sc-{{ loop.index0 }}"{% if loop.first %} open{% endif %}>
+  <summary>{{ c.name }}<span class="chip">{{ c.percent if c.percent is not none else '—' }}{% if c.percent is not none %}%{% endif %}</span></summary>
+  <div class="fold-body">
+    {% for n in c.nodes %}
+      {% if n.name and n.name != c.name %}
+      <div class="callout"><span>{{ n.name }}{% if n.percent is not none %} · {{ n.percent }}%{% endif %}{% if n.note %} · {{ n.note }}{% endif %}</span></div>
+      {% endif %}
+      {% if n.rows %}
+      <table class="data">
+        <thead><tr><th>要求</th><th>完成进度</th></tr></thead>
+        <tbody>{% for r in n.rows %}<tr><td>{{ r.requirement }}</td><td class="time">{{ r.progress or '—' }}</td></tr>{% endfor %}</tbody>
+      </table>
+      {% endif %}
+      {% for ch in n.children %}
+      <div class="callout"><span>{{ ch.name }}{% if ch.percent is not none %} · {{ ch.percent }}%{% endif %}</span></div>
+      {% if ch.rows %}
+      <table class="data">
+        <thead><tr><th>要求</th><th>完成进度</th></tr></thead>
+        <tbody>{% for r in ch.rows %}<tr><td>{{ r.requirement }}</td><td class="time">{{ r.progress or '—' }}</td></tr>{% endfor %}</tbody>
+      </table>
+      {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+{% elif sc and sc.error %}
+<div class="note">第二课堂不可用：{{ sc.error }}</div>
+{% else %}
+<div class="callout mute"><span>第二课堂数据未加载。</span></div>
+{% endif %}
+</section>
+
+{# ============================ 学业导师 ============================ #}
+<section id="advisor" class="reveal">
+{% if av and not av.error %}
+<h2 class="section">学业导师{% if av.assigned %}（已分配：{{ av.assigned }}）{% endif %}</h2>
+{% if av.announcement %}<div class="callout"><span>{{ av.announcement }}</span></div>{% endif %}
+{% for r in av.rotations %}
+<details class="fold" id="f-adv-{{ loop.index0 }}"{% if loop.first %} open{% endif %}>
+  <summary>{{ r.label or '导师名单' }}<span class="chip">{{ r.count }} 位</span></summary>
+  <div class="fold-body">
+    <table class="data">
+      <thead><tr><th>导师</th><th>学院</th><th>配额</th><th>余量</th><th>1志愿</th><th>2志愿</th><th>3志愿</th></tr></thead>
+      <tbody>{% for a in r.advisors %}<tr><td>{{ a.name }}</td><td>{{ a.school }}</td><td>{{ a.quota }}</td><td>{{ a.remaining or '—' }}</td><td>{{ a.choices.get('1st Choice') or '—' }}</td><td>{{ a.choices.get('2nd Choice') or '—' }}</td><td>{{ a.choices.get('3rd Choice') or '—' }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</details>
+{% endfor %}
+{% elif av and av.error %}<div class="note">学业导师不可用：{{ av.error }}</div>{% endif %}
+</section>
+
+{# ============================ 其他申请 ============================ #}
+<section id="other-apps" class="reveal">
+{% if oa and not oa.error %}
+<h2 class="section">其他申请</h2>
+<details class="fold" id="f-apps" open>
+  <summary>学籍异动 / 困难认定 / 本博衔接 / 就业<span class="chip">{{ oa.status_change.tabs | length }} 类异动流程</span></summary>
+  <div class="fold-body">
+    <div class="callout"><span>学籍异动可办理流程：{{ oa.status_change.tabs | join(' · ') }}</span></div>
+    <div class="grid cols-2">
+      <div class="card"><div class="label">困难认定</div><div class="value small">{{ oa.difficulty.count }} 条申请{% if oa.difficulty.message %} · {{ oa.difficulty.message }}{% endif %}</div></div>
+      <div class="card"><div class="label">本博衔接</div><div class="value small">{{ oa.phd.count }} 条申请{% if oa.phd.message %} · {{ oa.phd.message }}{% endif %}</div></div>
+      <div class="card"><div class="label">就业服务</div><div class="value small">{{ oa.employment.count }} 条{% if oa.employment.message %} · {{ oa.employment.message }}{% endif %}</div></div>
+      <div class="card"><div class="label">学术进度</div><div class="value small">{{ oa.academic_progress.count }} 条{% if oa.academic_progress.message %} · {{ oa.academic_progress.message }}{% endif %}</div></div>
+    </div>
+  </div>
+</details>
+{% elif oa and oa.error %}<div class="note">其他申请不可用：{{ oa.error }}</div>{% endif %}
 </section>
 
 {# ============================ 学籍档案 ============================ #}

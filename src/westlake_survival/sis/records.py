@@ -1050,7 +1050,7 @@ def _print_table(rows, headers) -> None:
     _impl(rows, headers)
 
 
-@click.group(name="records", help="学生事务记录：住宿 / 请假 / 荣誉 / 志愿 / 实践 / 违纪 / 注册 / 预约等。")
+@click.group(name="records", help="学生事务记录：住宿 / 请假 / 荣誉 / 志愿 / 实践 / 违纪 / 第二课堂 / 学业导师 / 异动 / 注册 / 预约等。")
 def cli_group() -> None:
     """``westlake records`` 命令组（注册由 ``cli.main`` 后续完成）。"""
 
@@ -1204,3 +1204,90 @@ def records_leaving_check() -> None:
 def records_source_info() -> None:
     """显示生源信息确认状态。"""
     click.echo(source_info_status()["message"] or "未获取到提示")
+
+
+@cli_group.command(name="advisor")
+@click.option("--rotation", default=None, help="只看某轮（如 1 / 2 或 Rotation 标签关键词）")
+@click.option("--limit", default=20, show_default=True, help="每轮最多列出多少位导师")
+@_handle_errors
+def records_advisor(rotation: str | None, limit: int) -> None:
+    """显示学业导师分配结果与各轮名单。"""
+    from westlake_survival.sis.advisor import advising
+
+    info = advising()
+    if info.announcement:
+        click.echo(info.announcement)
+    for item in info.rotations:
+        if rotation and rotation not in item.label and rotation != item.code:
+            continue
+        click.secho(f"{item.label or '导师名单'}：{len(item.advisors)} 位", bold=True)
+        ranked = sorted(
+            item.advisors,
+            key=lambda a: _to_int(a.choices.get("1st Choice")),
+            reverse=True,
+        )
+        for advisor in ranked[: max(0, limit)]:
+            click.echo(
+                f"  {advisor.name}｜{advisor.school}｜配额 {advisor.quota or '—'}"
+                f"｜余量 {advisor.remaining or '—'}｜1志愿 {advisor.choices.get('1st Choice') or '—'}"
+            )
+        if len(ranked) > limit:
+            click.echo(f"  …另有 {len(ranked) - limit} 位（--limit 调整）")
+
+
+def _to_int(value: str | None) -> int:
+    """把页面上的计数文本转 int（非数字按 0）。"""
+    text = str(value or "").strip()
+    return int(text) if text.isdigit() else 0
+
+
+@cli_group.command(name="other-apps")
+@_handle_errors
+def records_other_apps() -> None:
+    """显示学籍异动 / 困难认定 / 本博衔接 / 就业四类申请状态。"""
+    from westlake_survival.sis.applications import other_applications
+
+    data = other_applications()
+    tabs = data.status_change.tabs
+    click.secho(f"学籍异动可办理流程（{len(tabs)}）", bold=True)
+    click.echo("  " + " · ".join(tabs) if tabs else "  （未取到流程列表）")
+    for label, item in (
+        ("困难认定", data.difficulty),
+        ("本博衔接", data.phd),
+        ("就业服务", data.employment),
+        ("学术进度", data.academic_progress),
+    ):
+        click.echo(f"{label}：{item.count} 条" + (f"｜{item.message}" if item.message else ""))
+
+
+@cli_group.command(name="second-class")
+@_handle_errors
+def records_second_class() -> None:
+    """显示第二课堂成绩单（5 个维度 + 每项要求进度）。"""
+    from westlake_survival.sis.second_class import second_classroom
+
+    report = second_classroom()
+    if not report.categories:
+        click.echo("暂无第二课堂记录")
+        return
+    for category in report.categories:
+        percent = f"{category.percent}%" if category.percent is not None else "—"
+        click.secho(f"{category.name}（{percent}）", bold=True)
+        for node in category.nodes:
+            show_node = bool(node.name) and node.name != category.name
+            if show_node:
+                label = node.name
+                if node.percent is not None:
+                    label = f"{label}（{node.percent}%）"
+                click.echo(f"  {label}")
+            indent = "    " if show_node else "  "
+            for row in node.rows:
+                click.echo(f"{indent}{row.requirement}：{row.progress or '—'}")
+            for child in node.children:
+                child_label = child.name
+                if child.percent is not None:
+                    child_label = f"{child_label}（{child.percent}%）"
+                click.echo(f"    {child_label}")
+                for row in child.rows:
+                    click.echo(f"      {row.requirement}：{row.progress or '—'}")
+    click.echo(f"未完成要求：{report.pending} 条")

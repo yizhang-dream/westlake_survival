@@ -10,6 +10,9 @@
   <div class="stat"><div class="label">流程应用</div><div class="value" data-count="{{ apps | length }}">{{ apps | length }}</div></div>
   <div class="stat"><div class="label">我的待办</div><div class="value" data-count="{{ todo | length if todo else 0 }}">{{ todo | length if todo else 0 }}</div></div>
   <div class="stat"><div class="label">进行中流程</div><div class="value" data-count="{{ doing | length if doing else 0 }}">{{ doing | length if doing else 0 }}</div></div>
+  <div class="stat"><div class="label">已处理</div><div class="value" data-count="{{ done | length if done else 0 }}">{{ done | length if done else 0 }}</div></div>
+  <div class="stat"><div class="label">抄送</div><div class="value" data-count="{{ cc | length if cc else 0 }}">{{ cc | length if cc else 0 }}</div></div>
+  <div class="stat"><div class="label">门户服务</div><div class="value">{{ portal | length if portal else 0 }}</div></div>
   <div class="stat"><div class="label">常用入口</div><div class="value" data-count="{{ links | length }}">{{ links | length }}</div></div>
 </div>
 
@@ -57,6 +60,48 @@
 {% else %}
 <h2 class="section">我发起的流程</h2>
 <div class="callout mute"><span>没有进行中的流程。</span></div>
+{% endif %}
+</section>
+
+<section id="af-done" class="reveal">
+<h2 class="section">已处理流程（{{ done | length if done else 0 }}）</h2>
+{% if done %}
+<table class="data">
+  <thead><tr><th>流程</th><th>状态</th></tr></thead>
+  <tbody>{% for d in done %}<tr><td>{{ d.title }}</td><td>{% if d.status %}<span class="chip">{{ d.status }}</span>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<div class="callout mute"><span>没有已处理的流程。</span></div>
+{% endif %}
+</section>
+
+<section id="af-cc" class="reveal">
+<h2 class="section">抄送给我（{{ cc | length if cc else 0 }}）</h2>
+{% if cc %}
+<table class="data">
+  <thead><tr><th>流程</th><th>状态</th></tr></thead>
+  <tbody>{% for c in cc %}<tr><td>{{ c.title }}</td><td>{% if c.status %}<span class="chip">{{ c.status }}</span>{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<div class="callout mute"><span>没有抄送事项。</span></div>
+{% endif %}
+</section>
+
+<section id="af-portal" class="reveal">
+<h2 class="section">门户服务（{{ portal | length if portal else 0 }}）</h2>
+{% if portal %}
+<div class="grid cols-2">
+  {% for p in portal %}
+  <div class="card">
+    <div style="font-weight:600">{{ p.name }}</div>
+    <div class="muted" style="font-size:.8rem;margin-top:.15rem"><a href="{{ p.url }}" target="_blank" rel="noopener">{{ p.url }}</a></div>
+  </div>
+  {% endfor %}
+</div>
+{% elif portal_error %}
+<div class="note">门户服务目录不可用（{{ portal_error }}；需统一密码）</div>
+{% else %}
+<div class="callout mute"><span>未取到门户服务目录。</span></div>
 {% endif %}
 </section>
 

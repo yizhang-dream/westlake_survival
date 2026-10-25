@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}图书馆 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">图书馆</h1>
+{% if error %}<div class="note">书目检索不可用：{{ error }}（馆藏 OPAC 仅校园网/VPN 内可达）</div>{% endif %}
+
+<div class="stats">
+  <div class="stat"><div class="label">当前借阅</div><div class="value" data-count="{{ loans | length }}">{{ loans | length }}</div></div>
+  <div class="stat"><div class="label">新书</div><div class="value">{{ new_books | length }}<small> 本</small></div></div>
+  {% if query %}<div class="stat"><div class="label">检索结果</div><div class="value">{{ books | length }}</div></div>{% endif %}
+</div>
+
+<form class="filter" method="get" action="/lib">
+  <label>检索题名
+    <input type="search" name="q" value="{{ query }}" placeholder="如：数据结构" autocomplete="off">
+  </label>
+  <button class="btn" type="submit">检索</button>
+</form>
+
+<section id="lib-results" class="reveal">
+<h2 class="section">检索结果{% if query %}（{{ books | length }}）{% endif %}</h2>
+{% if query and books %}
+<table class="data">
+  <thead><tr><th>题名</th><th>作者</th><th>出版年</th><th>索书号</th><th>馆藏地</th><th>状态</th><th>详情</th></tr></thead>
+  <tbody>{% for b in books %}<tr>
+    <td>{{ b.title }}</td><td>{{ b.author or '—' }}</td><td>{{ b.year or '—' }}</td>
+    <td>{{ b.call_no or '—' }}</td><td>{{ b.location or '—' }}</td><td>{{ b.status or '—' }}</td>
+    <td>{% if b.url %}<a href="{{ b.url }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% elif query and not error %}
+<div class="callout mute"><span>没有匹配的书目。</span></div>
+{% else %}
+<div class="callout mute"><span>输入题名开始检索（OPAC 需校园网/VPN）。</span></div>
+{% endif %}
+</section>
+
+<section id="lib-loans" class="reveal">
+<h2 class="section">我的借阅（{{ loans | length }}）</h2>
+{% if loans %}
+<table class="data">
+  <thead><tr><th>题名</th><th>应还日期</th><th>续借</th><th>馆藏地</th></tr></thead>
+  <tbody>{% for l in loans %}<tr>
+    <td>{{ l.title }}</td><td class="time">{{ l.due or '—' }}</td>
+    <td>{% if l.renewable is none %}—{% elif l.renewable %}<span class="chip ok">可续借</span>{% else %}<span class="chip">不可</span>{% endif %}</td>
+    <td>{{ l.location or '—' }}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% elif loans_error %}
+<div class="note">借阅记录不可用：{{ loans_error }}（需校园网/VPN 与统一凭据）</div>
+{% else %}
+<div class="callout mute"><span>当前无借阅记录。</span></div>
+{% endif %}
+</section>
+
+<section id="lib-new" class="reveal">
+<h2 class="section">新书（{{ new_books | length }}）</h2>
+{% if new_books %}
+<div class="grid cols-2">
+  {% for b in new_books %}
+  <div class="card">
+    <div style="font-weight:600">{{ b.title }}</div>
+    <div class="muted" style="font-size:.82rem">{{ b.author or '—' }}</div>
+    {% if b.url %}<div style="font-size:.8rem;margin-top:.3rem"><a href="{{ b.url }}" target="_blank" rel="noopener">详情 →</a></div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% elif new_error %}
+<div class="note">新书列表不可用：{{ new_error }}</div>
+{% else %}
+<div class="callout mute"><span>暂无新书数据。</span></div>
+{% endif %}
+</section>
+{% endblock %}

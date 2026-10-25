@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,24 @@ def load_json(name: str, default: Any = None) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return default
+
+
+def load_cached(name: str, ttl: float, default: Any = None) -> Any:
+    """读取带时间戳的缓存；超过 *ttl* 秒或格式不符时返回 *default*。"""
+    payload = load_json(name)
+    if not isinstance(payload, dict) or "ts" not in payload:
+        return default
+    try:
+        if time.time() - float(payload["ts"]) > ttl:
+            return default
+    except (TypeError, ValueError):
+        return default
+    return payload.get("data", default)
+
+
+def save_cached(name: str, data: Any) -> Path:
+    """写入带时间戳的缓存（配合 :func:`load_cached` 使用）。"""
+    return save_json(name, {"ts": time.time(), "data": data})
 
 
 def clear(prefix: str | None = None) -> int:
