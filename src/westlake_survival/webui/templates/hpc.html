@@ -21,4 +21,17 @@
 </table>
 <div class="callout"><span>作业提交/配额需登录 <a href="{{ portal }}" target="_blank" rel="noopener">HPC Portal（统一密码）</a>；手册在 <a href="{{ main }}" target="_blank" rel="noopener">HPC 官网</a>。</span></div>
 {% elif not error %}<div class="callout mute"><span>暂无队列数据。</span></div>{% endif %}
+
+{% if ai %}
+<section class="card reveal" style="margin-top:1.6rem">
+  <div class="card-head"><h2 class="section">Westlake AI · 大模型 API 网关<span class="chip {{ 'ok' if ai_probe.alive else 'warn' }}">{{ '在役' if ai_probe.alive else '探测未过' }}</span></h2></div>
+  <div class="callout"><span><strong>OpenAI 兼容接口</strong>（New API 网关）——本机/Agent 可直接当模型服务用。
+    私有令牌用校园 SSO 在 <a href="{{ ai.key_url }}" target="_blank" rel="noopener">「Westlake AI 私有令牌申请」页</a> 免费领取。</span></div>
+  <div class="chip-cloud" style="margin-top:.8rem">
+    <span class="chip">网关 {{ ai.gateway }}</span>
+    {% for m in ai.models %}<span class="chip star">{{ m }}</span>{% endfor %}
+  </div>
+  <p class="muted" style="margin-top:.7rem;font-size:.86rem">调用示例：<code>POST {{ ai.gateway }}/chat/completions</code>，头 <code>Authorization: Bearer &lt;私有令牌&gt;</code>；官网 AI Campus 页还为 {{ ai.tool_panels | join(' / ') }} 生成现成配置模板。</p>
+</section>
+{% endif %}
 {% endblock %}

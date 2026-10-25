@@ -267,6 +267,15 @@ def _tool_vpn_status(args: dict) -> Any:
     return st
 
 
+def _tool_hpc_ai(args: dict) -> Any:
+    """Westlake AI 大模型网关：地址/领令牌/模型清单 + 网关存活探测。"""
+    from westlake_survival.hpc import ai_gateway_probe, ai_service
+
+    info = ai_service()
+    info["probe"] = ai_gateway_probe()
+    return info
+
+
 def _tool_sis_statuses(args: dict) -> Any:
     """离校检查 / 生源确认 / 工时申报三类状态提示。"""
     from westlake_survival.sis.aid import job_claim
@@ -992,6 +1001,12 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "SSL VPN 会话状态与内网资源列表（需在网页 /vpn 手动登录过）。",
         "inputSchema": _schema(),
         "handler": _tool_vpn_status,
+    },
+    {
+        "name": "hpc_ai",
+        "description": "Westlake AI 大模型网关（OpenAI 兼容）：网关地址 / 领令牌入口 / 模型清单 / 存活探测。",
+        "inputSchema": _schema(),
+        "handler": _tool_hpc_ai,
     },
     {
         "name": "sis_statuses",

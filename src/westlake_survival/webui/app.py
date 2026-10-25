@@ -939,6 +939,13 @@ def _hpc_context() -> dict:
         context["main"] = module.HPC_MAIN
     except Exception as exc:  # pragma: no cover
         context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    # Westlake AI 网关（独立 try，失败不拖垮队列表）
+    try:
+        context["ai"] = module.ai_service()
+        context["ai_probe"] = module.ai_gateway_probe()
+    except Exception as exc:  # noqa: BLE001
+        context["ai"] = None
+        context["ai_probe"] = {"alive": False, "note": str(exc)[:80]}
     return context
 
 

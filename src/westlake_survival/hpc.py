@@ -28,14 +28,29 @@ from westlake_survival.exceptions import ParseError, WestlakeError
 __all__ = [
     "HPC_MAIN",
     "HPC_PORTAL",
+    "AI_GATEWAY",
+    "AI_KEY_URL",
+    "AI_MODELS",
+    "AI_TOOL_PANELS",
     "QueueSpec",
     "HpcOverview",
     "overview",
+    "ai_service",
     "cli_group",
 ]
 
 HPC_MAIN = "https://hpc.westlake.edu.cn/"
 HPC_PORTAL = "https://hpc.westlake.edu.cn:9002/login.html"
+
+#: Westlake AI——HPC 中心运营的 OpenAI 兼容大模型网关（New API，2026-10-25
+#: 从主站 bundle 反出）。令牌凭校园 SSO 在 key_url 免费自助领取；网关
+#: ``/v1/models`` 未带令牌返回 401（new_api_error）。
+AI_GATEWAY = "https://hpc-api.westlake.edu.cn/v1"
+AI_KEY_URL = "https://hpc.westlake.edu.cn/newapi-auto-key"
+#: bundle 配置模板里的模型清单（页面标题「Westlake AI 私有令牌申请」）。
+AI_MODELS = ("GLM-5.3-Flash", "DeepSeek-V4.1-Flash", "Qwen 3.8")
+#: 官网 AI Campus 为这些客户端生成现成配置模板（opencode 模板含完整 provider JSON）。
+AI_TOOL_PANELS = ("opencode", "claude", "vscode", "deepseek")
 
 #: 队列表在 bundle 里的锚点。
 _QUEUE_ANCHOR = "Number of Nodes"
@@ -145,6 +160,44 @@ def overview(
 
 
 # --------------------------------------------------------------------------- #
+# Westlake AI（OpenAI 兼容大模型网关）
+# --------------------------------------------------------------------------- #
+def ai_service(*, session: requests.Session | None = None, timeout: float | None = None) -> dict:
+    """Westlake AI 网关服务信息：网关地址 / 领令牌入口 / 模型清单。
+
+    数据从主站 bundle 反出（静态清单）；``probe=True`` 语义由调用方用
+    :func:`ai_gateway_probe` 实测网关可达性。
+    """
+    return {
+        "gateway": AI_GATEWAY,
+        "key_url": AI_KEY_URL,
+        "models": list(AI_MODELS),
+        "tool_panels": list(AI_TOOL_PANELS),
+        "usage": (
+            "OpenAI 兼容：POST {gateway}/chat/completions，"
+            "Authorization: Bearer <私有令牌>；令牌在 key_url 用校园 SSO 免费领取"
+        ).format(gateway=AI_GATEWAY),
+    }
+
+
+def ai_gateway_probe(
+    *, session: requests.Session | None = None, timeout: float = 8.0
+) -> dict:
+    """探测网关存活：无令牌访问 ``/v1/models``，401=new_api 网关在役。"""
+    session = session if session is not None else direct_session()
+    try:
+        resp = session.get(f"{AI_GATEWAY}/models", timeout=timeout)
+        body = resp.text[:160]
+        return {
+            "alive": resp.status_code in (401, 403),
+            "status": resp.status_code,
+            "note": "网关在役（需令牌）" if resp.status_code in (401, 403) else body,
+        }
+    except requests.RequestException as exc:
+        return {"alive": False, "status": 0, "note": f"{exc.__class__.__name__}: {exc}"[:120]}
+
+
+# --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
 def _cli():
@@ -181,6 +234,21 @@ def _cli():
             for key, value in q.specs:
                 click.echo(f"     {key:<8} {value}")
         click.echo(f"\nPortal（统一密码登录）：{HPC_PORTAL}")
+
+    @group.command(name="ai")
+    @handle
+    def ai_cmd() -> None:
+        """Westlake AI：OpenAI 兼容大模型网关（网关/领令牌/模型清单）。"""
+        info = ai_service()
+        probe = ai_gateway_probe()
+        click.echo(f"网关：{info['gateway']}（{'在役' if probe['alive'] else probe['note']}）")
+        click.echo(f"领令牌：{info['key_url']}（校园 SSO，免费）")
+        click.echo(f"模型：{'、'.join(info['models'])}")
+        click.echo(f"客户端模板：{'、'.join(info['tool_panels'])}（官网 AI Campus 页生成）")
+        click.echo(f"\n示例：curl {AI_GATEWAY}/chat/completions \\")
+        click.echo("  -H 'Authorization: Bearer <你的私有令牌>' \\")
+        click.echo("  -H 'Content-Type: application/json' \\")
+        click.echo('  -d \'{"model":"GLM-5.3-Flash","messages":[{"role":"user","content":"你好"}]}\'')
 
     return group
 
