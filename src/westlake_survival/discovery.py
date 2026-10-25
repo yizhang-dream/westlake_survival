@@ -502,6 +502,22 @@ cli_group = _cli()
 
 
 #: 服务注册表（2026-10-24 盘点；全部接入：mode=接入方式）。
+#: 各站 API 面测绘注记（2026-10-25 全网 bundle 常量段扫描批产出；
+#: 供未来 Agent 直接知道「哪扇门存在、什么形态、为何没接」）。
+SERVICE_API_NOTES: dict[str, str] = {
+    "hpc": "Westlake AI 网关 https://hpc-api.westlake.edu.cn/v1（OpenAI 兼容，SSO 领令牌）；手册 /document/*；成果库 172.16.75.35:8007 未发布",
+    "car": "JSON API 代理 POST /getdata.ashx（{url:/api/*,request}），匿名可达但上游要会话",
+    "pan": "网盘 API 面 /api/v1/file|link、/api/qrcode（需登录）",
+    "remotework": "VDI 客户端 API /v1/aUem/*（工作空间/虚拟网络/应用拉起，需登录）",
+    "chatbot": "门户 AI 助手后端 /api/form/human_input 等（随门户会话）",
+    "visitor": "Ant Design Pro 模板（多数 /api/* 为脚手架 mock，真接口需登录）",
+    "booking": "场馆预约 SPA：/manage 壳可匿名打开，数据接口需登录",
+    "my": "门户 microflow 接口 /service/<配置>/microflow/*（需会话）",
+    "taskcenter": "infoplus 待办（已接 todo/doing）；其余接口走 Playwright 会话",
+    "imputationserver": "Michigan 风格填补服务器（layui 应用，提交需登录）",
+}
+
+
 SERVICE_REGISTRY = (
     ("2dmater", "二维材料与量子输运实验室", "内容页（/sites）"),
     ("aging-conference", "衰老生物学会议站（西湖×Cell Press）", "入口卡+在线状态"),

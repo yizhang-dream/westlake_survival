@@ -1044,9 +1044,12 @@ def _scholar_doi_context() -> dict:
 
 
 def _services_context() -> dict:
+    from westlake_survival.discovery import SERVICE_API_NOTES
+
     return {
         "registry": [
-            {"host": h, "note": n, "mode": m} for h, n, m in SERVICE_REGISTRY
+            {"host": h, "note": n, "mode": m,
+             "api": SERVICE_API_NOTES.get(h, "")} for h, n, m in SERVICE_REGISTRY
         ],
         "covered": len(SERVICE_REGISTRY),
         "total": len(SERVICE_REGISTRY),

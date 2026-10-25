@@ -9,7 +9,7 @@
     {% for s in registry %}
     <tr>
       <td>{{ s.host }}.westlake.edu.cn{% if not '.' in s.host %}{% endif %}</td>
-      <td class="muted">{{ s.note }}</td>
+      <td class="muted">{{ s.note }}{% if s.api %}<div style="font-size:.78rem;margin-top:.2rem;color:var(--accent)">API：{{ s.api }}</div>{% endif %}</td>
       <td><span class="chip">{{ s.mode }}</span></td>
     </tr>
     {% endfor %}
