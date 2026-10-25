@@ -257,6 +257,30 @@ def _tool_sites_index(args: dict) -> Any:
     return sites_index()
 
 
+def _tool_hosts_inventory(args: dict) -> Any:
+    """全量子域清单：存活/不可达、标题、是否人工配置。"""
+    from westlake_survival.hosts import sweep
+
+    rows = sweep()
+    live = [row for row in rows if row.get("live")]
+    return {
+        "total": len(rows),
+        "live": len(live),
+        "dead": len(rows) - len(live),
+        "hosts": rows,
+    }
+
+
+def _tool_hosts_content(args: dict) -> Any:
+    """某子域的栏目与条目（通用挖掘，缓存 24 小时）。"""
+    from westlake_survival.hosts import content
+
+    host = _opt_str(args, "host") or ""
+    if not host:
+        raise ToolHint("需要 host 参数，如 host=career")
+    return content(host)
+
+
 def _tool_site_content(args: dict) -> Any:
     """取一个站点的栏目与条目（key 见 sites_index）。"""
     key = _opt_str(args, "key") or ""
@@ -1032,6 +1056,18 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "取全部已接入站点索引（key / 名称 / 分组 / URL）。",
         "inputSchema": _schema(),
         "handler": _tool_sites_index,
+    },
+    {
+        "name": "hosts_inventory",
+        "description": "取全量子域清单（存活/不可达 / 标题 / 是否人工配置）。",
+        "inputSchema": _schema(),
+        "handler": _tool_hosts_inventory,
+    },
+    {
+        "name": "hosts_content",
+        "description": "取某个子域的栏目与条目（通用挖掘）。",
+        "inputSchema": _schema({"host": _str_param("子域短名，如 career / its / officialweb-test。")}),
+        "handler": _tool_hosts_content,
     },
     {
         "name": "site_content",

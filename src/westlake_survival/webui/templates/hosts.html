@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}子站 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">全量子站</h1>
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+
+<div class="callout"><span>把 <code>*.westlake.edu.cn</code> 的候选子域逐个探测一遍：能打开的取标题与栏目，栏目里再抓条目；内网/离线站点如实标为不可达。清单缓存 12 小时，内容缓存 24 小时。</span></div>
+
+<div class="stats">
+  <div class="stat"><div class="label">候选子域</div><div class="value" data-count="{{ stats.total }}">{{ stats.total }}</div></div>
+  <div class="stat"><div class="label">存活</div><div class="value" data-count="{{ stats.live }}">{{ stats.live }}</div></div>
+  <div class="stat"><div class="label">不可达</div><div class="value">{{ stats.dead }}</div></div>
+  <div class="stat"><div class="label">已人工配置</div><div class="value">{{ stats.covered }}</div></div>
+  <div class="stat"><div class="label">已挖掘内容</div><div class="value">{{ stats.mined }}<small> 站 / {{ stats.items }} 条</small></div></div>
+</div>
+
+<section id="hs-mined" class="reveal">
+<h2 class="section">已挖掘内容（{{ mined | length }} 站）</h2>
+{% if mined %}
+{% for site in mined %}
+<details class="fold"{% if loop.first %} open{% endif %}>
+  <summary>{{ site.title or site.host }}<span class="chip">{{ site.item_count }} 条 · {{ site.columns | length }} 栏目</span></summary>
+  <div class="fold-body">
+    <div class="muted" style="font-size:.82rem;margin-bottom:.4rem"><a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.url }}</a></div>
+    {% for column in site.columns %}
+      {% if column['items'] %}
+      <div class="callout"><span>{{ column.name }}<span class="chip">{{ column['items'] | length }}</span></span></div>
+      <table class="data">
+        <thead><tr><th>标题</th><th>链接</th></tr></thead>
+        <tbody>{% for item in column['items'] %}<tr><td>{{ item.title }}</td><td><a href="{{ item.url }}" target="_blank" rel="noopener">打开</a></td></tr>{% endfor %}</tbody>
+      </table>
+      {% endif %}
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+{% else %}
+<div class="callout mute"><span>还没有挖掘结果。命令行跑 <code>westlake hosts mine --all</code> 后再刷新。</span></div>
+{% endif %}
+</section>
+
+<section id="hs-live" class="reveal">
+<h2 class="section">存活但只有入口（{{ live | length }}）</h2>
+{% if live %}
+<table class="data">
+  <thead><tr><th>子域</th><th>状态</th><th>标题</th><th>地址</th></tr></thead>
+  <tbody>{% for row in live %}<tr>
+    <td>{{ row.host }}</td><td>{{ row.status }}</td>
+    <td>{{ row.title or '—' }}</td>
+    <td>{% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noopener">{{ row.url }}</a>{% else %}—{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% else %}<div class="callout mute"><span>没有待补齐的存活站点。</span></div>{% endif %}
+</section>
+
+<section id="hs-dead" class="reveal">
+<h2 class="section">不可达（{{ dead | length }}）</h2>
+{% if dead %}
+<div class="grid cols-2">
+  {% for row in dead %}<div class="card"><div style="font-weight:600">{{ row.host }}</div><div class="muted" style="font-size:.78rem">{{ row.fqdn }}</div></div>{% endfor %}
+</div>
+<div class="callout"><span>内网服务需校园网/VPN；部分旧域名已下线，保留在清单里便于对照。</span></div>
+{% else %}<div class="callout mute"><span>没有不可达记录。</span></div>{% endif %}
+</section>
+{% endblock %}

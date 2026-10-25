@@ -46,6 +46,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 报销/财务制度/科研经费文档 | `westlake finance sections/articles`，网页 `/finance` |
 | 镜像仓库目录与换源 | `westlake mirrors`，网页 `/mirrors` |
 | 全站服务注册表与在线普查 | 网页 `/services`（30 项全接入：方式徽标+扫描按钮） |
+| 全量子站（探测 + 栏目挖掘） | `westlake hosts list|mine --all|show <子域>`，网页 `/hosts` |
 | 待办 / 进行中 / 已处理 / 抄送 / 我的应用（办事大厅） | `westlake todo list|doing|done|cc|apps`，网页 `/affairs`（统一密码，请求直登） |
 | 门户服务目录（18 部门站点） | `westlake affairs portal`，网页 `/affairs`「门户服务」 |
 | 理论科学研究院新闻/学术活动 | `westlake institute news|events`，网页 `/institute` |
@@ -220,7 +221,7 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 46 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业 `canvas_deadlines`/`canvas_submit`）。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 48 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业 `canvas_deadlines`/`canvas_submit`）。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}

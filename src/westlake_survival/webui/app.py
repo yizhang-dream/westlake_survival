@@ -1246,6 +1246,48 @@ def _scholar_doi_context() -> dict:
 
 
 
+def _hosts_context() -> dict:
+    """全量子站页：存活/不可达清单 + 已挖掘的栏目条目。"""
+    module = _import_module("hosts")
+    context: dict = {
+        "error": None, "rows": [], "live": [], "dead": [], "mined": [],
+        "stats": {"total": 0, "live": 0, "dead": 0, "covered": 0, "mined": 0, "items": 0},
+    }
+    if module is None:
+        context["error"] = "hosts 模块不可用"
+        return context
+    try:
+        rows = module.sweep()
+    except Exception as exc:
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+        return context
+    live = [row for row in rows if row.get("live")]
+    dead = [row for row in rows if not row.get("live")]
+    mined = []
+    entries = []
+    for row in live:
+        data = None if row.get("sites_key") else module.cached_content(row["host"])
+        if data and data.get("item_count"):
+            mined.append(data)
+        else:
+            entries.append(row)
+    context.update(
+        rows=rows,
+        live=entries,
+        dead=dead,
+        mined=mined,
+        stats={
+            "total": len(rows),
+            "live": len(live),
+            "dead": len(dead),
+            "covered": sum(1 for row in rows if row.get("sites_key")),
+            "mined": len(mined),
+            "items": sum(item.get("item_count", 0) for item in mined),
+        },
+    )
+    return context
+
+
 def _services_context() -> dict:
     from westlake_survival.discovery import SERVICE_API_NOTES
 
@@ -1955,6 +1997,10 @@ def create_app() -> Flask:
     @app.route("/services")
     def services_page():
         return render_template("services.html", **_services_context())
+
+    @app.route("/hosts")
+    def hosts_page():
+        return render_template("hosts.html", **_hosts_context())
 
     # -- 学业页（SIS） ------------------------------------------------------ #
     @app.route("/sis")
