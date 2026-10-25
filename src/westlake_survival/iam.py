@@ -462,7 +462,8 @@ def _rsa_encrypt(password: str, public_key_b64: str) -> str:
         from cryptography.hazmat.primitives.asymmetric import padding
     except ImportError as exc:  # pragma: no cover
         raise WestlakeError(
-            "IAM 登录需要 RSA：请安装 cryptography（pip install 'westlake_survival[crypto]'）"
+            "IAM 登录需要 RSA：请安装 cryptography（pip install cryptography，"
+            "或重装本包以拉齐依赖）"
         ) from exc
     public = serialization.load_der_public_key(base64.b64decode(public_key_b64))
     ciphertext = public.encrypt(password.encode("utf-8"), padding.PKCS1v15())

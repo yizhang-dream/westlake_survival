@@ -68,6 +68,26 @@ def _hidden_fields(html: str) -> dict[str, str]:
     return fields
 
 
+def _login_failed(iam_error: Exception | None) -> AuthError:
+    """两条登录路径都失败时的异常：带上统一认证侧的真实原因。
+
+    只有统一认证明确回了「认证失败」才算密码问题；缺依赖、网络、协议异常
+    都会原样带出，避免把环境故障误导成「用户名或密码错误」。
+    """
+    if iam_error is None:
+        return InvalidCredentials("用户名或密码错误（未获得 PS_TOKEN）")
+    if isinstance(iam_error, AuthError):
+        return InvalidCredentials(
+            f"用户名或密码错误（未获得 PS_TOKEN）；统一认证：{iam_error}"
+        )
+    return AuthError(
+        f"教务登录未完成——统一认证侧 {iam_error.__class__.__name__}: {iam_error}；"
+        "PeopleSoft 本地登录也未获得 PS_TOKEN。请先按统一认证的原因处理"
+        "（缺依赖就装 cryptography，校外先连校园网/VPN），"
+        "别反复重试密码：IAM 连续失败会强制图形验证码。"
+    )
+
+
 class SISAuth(CASAuthorizer):
     """教务 SIS 会话（PeopleSoft 本地登录）。"""
 
@@ -84,6 +104,7 @@ class SISAuth(CASAuthorizer):
         # 优先走统一身份认证（IAM OAuth2）：统一密码即可登 SIS，不必记 SIS 专用
         # 密码（2026-10-24 实测打通）。IAM 认证失败再回落 PeopleSoft 本地登录，
         # 兼容只改了 SIS 密码、没统一的老凭据。
+        iam_error: Exception | None = None
         try:
             from westlake_survival import iam
 
@@ -93,10 +114,10 @@ class SISAuth(CASAuthorizer):
             return iam_session
         except InvalidCredentials:
             raise
-        except AuthError as exc:
-            ps_error = exc
-        except Exception:
-            ps_error = None
+        except Exception as exc:  # noqa: BLE001 - 原因必须留到最终报错里
+            # 曾把非 AuthError（缺 cryptography、网络/协议异常）吞成 None，
+            # 结果「装缺依赖」被报成「密码错误」，用户只能反复试密码。
+            iam_error = exc
 
         session = self._new_session()
 
@@ -114,8 +135,7 @@ class SISAuth(CASAuthorizer):
             raise OffCampusError(_OFFCAMPUS_HINT)
 
         if not session.cookies.get("PS_TOKEN"):
-            detail = f"（IAM：{ps_error}）" if ps_error else ""
-            raise InvalidCredentials(f"用户名或密码错误（未获得 PS_TOKEN）{detail}")
+            raise _login_failed(iam_error)
         return session
 
     def _is_stale_response(self, response) -> bool:

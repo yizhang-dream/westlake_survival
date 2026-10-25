@@ -29,12 +29,16 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "python-dateutil>=2.8",
     "tzdata>=2024.1",
+    # 统一身份认证（IAM）用 RSA 加密密码；缺了它会退回 PeopleSoft 本地登录
+    # 并显示成「用户名或密码错误」，新设备装完即不可用，故列为必需依赖。
+    "cryptography>=42",
 ]
 
 [project.optional-dependencies]
 webui = ["flask>=3.0"]
 test = ["pytest>=8.0"]
 secure = ["keyring>=25"]
+# 兼容旧装法：cryptography 已在必需依赖里，这里重复列出只为让旧命令照常工作。
 crypto = ["cryptography>=42"]
 
 [project.scripts]

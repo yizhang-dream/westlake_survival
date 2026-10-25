@@ -29,6 +29,11 @@ def _get(url: str, timeout: float = 5.0) -> tuple[int, str]:
         return response.status, response.read().decode("utf-8")
 
 
+#: 首页在已存凭据时会真去拉门户卡片/作业，单个请求可能跑到 20 秒档位；
+#: 5 秒只适合静态页（/setup），首页用这个宽限值。
+HOME_TIMEOUT = 60.0
+
+
 def _post(url: str, payload: dict, timeout: float = 10.0) -> tuple[int, dict]:
     request = urllib.request.Request(
         url,
@@ -91,7 +96,7 @@ def test_setup_page_has_form_and_status(server) -> None:
 def test_home_shows_banner_until_configured_then_clears(server) -> None:
     """未配置时首页有引导横幅；保存后横幅消失（同一会话内状态翻转）。"""
     base, home = server
-    _, before = _get(base + "/")
+    _, before = _get(base + "/", timeout=HOME_TIMEOUT)
     assert "还没有配置教务账号" in before
     assert 'href="/setup"' in before
 
@@ -103,7 +108,7 @@ def test_home_shows_banner_until_configured_then_clears(server) -> None:
     assert payload["sis"]["saved"] is True
     assert (home / "credentials.txt").exists()
 
-    _, after = _get(base + "/")
+    _, after = _get(base + "/", timeout=HOME_TIMEOUT)
     assert "还没有配置教务账号" not in after
 
 
