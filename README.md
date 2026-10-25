@@ -13,4 +13,6 @@ westlake calendar today   # 公开功能无需账号
 
 SIS 与 Canvas 均可用统一身份认证密码（Canvas 也兼容令牌），需校园网/VPN；授权与凭据见 [AGENTS](AGENTS.md)。`westlake sso creds status` 只查来源。src/test 的 pytest 默认排除 live；在线状态以实际服务为准。
 
+**网络与代理**：本包所有 HTTP 会话默认**直连**（无视 `HTTP_PROXY/HTTPS_PROXY`）——用户通常人在校园网但开着系统代理，代理节点没有校园路由，走代理访问 `*.westlake.edu.cn` 会 502/超时。外部脚本复用请走 `westlake_survival.discovery.direct_session()` 或自建会话时设 `trust_env=False`。
+
 参考 sustech_survival，无学校官方背书。[PolyForm Noncommercial 1.0.0](LICENSE)仅限非商业用途并保留署名。

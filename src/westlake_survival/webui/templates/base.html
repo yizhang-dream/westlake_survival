@@ -310,6 +310,24 @@
   }
   .anchor-nav a:hover { color: var(--accent); border-color: rgba(238,120,35,.4); }
   .anchor-nav a.active { background: var(--accent); color: #fff; }
+  /* 两级目录（2026-10-25 用户裁定）：分组 chip 悬停/点开展开站点快捷跳转 */
+  .anchor-nav .nav-grp { position: relative; display: inline-block; }
+  .anchor-nav .nav-grp > a { cursor: pointer; }
+  .anchor-nav .nav-grp .sub {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 99;
+    flex-wrap: wrap; gap: .3rem; max-width: 460px;
+    background: color-mix(in srgb, var(--card) 88%, transparent);
+    backdrop-filter: blur(18px) saturate(1.9);
+    -webkit-backdrop-filter: blur(18px) saturate(1.9);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: .5rem .55rem; box-shadow: 0 8px 28px rgba(0,0,0,.12);
+  }
+  .anchor-nav .nav-grp:hover .sub,
+  .anchor-nav .nav-grp:focus-within .sub { display: flex; }
+  .anchor-nav .nav-grp .sub a {
+    font-size: .78rem; font-weight: 500; padding: .18rem .6rem;
+    background: color-mix(in srgb, var(--muted) 8%, transparent);
+  }
   details.fold {
     background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
     padding: 0; margin: .55rem 0; overflow: hidden;

@@ -34,8 +34,16 @@ class NetworkTimeouts:
 
 
 def http_session(**session_kwargs) -> requests.Session:
-    """创建一个带统一 UA 的 :class:`requests.Session`。"""
+    """创建一个带统一 UA 的 :class:`requests.Session`。
+
+    **默认直连**（``trust_env=False``，2026-10-25 用户裁定）：用户通常是
+    校园网 IP 同时开着系统代理（Clash 等），代理节点没有校园路由，走代理
+    访问 ``*.westlake.edu.cn`` 会 502/超时。除非调用方显式传
+    ``trust_env=True``（如 HPC 成果库的代理兜底通道），一律无视
+    ``HTTP(S)_PROXY`` 环境变量直连。
+    """
     session = requests.Session()
+    session.trust_env = False
     session.headers["User-Agent"] = USER_AGENT
     for key, value in session_kwargs.items():
         if key == "headers":

@@ -218,6 +218,19 @@ INTRO_SITES: dict = {
 #: 页面分组顺序。
 SITE_GROUPS = ("科研平台", "部门机构", "招生与基金", "课题组", "其他")
 
+#: 组内站点排序（2026-10-25 用户裁定「容易用到的放前面」）：学生日常高频
+#: 在前（学生事务/IT/招生/研院/HPC），办事与低频机构在后；未列出的按字典序垫底。
+SITE_ORDER: dict[str, list[str]] = {
+    "科研平台": ["hpc", "brcf", "iscps", "iscms", "larc", "nanolab", "bioinfo",
+                 "cap", "share", "brcfen", "eniscps", "astro"],
+    "部门机构": ["osa", "info", "ohr", "facilities", "assets", "construction",
+                 "ore", "oala", "huxin", "dq", "international"],
+    "招生与基金": ["zh-ugadmissions", "graduateschool", "wudf", "qiushi",
+                   "westlakefellows"],
+    "课题组": ["yanglab", "audio", "2dmater", "eer.lab"],
+    "其他": ["en", "lifesciences", "en-soe", "lams", "heqdata"],
+}
+
 _ITEM_LINK_RE = re.compile(
     r'href="(?:\.\./)*(?:(?:https?://)[^"]*?)?(info/[\w/]+\.htm)"[^>]*?>'
 )
@@ -523,6 +536,8 @@ _HEADING_RE = re.compile(r'<h[12][^>]*>\s*(?:<a[^>]*>\s*</a>)?\s*([^<]{3,80}?)\s
 #: 成果库 API 的 type 代码 -> 栏目（SPA 里 partObj: article=1 patent=2 soft=3）。
 _HPC_ESSAY_TYPES = {"1": "学术论文", "2": "专利", "3": "软件成果"}
 _ESSAY_API = "http://172.16.75.35:8007/selectessay.php"
+#: 双通道失败后的负缓存（30 分钟内不再试，避免每页白等 8s 超时）。
+_essays_fail_until: float = 0.0
 
 
 def _hpc_manual_sections(base: str, s, limit: int) -> list[SiteSection]:
@@ -566,7 +581,11 @@ def _hpc_essay_sections(limit: int) -> list[SiteSection]:
     此时返回空并在 error 里说明，不硬凑。
     """
     import requests as _rq
+    import time as _time
 
+    global _essays_fail_until
+    if _time.monotonic() < _essays_fail_until:
+        raise WestlakeError("成果库 API 仅校内网可达（近期已失败，负缓存中）")
     last_exc = None
     for use_proxy in (False, True):
         try:
@@ -595,6 +614,7 @@ def _hpc_essay_sections(limit: int) -> list[SiteSection]:
             ]
         except Exception as exc:  # noqa: BLE001 - 双通道各自的失败都要记录
             last_exc = exc
+    _essays_fail_until = _time.monotonic() + 1800
     raise WestlakeError(f"成果库 API 仅校内网可达（{last_exc.__class__.__name__}）")
 
 

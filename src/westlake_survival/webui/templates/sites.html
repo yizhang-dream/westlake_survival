@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}全站 · 西湖生存手册{% endblock %}
 {% block content %}
-<h1 class="page">全校站点（{{ stats.total }} 个已接入）</h1>
+<h1 class="page">全校站点（{{ stats.total }} 个已接入）
+  {% if cached %}<a class="chip plain" href="/sites?refresh=1" title="10 分钟缓存，点击重抓">缓存 · 刷新</a>
+  {% else %}<span class="chip">实时</span>{% endif %}
+</h1>
 
 <div class="stats">
   <div class="stat"><div class="label">已接入站点</div><div class="value" data-count="{{ stats.total }}">{{ stats.total }}</div></div>
@@ -10,15 +13,22 @@
   <div class="stat"><div class="label">条目总数</div><div class="value" data-count="{{ stats.entry_count }}">{{ stats.entry_count }}</div></div>
 </div>
 
-<nav class="anchor-nav">
-  {% for g in groups %}<a href="#grp-{{ loop.index }}">{{ g.name }}</a>{% endfor %}
+<nav class="anchor-nav lv2">
+  {% for g in groups %}
+  <span class="nav-grp">
+    <a href="#grp-{{ loop.index }}">{{ g.name }}</a>
+    <span class="sub">
+      {% for c in g.sites %}<a href="#site-{{ c.key }}">{{ c.name | truncate(10, true) }}</a>{% endfor %}
+    </span>
+  </span>
+  {% endfor %}
 </nav>
 
 {% for g in groups %}
 <section id="grp-{{ loop.index }}" class="reveal">
 <h2 class="section">{{ g.name }}（{{ g.sites | length }} 站）</h2>
 {% for c in g.sites %}
-<details class="fold" data-fold-key="sites-{{ c.key }}"{% if c.default_open %} data-should-open="1"{% endif %}>
+<details class="fold" id="site-{{ c.key }}" data-fold-key="sites-{{ c.key }}"{% if c.default_open %} data-should-open="1"{% endif %}>
   <summary>{{ c.name }}{% if c.n_items %}<span class="chip">{{ c.n_sections }} 栏</span><span class="chip ok">{{ c.n_items }} 条</span>{% else %}<span class="chip plain">简介</span>{% endif %}</summary>
   <div class="fold-body">
     {% if c.error %}<div class="callout warn"><span>抓取异常：{{ c.error }}</span></div>{% endif %}

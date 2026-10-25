@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import time as _time_mod
 
 from westlake_survival.discovery import SERVICE_REGISTRY
 import re as _re
@@ -1094,12 +1095,26 @@ def _affairs_context() -> dict:
     return context
 
 
-def _sites_context() -> dict:
-    """全站页上下文：31 站内容并行抓取（博达发现器/TRS/HPC/静态四路），分组渲染。"""
+def _sites_context(refresh: bool = False) -> dict:
+    """全站页上下文：37 站内容并行抓取，结果落盘缓存 10 分钟（卡顿修复）。
+
+    首次全量实抓（含发现器/分页/手册树）约 10s；之后走 ``sites_page.json``
+    缓存秒开，``?refresh=1`` 强制重抓。组内站点按 ``sites.SITE_ORDER``
+    常用度排序。
+    """
     module = _import_module("sites")
     if module is None:
         return {"error": "sites 模块不可用", "groups": [], "stats": {}}
     from concurrent.futures import ThreadPoolExecutor
+
+    from westlake_survival._cache import load_json, save_json
+
+    if not refresh:
+        cached = load_json("sites_page.json")
+        if cached and cached.get("context") and _time_mod.time() - cached.get("saved_at", 0) < 600:
+            context = cached["context"]
+            context["cached"] = True
+            return context
 
     sites = []
     with ThreadPoolExecutor(max_workers=8) as pool:
@@ -1113,10 +1128,13 @@ def _sites_context() -> dict:
             data["n_sections"] = len(data["sections"])
             sites.append(data)
     groups: list[dict] = []
+    order_map = getattr(module, "SITE_ORDER", {})
     for group in module.SITE_GROUPS:
         rows = [c for c in sites if c["group"] == group]
         if not rows:
             continue
+        priority = {k: i for i, k in enumerate(order_map.get(group, []))}
+        rows.sort(key=lambda c: priority.get(c["key"], 99))
         opened = next((i for i, c in enumerate(rows) if c["n_items"]), None)
         if opened is not None:
             rows[opened]["default_open"] = True
@@ -1127,7 +1145,12 @@ def _sites_context() -> dict:
         "entry_count": sum(c["n_items"] for c in sites),
         "section_count": sum(c["n_sections"] for c in sites),
     }
-    return {"error": None, "groups": groups, "stats": stats}
+    context = {"error": None, "groups": groups, "stats": stats, "cached": False}
+    try:
+        save_json("sites_page.json", {"context": context, "saved_at": _time_mod.time()})
+    except OSError:
+        pass  # 缓存写失败不影响渲染
+    return context
 
 
 def _capabilities_context():
@@ -1538,7 +1561,9 @@ def create_app() -> Flask:
     # -- 学院官网聚合页 ------------------------------------------------------ #
     @app.route("/sites")
     def sites_page():
-        context = _sites_context()
+        from flask import request as _rq
+
+        context = _sites_context(refresh=_rq.args.get("refresh") == "1")
         if context.get("error"):
             return render_template("error.html", message=context["error"]), 503
         return render_template("sites.html", **context)

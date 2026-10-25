@@ -222,6 +222,7 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## Agent 行为守则
 
+- **网络一律直连（2026-10-25 用户裁定，库层已内置）**：用户通常人在校园网但开着系统代理（Clash 等），代理节点没有校园路由——走代理访问 `*.westlake.edu.cn` 会 502/超时。本 skill 所有 HTTP 会话默认 `trust_env=False`（无视 `HTTP_PROXY/HTTPS_PROXY` 直连），**Agent 自己临时写脚本抓校园站点时也必须显式直连**（`requests` 传 `trust_env=False`，或复用 `westlake_survival.discovery.direct_session()`）；唯一例外是 HPC 成果库（172.16.75.35:8007）的代理兜底通道。诊断「校内服务连不上」时先查是否被代理劫持（对照：直连 vs 代理各试一次），再怀疑防火墙/网段 ACL。
 - **默认只读，交作业是唯一写操作**：只执行查询/导出命令；`canvas submit`（含 MCP 的 `canvas_submit`）仅凭用户当轮明确给出的课程、作业与文件执行，不尝试选课、抢课、删除等其他写操作，不构造未文档化的请求。
 - **交作业三步走**：①预检 `--dry-run`（作业未锁定、类型允许、文件可读）；②提交（用户点名文件即视为授权）；③回读 `canvas submission` 核验（状态 submitted、附件文件名、未迟交）确认后才报完成。已评分（graded）的作业技术上可重交但默认不碰，除非用户明确要求改交。
 - **写作业内容先查本地**：动笔前先查 `D:\CanvasMirror` 与 DeepTutor 课程组的本校讲义（与网络通用版有实质差异），实验报告参照本人历史提交物的格式惯例。
