@@ -18,14 +18,7 @@
   <div class="stat"><div class="label">最新公告</div><div class="value">{{ announcements | length if announcements is defined else 0 }}<small> 条</small></div></div>
 </div>
 
-<nav class="anchor-nav" id="cv-nav">
-  <a href="#cv-grades">成绩</a>
-  <a href="#cv-deadlines">截止</a>
-  <a href="#cv-exams">考试</a>
-  <a href="#cv-quizzes">测验</a>
-  <a href="#cv-ann">公告</a>
-  <a href="#cv-courses">课程</a>
-</nav>
+{# 旧锚点导航已由全局自动目录替代（2026-10-25） #}
 
 <section id="cv-grades" class="reveal">
 {% if grades is defined and grades %}

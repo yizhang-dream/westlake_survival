@@ -199,7 +199,7 @@ def test_canvas_and_affairs_blocks_thick(server: str) -> None:
     _, canvas_html = _get(server + "/canvas")
     for marker in ("考试", "测验", "课程成绩", "最新公告", "未发布"):
         assert marker in canvas_html, marker
-    assert 'id="cv-nav"' in canvas_html  # 锚点导航
+    assert "全局自动目录" in canvas_html  # 目录改为 base.html JS 全局自动生成（curl 可见脚本特征）
     _, affairs_html = _get(server + "/affairs")
     # 待办为 0 是真实态：空态文案也算渲染到位
     assert ("我的待办" in affairs_html) or ("没有待办任务" in affairs_html)

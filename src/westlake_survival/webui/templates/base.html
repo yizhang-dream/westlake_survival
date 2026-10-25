@@ -359,6 +359,10 @@
   }
   aside.toc-side a.toc-site .n { font-size: .66rem; color: var(--muted); flex-shrink: 0; }
   aside.toc-side a.toc-site.hide, aside.toc-side details.toc-grp.hide { display: none; }
+  aside.toc-side a.toc-site.top {
+    font-weight: 700; padding-left: .5rem; color: var(--heading);
+  }
+  aside.toc-side a.toc-site.top:hover { color: var(--accent); }
   .toc-fab {
     display: none; position: fixed; right: 16px; bottom: 18px; z-index: 120;
     border-radius: 999px; border: none; cursor: pointer;
@@ -588,6 +592,170 @@
       hidden.forEach(function (k) { keep[k] = 1; });
       document.querySelectorAll('nav.main a[data-nav]').forEach(function (a) {
         if (keep[a.getAttribute('data-nav')]) a.style.display = 'none';
+      });
+    })();
+  </script>
+  <script>
+    // 全局自动目录（2026-10-25 用户裁定「所有页面都要目录」）：扫描 h2.section
+    // 区块及其后续折叠块，≥2 项即自动生成左侧目录树；已有手建目录（sites/sis）跳过。
+    (function () {
+      if (document.querySelector('aside.toc-side')) return;
+      var wrap = document.querySelector('main .wrap');
+      if (!wrap) return;
+      var h2s = Array.prototype.slice.call(wrap.querySelectorAll('h2.section, h2.page'));
+      if (!h2s.length) {
+        // 无区块标题的页面：仅「顶部」一项（用户裁定所有页面都要有目录）
+        h2s = [];
+      }
+
+      // —— 目标树：每个 h2 一个节点；其后同级内容里的 details.fold 是子项 ——
+      var used = {};
+      function uid(base) {
+        var i = 1, id = 'at-' + base;
+        while (used[id]) id = 'at-' + base + '-' + (++i);
+        used[id] = 1;
+        return id;
+      }
+      function han(s) {
+        return encodeURIComponent(String(s || '').replace(/\s+/g, '').slice(0, 10)).replace(/%/g, '');
+      }
+      var tree = [];
+      h2s.forEach(function (h2) {
+        var holder = h2.closest('[id]') || h2;
+        if (!holder.id) holder.id = uid(han(h2.textContent) || 'b');
+        var label = (h2.textContent || '').replace(/（[\s\S]*?）/g, '').trim().slice(0, 14) || '区块';
+        var node = { id: holder.id, label: label, children: [] };
+        var scope = holder.parentElement;
+        var sibs = Array.prototype.slice.call(scope.children);
+        for (var k = sibs.indexOf(holder) + 1; k < sibs.length; k++) {
+          var s = sibs[k];
+          if (s.nodeType !== 1) continue;
+          if (s === h2 || (s.matches && s.matches('h2.section'))) break;
+          if (s.querySelector && s !== holder && s.querySelector('h2.section')) break;
+          var folds = [];
+          if (s.matches && s.matches('details.fold')) folds.push(s);
+          if (s.querySelectorAll) folds = folds.concat(Array.prototype.slice.call(s.querySelectorAll('details.fold')));
+          folds.forEach(function (f) {
+            if (node.children.some(function (c) { return c.id === f.id; })) return;
+            if (!f.id) f.id = holder.id + '-f' + (node.children.length + 1);
+            var txt = ((f.querySelector('summary') || {}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+            if (txt) node.children.push({ id: f.id, label: txt });
+          });
+        }
+        tree.push(node);
+      });
+      // 顶部入口（h1）：所有页面都有目录（用户裁定）
+      var h1 = wrap.querySelector('h1.page');
+      var topNode = null;
+      if (h1) {
+        if (!h1.id) h1.id = 'at-top';
+        topNode = { id: h1.id, label: '顶部', children: [] };
+        tree.unshift(topNode);
+      }
+      var leaves = tree.reduce(function (n, t) { return n + Math.max(1, t.children.length); }, 0);
+      if (leaves < 1) return;
+
+      // —— DOM 重组：全宽元素保留，其余进 grid ——
+      var kids = Array.prototype.slice.call(wrap.children);
+      var rest = kids.filter(function (el) {
+        return !el.matches('h1.page, .stats, .note');
+      });
+      if (!rest.length) return;
+      var html = '<div class="toc-title">目录 · ' + leaves + ' 项</div>';
+      if (leaves > 8) html += '<input class="toc-search" type="search" placeholder="搜索…" autocomplete="off">';
+      tree.forEach(function (t, gi) {
+        if (t.children.length >= 2) {
+          html += '<details class="toc-grp"' + (gi === 0 ? ' open' : '') + '><summary>' + t.label +
+            '<span class="n">' + t.children.length + '</span></summary>' +
+            t.children.map(function (c) {
+              return '<a class="toc-site" href="#' + c.id + '"><span>' + c.label + '</span></a>';
+            }).join('') + '</details>';
+        } else {
+          html += '<a class="toc-site top" href="#' + t.id + '"><span>' + t.label + '</span></a>';
+          if (t.children.length === 1) {
+            html += '<a class="toc-site" href="#' + t.children[0].id + '"><span>' + t.children[0].label + '</span></a>';
+          }
+        }
+      });
+      var layout = document.createElement('div');
+      layout.className = 'sites-layout';
+      var aside = document.createElement('aside');
+      aside.className = 'toc-side';
+      aside.setAttribute('aria-label', '页面目录');
+      aside.innerHTML = html;
+      var fab = document.createElement('button');
+      fab.className = 'toc-fab';
+      fab.type = 'button';
+      fab.textContent = '☰ 目录';
+      var main = document.createElement('div');
+      main.className = 'toc-main';
+      main.style.minWidth = '0';
+      layout.appendChild(aside); layout.appendChild(fab); layout.appendChild(main);
+      wrap.insertBefore(layout, rest[0]);
+      rest.forEach(function (el) { main.appendChild(el); });
+
+      // —— 交互：搜索 / 点击滚动+展开 / 滚动高亮 / 移动端抽屉 ——
+      var links = Array.prototype.slice.call(aside.querySelectorAll('a.toc-site'));
+      var search = aside.querySelector('.toc-search');
+      if (search) {
+        search.addEventListener('input', function () {
+          var q = search.value.trim().toLowerCase();
+          links.forEach(function (a) {
+            a.classList.toggle('hide', !!q && a.textContent.toLowerCase().indexOf(q) === -1);
+          });
+          Array.prototype.forEach.call(aside.querySelectorAll('details.toc-grp'), function (d) {
+            d.classList.toggle('hide', !d.querySelectorAll('a.toc-site:not(.hide)').length);
+            if (q && !d.classList.contains('hide')) d.open = true;
+          });
+        });
+      }
+      function topbarH() {
+        return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h'), 10) || 47;
+      }
+      links.forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var el = document.getElementById(a.getAttribute('href').slice(1));
+          if (!el) return;
+          if (el.tagName === 'DETAILS') el.open = true;
+          window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - topbarH() - 12, behavior: 'smooth' });
+          aside.classList.remove('show');
+        });
+      });
+      var targets = links.map(function (a) {
+        return document.getElementById(a.getAttribute('href').slice(1));
+      }).filter(Boolean);
+      var ticking = false;
+      function highlight() {
+        var line = topbarH() + 96;
+        var best = null, bestTop = -1e9;
+        targets.forEach(function (el) {
+          var top = el.getBoundingClientRect().top;
+          if (top <= line && top > bestTop) { best = el; bestTop = top; }
+        });
+        if (!best) targets.some(function (el) {
+          if (el.getBoundingClientRect().top > line) { best = el; return true; }
+          return false;
+        });
+        links.forEach(function (a) { a.classList.remove('active'); });
+        if (best) {
+          var a = aside.querySelector('a[href="#' + best.id + '"]');
+          if (a) {
+            a.classList.add('active');
+            var sb = aside.getBoundingClientRect(), ab = a.getBoundingClientRect();
+            if (ab.top < sb.top + 8 || ab.bottom > sb.bottom - 8) a.scrollIntoView({ block: 'nearest' });
+          }
+        }
+      }
+      window.addEventListener('scroll', function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () { highlight(); ticking = false; });
+      }, { passive: true });
+      highlight();
+      fab.addEventListener('click', function () { aside.classList.toggle('show'); });
+      document.addEventListener('click', function (e) {
+        if (aside.classList.contains('show') && !aside.contains(e.target) && e.target !== fab) aside.classList.remove('show');
       });
     })();
   </script>

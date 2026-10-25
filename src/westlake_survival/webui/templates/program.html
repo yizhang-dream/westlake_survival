@@ -7,13 +7,7 @@
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
 
 {% if has_data %}
-<nav class="anchor-nav">
-  <a href="#pg-goal">培养目标</a>
-  <a href="#pg-features">培养特色</a>
-  <a href="#pg-structure">课程结构</a>
-  <a href="#pg-plans">专业培养方案</a>
-  <a href="#pg-majors">本科专业</a>
-</nav>
+{# 旧锚点导航已由全局自动目录替代（2026-10-25） #}
 <div class="stats">
   <div class="stat"><div class="label">本科专业</div><div class="value" data-count="{{ plans | length if plans else 0 }}">{{ plans | length if plans else 0 }}</div></div>
   <div class="stat"><div class="label">课程结构</div><div class="value">{{ sections | length if sections else 0 }}<small> 块</small></div></div>
