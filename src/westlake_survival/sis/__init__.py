@@ -14,6 +14,8 @@
         Grade,                   # 成绩数据模型
         exam_schedule,           # 取当前学期考试安排
         ExamSlot,                # 考试数据模型
+        shopping_cart,           # 取选课车内容（只读）
+        CartCourse,              # 选课车课程数据模型
     )
 
     sessions = get_schedule()                 # 首次抓取 + 写缓存
@@ -72,6 +74,7 @@ from westlake_survival.sis.evals import (
     pending_evaluations,
 )
 from westlake_survival.sis.exams import ExamSlot, exam_schedule
+from westlake_survival.sis.cart import CartCourse, shopping_cart
 from westlake_survival.sis.grades import Grade, grades
 from westlake_survival.sis.pages import (
     fetch_page,
@@ -151,6 +154,9 @@ __all__ = [
     # 考试
     "ExamSlot",
     "exam_schedule",
+    # 选课车（只读）
+    "CartCourse",
+    "shopping_cart",
     # 评教
     "EvalTask",
     "evaluations",
