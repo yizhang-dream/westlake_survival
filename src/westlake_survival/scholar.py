@@ -895,8 +895,13 @@ def _cli():
     def campus_cmd(refresh: bool) -> None:
         """当前出口 IP 是否被出版社认作校园网。"""
         status = campus_status(refresh=refresh)
-        click.echo(("✅ 校园网认证范围内" if status.ip_authorized else "❌ 不在校园网认证范围")
-                   + f"（{status.checked_at}）")
+        probe_failed = "失败" in (status.evidence or "") and not status.ip_authorized
+        headline = (
+            "⚠️ 探测失败（结果未知，不代表不在校园网）"
+            if probe_failed
+            else ("✅ 校园网认证范围内" if status.ip_authorized else "❌ 不在校园网认证范围")
+        )
+        click.echo(headline + f"（{status.checked_at}）")
         click.echo(f"  {status.evidence}")
         if not status.ip_authorized:
             click.echo("  校外通道：westlake scholar sso cnki（CARSI）或连接校园 VPN。")
