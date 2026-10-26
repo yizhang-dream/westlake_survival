@@ -164,6 +164,34 @@ class Assignment:
         )
 
 
+@dataclass
+class TodoItem:
+    """Canvas 待办（``GET /users/self/todo``）。
+
+    ``type`` 是 Canvas 的待办类型（``submitting`` / ``grading`` 等），
+    ``course`` 来自 ``context_name``；标题与截止时间优先取内嵌
+    ``assignment``。``due_at`` 与其它模型一致，统一换算到 ``CHINA_TZ``。
+    """
+
+    type: str = ""
+    course: str | None = None
+    title: str | None = None
+    due_at: datetime | None = None
+    url: str | None = None
+
+    @classmethod
+    def from_json(cls, data: Any) -> "TodoItem":
+        obj = _as_dict(data)
+        assignment = _as_dict(obj.get("assignment"))
+        return cls(
+            type=str(obj.get("type") or ""),
+            course=obj.get("context_name"),
+            title=assignment.get("name") or obj.get("title"),
+            due_at=parse_datetime(assignment.get("due_at") or obj.get("due_at")),
+            url=obj.get("html_url") or assignment.get("html_url"),
+        )
+
+
 #: 判断作业是否为测验（quiz）的 submission_type 值。
 QUIZ_SUBMISSION_TYPE = "online_quiz"
 
@@ -356,6 +384,7 @@ __all__ = [
     "File",
     "QuizItem",
     "Submission",
+    "TodoItem",
     "User",
     "parse_datetime",
 ]

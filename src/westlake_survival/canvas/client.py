@@ -43,6 +43,7 @@ from westlake_survival.canvas.models import (
     File,
     QuizItem,
     Submission,
+    TodoItem,
     User,
 )
 from westlake_survival.exceptions import (
@@ -345,30 +346,27 @@ class CanvasClient:
             )
         return sorted(rows, key=lambda r: r["name"])
 
-    def todo(self, limit: int = 20) -> list[dict]:
+    def todo(self, limit: int = 20) -> list[TodoItem]:
         """Canvas 待办（``GET /users/self/todo``）。
 
         每条待办带 ``context_name``（课程名）与内嵌 ``assignment``；按截止
-        时间升序、无截止时间的排最后。
+        时间升序、无截止时间的排最后。``due_at`` 已换算到 ``CHINA_TZ``。
 
         Returns:
-            ``[{type, course, title, due_at, url}]``。
+            ``[TodoItem]``（``type`` / ``course`` / ``title`` / ``due_at`` /
+            ``url``）。
         """
-        rows: list[dict] = []
-        for item in self._paginate("/users/self/todo"):
-            if not isinstance(item, dict):
-                continue
-            assignment = item.get("assignment") or {}
-            rows.append(
-                {
-                    "type": item.get("type") or "",
-                    "course": item.get("context_name") or "",
-                    "title": assignment.get("name") or item.get("title") or "",
-                    "due_at": assignment.get("due_at") or item.get("due_at") or "",
-                    "url": item.get("html_url") or assignment.get("html_url") or "",
-                }
+        rows = [
+            TodoItem.from_json(item)
+            for item in self._paginate("/users/self/todo")
+            if isinstance(item, dict)
+        ]
+        rows.sort(
+            key=lambda row: (
+                row.due_at is None,
+                row.due_at.timestamp() if row.due_at else 0.0,
             )
-        rows.sort(key=lambda row: row["due_at"] or "9999")
+        )
         return rows[:limit]
 
     def modules(self, course_id: int | str) -> list[dict]:

@@ -921,11 +921,11 @@ def _canvas_context() -> dict:
         try:
             context["todo"] = [
                 {
-                    "course": _clean_name(row.get("course", "")),
-                    "type": row.get("type", ""),
-                    "title": row.get("title", ""),
-                    "due": row.get("due_at", "").replace("Z", "").replace("T", " ")[:16],
-                    "url": row.get("url", ""),
+                    "course": _clean_name(row.course or ""),
+                    "type": row.type,
+                    "title": row.title or "",
+                    "due": row.due_at.strftime("%m-%d %H:%M") if row.due_at else "",
+                    "url": row.url or "",
                 }
                 for row in client.todo(limit=20)
             ]

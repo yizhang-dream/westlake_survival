@@ -32,6 +32,7 @@ from westlake_survival.canvas.models import (
     Course,
     File,
     Submission,
+    TodoItem,
     User,
 )
 
@@ -48,6 +49,7 @@ __all__ = [
     "Course",
     "File",
     "Submission",
+    "TodoItem",
     "User",
     "canvas",
     "reset_canvas",

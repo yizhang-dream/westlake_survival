@@ -602,10 +602,10 @@ def canvas_todo(limit: int) -> None:
         return
     rows = [
         (
-            item["due_at"].replace("Z", "").replace("T", " ")[:16] or "—",
-            item["course"] or "—",
-            item["title"] or "—",
-            item["url"] or "",
+            item.due_at.strftime("%Y-%m-%d %H:%M") if item.due_at else "—",
+            item.course or "—",
+            item.title or "—",
+            item.url or "",
         )
         for item in items
     ]

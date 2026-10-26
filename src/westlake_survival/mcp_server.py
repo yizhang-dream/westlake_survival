@@ -840,7 +840,10 @@ def _tool_context_snapshot(args: dict) -> Any:
 
 
 def _tool_canvas_todo(args: dict) -> Any:
-    """Canvas 待办（users/self/todo）：课程 / 类型 / 事项 / 截止 / 链接。"""
+    """Canvas 待办（users/self/todo）：课程 / 类型 / 事项 / 截止 / 链接。
+
+    ``due_at`` 为北京时间（``+08:00``）的 ISO8601 字符串，不是 UTC。
+    """
     from westlake_survival.canvas import canvas
 
     limit = _opt_int(args, "limit", 20, minimum=1, maximum=100)
@@ -1290,7 +1293,7 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
     },
     {
         "name": "canvas_todo",
-        "description": "Canvas 待办列表（课程 / 类型 / 事项 / 截止 / 链接）。",
+        "description": "Canvas 待办列表（课程 / 类型 / 事项 / 截止 / 链接）；截止为北京时间 ISO8601。",
         "inputSchema": _schema(
             {"limit": _int_param("返回条数，默认 20。", minimum=1, maximum=100)}
         ),
