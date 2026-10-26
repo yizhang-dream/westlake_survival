@@ -206,7 +206,7 @@ def app_directory(
                 app_id=str(item.get("id") or ""),
             )
         )
-    if not apps:
+    if not apps and not needle:
         raise ParseError("办事大厅目录为空（接口结构可能已变化）")
     return apps
 

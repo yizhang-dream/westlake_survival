@@ -33,6 +33,7 @@ from westlake_survival.campusmap import cli_group as map_cmd
 from westlake_survival.careers import cli_group as careers_cmd
 from westlake_survival.contact import cli_group as contact_cmd
 from westlake_survival.discovery import cli_group as affairs_cmd
+from westlake_survival.booking import cli_group as booking_cmd
 from westlake_survival.hosts import cli_group as hosts_cmd
 from westlake_survival.finance import cli_group as finance_cmd
 from westlake_survival.hpc import cli_group as hpc_cmd
@@ -1855,6 +1856,7 @@ for _group in (
     aid_cmd,
     lib_cmd,
     pms_cmd,
+    booking_cmd,
     search_cmd,
     news_cmd,
     program_cmd,
