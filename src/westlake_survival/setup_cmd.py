@@ -12,12 +12,16 @@
 * **教务 SIS**（课表/成绩/考试/评教/学籍/学生记录/资助）：优先走统一身份认证
   （IAM OAuth2，2026-10-24 实测打通）——填**统一（校园门户）密码**即可；
   旧 SIS 专用密码也兼容（自动回落 PeopleSoft 本地登录）；
-* **Canvas**：REST 只认访问令牌，密码换不来令牌，所以向导单独问一次令牌
-  （可跳过，之后随时补）；
+* **Canvas**：REST 只认访问令牌，但令牌不是必需的——没有令牌时自动回退统一
+  密码（IAM CAS 会话 Cookie）。向导/设置页可另存一个令牌（可选、可清除），
+  存了会优先使用；被确认拒绝（HTTP 401/403）的令牌不予保存，避免它抢在
+  统一密码前面把 Canvas 锁死；
 * **打印系统**：独立密码域，本向导不试（无凭据时也只用公开网点列表）。
   电子地图已按用户裁定完全走公开内容（图片 + 720° 全景链接），无账号。
 
 凭据落盘沿用既有四级机制：优先系统钥匙串，退配置文件，写时尽力 0600。
+**验证未通过也先落盘**（页面/终端都会标明「未验证」），避免校外、验证码或
+网络抖动时白填一次；令牌则只存「有效或无法判定」的，确定无效的不存。
 向导**不回显、不写日志**任何密码；``--password`` 参数仅为自动化保留，
 进程列表里可见，不建议日常使用。
 """
@@ -41,6 +45,8 @@ class SetupReport:
     sis_ok: bool = False
     sis_note: str = ""
     stored_in: str = ""
+    canvas_saved: bool = False
+    canvas_note: str = ""
     extra: list[str] = field(default_factory=list)
 
 
@@ -83,18 +89,34 @@ def _persist(sid: str, password: str, *, use_keyring: bool = True) -> str:
 
 def _persist_canvas(token: str) -> str:
     """把 Canvas 令牌写到配置文件首行。"""
-    from westlake_survival.canvas.client import token_file_path
+    from westlake_survival.canvas.client import save_token_file
 
-    path = token_file_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(token.strip() + "\n", encoding="utf-8")
-    try:
-        import os
+    return str(save_token_file(token))
 
-        os.chmod(path, 0o600)
-    except OSError:
-        pass
-    return str(path)
+
+def _clear_canvas() -> bool:
+    """删除本地 Canvas 令牌文件；本就不存在返回 ``False``。"""
+    from westlake_survival.canvas.client import clear_token_file
+
+    return clear_token_file()
+
+
+def _handle_canvas_token(token: str, verify: bool) -> tuple[bool, str]:
+    """校验并保存 Canvas 令牌，返回 ``(是否保存, 说明)``。
+
+    确定被拒（HTTP 401/403）的令牌不保存——它一旦落盘就会优先于统一密码，
+    反而把 Canvas 锁死；网络不可达等「未知」情况按「先存后重试」处理。
+    """
+    if not token.strip():
+        return False, ""
+    note = "未校验（直接保存）"
+    if verify:
+        from westlake_survival.canvas.client import check_token
+
+        state, note = check_token(token)
+        if state == "rejected":
+            return False, f"{note}；未保存"
+    return True, f"{note}；已保存到 {_persist_canvas(token)}"
 
 
 def _print_report(report: SetupReport) -> None:
@@ -105,10 +127,13 @@ def _print_report(report: SetupReport) -> None:
     click.echo(f"  {mark(report.sis_ok)} 校园账号（教务课表/成绩/考试 + Canvas 课程作业）  {report.sis_note}")
     click.echo("  ✓  公开功能（校历/班车/新闻/培养方案/通识课程/地图）  始终可用，无需账号")
     if report.stored_in:
-        click.echo(f"\n教务凭据已保存到：{report.stored_in}")
+        state = "已验证" if report.sis_ok else "未验证（查询时会重新验证）"
+        click.echo(f"\n教务凭据已保存到：{report.stored_in}（{state}）")
+    if report.canvas_note:
+        click.echo(f"Canvas 令牌：{report.canvas_note}")
     for line in report.extra:
         click.echo(line)
-    if not report.sis_ok:
+    if not report.sis_ok and report.sid:
         click.echo("\n提示：教务未接通不影响公开功能；校内网络下可重跑 `westlake setup`。")
 
 
@@ -121,9 +146,25 @@ def run_setup(
     save: bool = True,
     force_save: bool = False,
     use_keyring: bool = True,
+    clear_canvas_token: bool = False,
 ) -> SetupReport:
-    """执行向导主体（可被命令与测试直接调用）。"""
+    """执行向导主体（可被命令与测试直接调用）。
+
+    只给了 ``--canvas-token`` / ``--clear-canvas-token`` 而不给学号密码时，
+    走「只管理令牌」路径：不碰教务凭据、不做验证。
+    """
     report = SetupReport()
+    canvas_token = (canvas_token or "").strip()
+    token_only = not sid and not password and bool(canvas_token or clear_canvas_token)
+
+    if token_only:
+        if clear_canvas_token:
+            report.canvas_note = "已清除本地令牌" if _clear_canvas() else "本地本无令牌，无需清除"
+        if canvas_token:
+            report.canvas_saved, note = _handle_canvas_token(canvas_token, verify)
+            report.canvas_note = "；".join(x for x in (report.canvas_note, note) if x)
+        _print_report(report)
+        return report
 
     click.echo("西湖生存手册 · 首次配置")
     click.echo("公开功能（校历 / 班车 / 新闻 / 培养方案 / 通识课程 / 地图图片）无需账号，已可直接使用。")
@@ -152,17 +193,18 @@ def run_setup(
     else:
         report.sis_ok, report.sis_note = False, "已跳过验证（--no-verify）"
 
-    # 可选块不做阻塞式提问：Canvas 令牌随时可补，向导只提示一次。
-    canvas_token = canvas_token or ""
-
     if save:
-        if report.sis_ok:
-            report.stored_in = _persist(sid, password, use_keyring=use_keyring)
-        elif force_save:
-            report.stored_in = _persist(sid, password, use_keyring=use_keyring)
-            report.extra.append("教务凭据未验证通过，但按 --force-save 已保存。")
-        elif verify:
-            report.extra.append("教务凭据未通过验证，未保存（可加 --force-save 强制保存）。")
+        # 先保存再报状态：验证失败也落盘，避免「校外/验证码/网络抖动」时白填一次；
+        # 保存与否由 stored_in 与状态后缀如实标明，不冒充已验证。
+        report.stored_in = _persist(sid, password, use_keyring=use_keyring)
+        if verify and not report.sis_ok:
+            report.extra.append(f"验证未通过（{report.sis_note}），凭据已先保存；之后查询会重新验证。")
+
+    if clear_canvas_token:
+        report.canvas_note = "已清除本地令牌" if _clear_canvas() else "本地本无令牌，无需清除"
+    if canvas_token:
+        report.canvas_saved, note = _handle_canvas_token(canvas_token, verify)
+        report.canvas_note = "；".join(x for x in (report.canvas_note, note) if x)
 
     _print_report(report)
     return report
@@ -171,12 +213,15 @@ def run_setup(
 @click.command(name="setup")
 @click.option("--sid", default=None, help="学号；缺省交互输入。")
 @click.option("--password", default=None, help="密码；缺省交互隐藏输入（不要在共享环境用参数）。")
-@click.option("--canvas-token", default=None, help="Canvas 令牌；缺省在向导里选填。")
-@click.option("--no-verify", is_flag=True, help="跳过网络验证，只保存凭据。")
+@click.option("--canvas-token", default=None, help="Canvas 令牌；会写入配置文件，供 REST API 优先使用。")
+@click.option("--clear-canvas-token", is_flag=True, help="只删除本地 Canvas 令牌（回退统一密码）。")
+@click.option("--no-verify", is_flag=True, help="跳过网络验证，只保存凭据/令牌。")
 @click.option("--no-save", is_flag=True, help="只探测，不落盘。")
-@click.option("--force-save", is_flag=True, help="验证未通过也保存凭据。")
+@click.option("--force-save", is_flag=True, help="兼容保留：现在验证未通过也会保存，无需此开关。")
 @click.option("--no-keyring", is_flag=True, help="只写配置文件，不碰系统钥匙串（自动化用）。")
-def setup_cmd(sid, password, canvas_token, no_verify, no_save, force_save, no_keyring) -> None:
+def setup_cmd(
+    sid, password, canvas_token, clear_canvas_token, no_verify, no_save, force_save, no_keyring
+) -> None:
     """首次配置：填一次学号密码，自动接上能用的服务。"""
     report = run_setup(
         sid=sid,
@@ -186,6 +231,9 @@ def setup_cmd(sid, password, canvas_token, no_verify, no_save, force_save, no_ke
         save=not no_save,
         force_save=force_save,
         use_keyring=not no_keyring,
+        clear_canvas_token=clear_canvas_token,
     )
     # 交互向导本身跑完即成功；验证未通过时给非零退出码，便于脚本判断。
-    raise SystemExit(0 if (report.sis_ok or no_verify) else 1)
+    # 只管理令牌（没填学号）时没有可判定的教务状态，按成功处理。
+    ok_exit = no_verify or report.sis_ok or not report.sid
+    raise SystemExit(0 if ok_exit else 1)

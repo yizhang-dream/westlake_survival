@@ -80,20 +80,28 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 用户侧（2026-10-23 裁定：基本不用终端）：
 
 1. 运行一次 `westlake go`（自动启动并打开浏览器；等价 `westlake webui serve` + 手动开页）；
-2. 首页横幅或导航「设置」进入 `/setup`，填一次学号 + 密码（可选：Canvas 令牌、地图密码）；
-3. 页面当场显示账号是否接通；保存后横幅自动消失。设置页只有一组「学号 + 统一密码」，
-   没有任何其它账号输入。
+2. 首页横幅或导航「设置」进入 `/setup`，填一次学号 + 统一密码；下面另有一行
+   **Canvas 令牌（选填）**，可保存也可一键「清除令牌」；地图无账号，不再有地图密码；
+3. 页面当场显示账号是否接通，并明确区分「已验证并保存 / 未验证已保存」；
+   保存后横幅自动消失。验证没通过也会落盘，不必重填。
 
-Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
+Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。只管理令牌时可不带学号密码：
+`westlake setup --canvas-token '<令牌>' --no-verify` 保存，
+`westlake setup --clear-canvas-token` 删除本地令牌（Canvas 随即回退统一密码）。
 
 一次输入的真实边界：教务 SIS 走统一身份认证（IAM OAuth2），填统一（校园门户）
 密码即可；Canvas 同一套统一密码（无令牌自动回退 IAM CAS 会话）；打印系统是
 另一套密码。公开功能无需任何账号；地图全公开（图片 + 720° 全景）。
 
+**凭据是本机状态，不跨端同步**（2026-10-26 查明）：四级来源全在本机本用户
+（内存 / 环境变量 / 钥匙串 / 配置文件）。换机器、换系统用户、换 `WESTLAKE_HOME`
+或换 Python 环境（一边装了 `keyring`、一边没装）都要各自配一次；`westlake sso creds status`
+只报来源有无，可用来判断「到底存在哪」。
+
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
-- **Canvas 类**（`canvas`）：优先令牌（`WESTLAKE_CANVAS_TOKEN` 或 `~/.westlake_survival/canvas_token.txt` 首行）；**无令牌时自动回退统一认证**（IAM CAS 会话，2026-10-24 实测 REST API 认会话 Cookie）——配好教务统一密码即可用 Canvas，无需任何令牌。
+- **Canvas 类**（`canvas`）：优先令牌（`/setup` 保存、`WESTLAKE_CANVAS_TOKEN` 环境变量或 `~/.westlake_survival/canvas_token.txt` 首行）；**无令牌时自动回退统一认证**（IAM CAS 会话，2026-10-24 实测 REST API 认会话 Cookie）——配好教务统一密码即可用 Canvas，无需任何令牌。报 401 先怀疑「存了过期令牌抢在统一密码前面」：`westlake setup --clear-canvas-token` 或在 `/setup` 点「清除令牌」即可回退。
 - **电子地图类**：无账号。`/map` 只放官网公开内容（校区地图图片 + 720° 全景链接 + 交通），按用户裁定 2026-10-24 已移除账号与数据集抓取体系。
 - **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`，以及 `scholar dbs|campus|doi|carsi`（学术库注册表、校园 IP 信标、DOI 解析、CARSI 目录——后两者离线也查得到快照，PDF 下载需校园网/VPN 或 OA 副本）。
 - **学术资源（2026-10-24 实测）**：本校是 CARSI 联盟成员（`idp.westlake.edu.cn` Shibboleth IdP），统一密码可登录各出版社；校园网内出版社按 IP 认账（ScienceDirect 实测自动认证、Springer PDF 直下实测 200）。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url（校园 IP 订阅通道）」两级取全文；校外先 `scholar sso <库>` 建立联盟会话（Playwright profile 持久化，IAM 若弹图形验证码由本人在窗口输入一次）。
@@ -283,4 +291,4 @@ for course in c.list_courses():                                   # 扫描当前
 - **写作业内容先看课程资料**：动笔前先看作业描述与附件（`canvas assignment-info`），再看课程文件区（`canvas files`）与模块条目（`canvas modules`）；实验报告参照本人历史提交物的格式惯例。不要假定资料在某个固定本地路径。
 - **绝不打印凭据/令牌**：不 `cat` `~/.westlake_survival/credentials.txt` 或 `canvas_token.txt`，不在输出中回显学号密码或 `WESTLAKE_CANVAS_TOKEN`；只看 `sso creds status` 的「有 / 无」。
 - **个人数据脱敏**：成绩、学籍、住宿、贷款等属个人隐私，输出给第三方前默认做脱敏/摘要提示，并提醒用户自行确认是否适合分享。
-- **失败降级**：`OffCampusError` = 目标系统仅校园网/VPN 可达，提示用户连接 <https://vpn.westlake.edu.cn/>；`AuthError` = 凭据缺失或失效，提示 `westlake sso creds set`；Canvas 报错则提示配置 `WESTLAKE_CANVAS_TOKEN`。命令失败时如实转述错误，不臆造数据。
+- **失败降级**：`OffCampusError` = 目标系统仅校园网/VPN 可达，提示用户连接 <https://vpn.westlake.edu.cn/>；`AuthError` = 凭据缺失或失效，提示 `westlake sso creds set`；Canvas 报错先看是否存了过期令牌（`westlake setup --clear-canvas-token` 回退统一密码），再考虑配置 `WESTLAKE_CANVAS_TOKEN`。命令失败时如实转述错误，不臆造数据。

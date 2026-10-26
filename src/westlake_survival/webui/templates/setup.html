@@ -11,12 +11,17 @@
   <table class="data">
     <thead><tr><th>服务</th><th>状态</th></tr></thead>
     <tbody>
-      <tr><td>校园账号（教务 + Canvas）</td>
-          <td style="display:flex;gap:.6rem;align-items:center">
-            {% if creds.sis %}<span class="chip">已配置</span>
-              <button type="button" id="revealBtn">查看密码</button>
-              <span id="revealed" style="display:none"></span>
-            {% else %}<span class="chip warn">未配置</span>{% endif %}
+      <tr><td>校园账号（统一密码 → 教务 + Canvas）</td>
+          <td id="sisState" style="display:flex;gap:.6rem;align-items:center">
+            <span class="chip {{ 'ok' if creds.sis else 'warn' }}" id="sisChip">{{ '已配置' if creds.sis else '未配置' }}</span>
+            <button type="button" id="revealBtn"{% if not creds.sis %} style="display:none"{% endif %}>查看密码</button>
+            <span id="revealed" style="display:none"></span>
+          </td></tr>
+      <tr><td>Canvas 访问令牌（选填，优先于统一密码）</td>
+          <td id="canvasState" style="display:flex;gap:.6rem;align-items:center">
+            <span class="chip {{ 'ok' if canvas.configured else 'plain' }}" id="canvasChip">{{ ('已配置 · ' ~ canvas.source) if canvas.configured else '未配置（走统一密码）' }}</span>
+            <button type="button" id="clearCanvasBtn"{% if not canvas.configured %} style="display:none"{% endif %}>清除令牌</button>
+            <span id="clearedNote" class="muted"></span>
           </td></tr>
     </tbody>
   </table>
@@ -24,14 +29,17 @@
 
 <form id="setupForm" class="filter" style="flex-direction:column;align-items:stretch">
   <label>学号
-    <input name="sid" autocomplete="username" required placeholder="学号">
+    <input name="sid" autocomplete="username" placeholder="学号">
   </label>
   <label>统一身份认证密码（校园门户密码；旧的 SIS 密码也兼容；不会回显）
-    <input name="password" type="password" autocomplete="current-password" required>
+    <input name="password" type="password" autocomplete="current-password">
+  </label>
+  <label>Canvas 访问令牌（选填；留空不改动。存了会先试令牌，不行再回退统一密码）
+    <input name="canvas_token" autocomplete="off" placeholder="粘贴令牌，或留空">
   </label>
   <label style="display:flex;flex-direction:row;align-items:center;gap:.45rem">
     <input type="checkbox" name="verify" checked style="min-width:auto">
-    现在就登录验证（校内网络；校外请先连 VPN，或取消勾选先保存）
+    现在就登录验证（校内网络；校外请先连 VPN。验证没通过也会先保存，并在结果里标明「未验证」）
   </label>
   <div>
     <button type="submit" id="submitBtn">保存并检测</button>
@@ -98,6 +106,23 @@
 
 <script>
 (function () {
+  function setChip(id, text, cls) {
+    var chip = document.getElementById(id);
+    if (chip) { chip.textContent = text; chip.className = 'chip ' + cls; }
+  }
+  function refreshStatus() {
+    return fetch('/setup/api/stored').then(function (res) { return res.json(); }).then(function (data) {
+      setChip('sisChip', data.configured ? '已配置' : '未配置', data.configured ? 'ok' : 'warn');
+      var revealBtn = document.getElementById('revealBtn');
+      if (revealBtn) revealBtn.style.display = data.configured ? '' : 'none';
+      var cv = data.canvas || {};
+      setChip('canvasChip', cv.configured ? '已配置 · ' + cv.source : '未配置（走统一密码）', cv.configured ? 'ok' : 'plain');
+      var clearBtn = document.getElementById('clearCanvasBtn');
+      if (clearBtn) clearBtn.style.display = cv.configured ? '' : 'none';
+      return data;
+    });
+  }
+
   var revealBtn = document.getElementById('revealBtn');
   if (revealBtn) {
     revealBtn.addEventListener('click', async function () {
@@ -112,11 +137,32 @@
       } catch (e) { box.textContent = '读取失败：' + e; box.style.display = 'inline'; }
     });
   }
+
+  var clearBtn = document.getElementById('clearCanvasBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async function () {
+      if (!confirm('删除本地 Canvas 令牌？之后 Canvas 改用统一密码（IAM 会话）。')) return;
+      var noteBox = document.getElementById('clearedNote');
+      try {
+        var res = await fetch('/setup/api/canvas/clear', { method: 'POST' });
+        var data = await res.json();
+        if (noteBox) noteBox.textContent = data.note || '';
+        await refreshStatus();
+      } catch (e) {
+        if (noteBox) noteBox.textContent = '清除失败：' + e;
+      }
+    });
+  }
+
+  window.wlRefreshStatus = refreshStatus;
 })();
 (function () {
   var form = document.getElementById('setupForm');
   var box = document.getElementById('result');
   var btn = document.getElementById('submitBtn');
+  if (!form) return;
+  var refreshStatus = window.wlRefreshStatus || function () { return Promise.resolve(); };
+
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
     btn.disabled = true;
@@ -126,6 +172,7 @@
     var data = {
       sid: form.sid.value.trim(),
       password: form.password.value,
+      'canvas_token': form.canvas_token.value.trim(),
       verify: form.verify.checked,
     };
     try {
@@ -139,16 +186,23 @@
         box.innerHTML = '<div class="note">保存失败：' + (payload.error || res.status) + '</div>';
       } else {
         var rows = '';
-        [['校园账号（教务 + Canvas）', payload.sis]].forEach(function (pair) {
-          if (!pair[1]) return;
-          var mark = pair[1].ok ? '✓' : '✗';
-          var extra = pair[1].saved ? ' 已保存' + (pair[1].stored_in ? '（' + pair[1].stored_in + '）' : '') : '';
-          rows += '<tr><td>' + pair[0] + '</td><td>' + mark + ' ' + (pair[1].note || '') + extra + '</td></tr>';
-        });
+        if (payload.sis) {
+          var sis = payload.sis;
+          var state = sis.verified ? '已验证并保存' : '未验证已保存';
+          rows += '<tr><td>校园账号（统一密码）</td><td>' + (sis.ok ? '✓ ' : '✗ ') +
+            (sis.note || '') + ' · ' + state +
+            (sis.stored_in ? '（' + sis.stored_in + '）' : '') + '</td></tr>';
+        }
+        if (payload.canvas) {
+          var cv = payload.canvas;
+          var rest = cv.state ? '；当前' + (cv.state.configured ? '已配置（' + cv.state.source + '）' : '无令牌') : '';
+          rows += '<tr><td>Canvas 令牌</td><td>' + (cv.note || '') + rest + '</td></tr>';
+        }
         box.innerHTML =
           '<table class="data"><thead><tr><th>服务</th><th>结果</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-          '<p class="muted" style="font-size:.84rem">打印系统（pms）是另一套密码，需要时再单独配置；公开功能始终可用。</p>' +
+          '<p class="muted" style="font-size:.84rem">验证没通过也保住了输入，之后再查会重新验证；打印系统（pms）是另一套密码，需要时再单独配置。</p>' +
           '<p><a href="/">回到仪表盘 →</a></p>';
+        await refreshStatus();
       }
     } catch (err) {
       box.innerHTML = '<div class="note">请求失败：' + err + '</div>';

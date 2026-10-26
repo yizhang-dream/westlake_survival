@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import os
 import time as _time_mod
 
 from westlake_survival.discovery import SERVICE_REGISTRY
@@ -643,9 +644,29 @@ def _creds_summary() -> dict:
     return summary
 
 
+def _canvas_token_state() -> dict:
+    """Canvas 令牌状态（只报来源有无，绝不读出令牌本体）。"""
+    from westlake_survival.canvas.client import TOKEN_ENV_VAR, token_file_path
+
+    env_value = os.environ.get(TOKEN_ENV_VAR)
+    path = token_file_path()
+    try:
+        has_file = bool(path.read_text(encoding="utf-8").strip())
+    except OSError:
+        has_file = False
+    source = "环境变量" if env_value else ("本地文件" if has_file else "")
+    return {
+        "configured": bool(source),
+        "source": source,
+        "path": str(path),
+        # 环境变量优先于文件；此时清文件不生效，页面要说明。
+        "env_locked": bool(env_value),
+    }
+
+
 def _setup_context() -> dict:
     """设置页上下文：当前凭据状态 + 向导说明。"""
-    return {"creds": _creds_summary(), "error": None}
+    return {"creds": _creds_summary(), "canvas": _canvas_token_state(), "error": None}
 
 
 def _sis_context() -> dict:
@@ -1793,39 +1814,73 @@ def create_app() -> Flask:
     def setup_stored():
         """本机已存教务凭据（设置页「查看密码」用；等价密码管理器的显示功能）。
 
-        服务只绑 127.0.0.1，与本机明文凭据文件同一信任域。
+        服务只绑 127.0.0.1，与本机明文凭据文件同一信任域。Canvas 令牌只报
+        有无与来源，不回显令牌本体。
         """
+        canvas = _canvas_token_state()
         try:
             from westlake_survival.sso import read_credentials
 
             sid, password = read_credentials()
         except Exception:
-            return {"configured": False}
-        return {"configured": True, "sid": sid, "password": password}
+            return {"configured": False, "canvas": canvas}
+        return {"configured": True, "sid": sid, "password": password, "canvas": canvas}
+
+    @app.route("/setup/api/canvas/clear", methods=["POST"])
+    def setup_canvas_clear():
+        """删除本地 Canvas 令牌，让 Canvas 回退统一密码（IAM CAS 会话）。"""
+        from westlake_survival.canvas.client import clear_token_file
+
+        removed = clear_token_file()
+        state = _canvas_token_state()
+        note = "已清除本地令牌" if removed else "本地本无令牌"
+        if state["env_locked"]:
+            note += "；环境变量 WESTLAKE_CANVAS_TOKEN 仍优先，需在启动环境里取消"
+        return {"cleared": removed, "note": note, "canvas": state}
 
     @app.route("/setup/api/save", methods=["POST"])
     def setup_save():
-        """保存凭据并（可选）验证。请求体含密码，只经 127.0.0.1，不落日志。"""
-        from westlake_survival.setup_cmd import _persist, _probe_sis
+        """保存凭据/令牌并（可选）验证。请求体含密码，只经 127.0.0.1，不落日志。
+
+        两处与旧行为不同（2026-10-26 用户裁定 A+B）：
+        * 验证未通过也落盘，响应里用 ``verified`` 如实区分「已验证 / 未验证已保存」；
+        * 可一并保存或清除 Canvas 令牌，令牌可脱离学号密码单独提交。
+        """
+        from westlake_survival.setup_cmd import _handle_canvas_token, _persist, _probe_sis, _clear_canvas
 
         payload = request.get_json(silent=True) or {}
         sid = str(payload.get("sid") or "").strip()
         password = str(payload.get("password") or "")
         verify = bool(payload.get("verify", True))
+        canvas_token = str(payload.get("canvas_token") or "").strip()
+        clear_canvas = bool(payload.get("clear_canvas_token"))
+        has_account = bool(sid and password)
 
-        if not sid or not password:
+        if not has_account and not canvas_token and not clear_canvas:
             return {"error": "学号与密码不能为空"}, 400
 
-        result: dict = {"sid": sid}
+        result: dict = {}
 
-        sis_ok, sis_note = _probe_sis(sid, password) if verify else (False, "未验证（直接保存）")
-        result["sis"] = {"ok": sis_ok, "note": sis_note}
-        if sis_ok or not verify:
-            result["stored_in"] = _persist(sid, password)
-            result["sis"]["saved"] = True
-        else:
-            result["sis"]["saved"] = False
+        if has_account:
+            sis_ok, sis_note = _probe_sis(sid, password) if verify else (False, "未验证（直接保存）")
+            result["sid"] = sid
+            stored_in = _persist(sid, password)
+            result["sis"] = {
+                "ok": sis_ok,
+                "verified": bool(verify and sis_ok),
+                "note": sis_note,
+                "saved": True,
+                "stored_in": stored_in,
+            }
 
+        if clear_canvas:
+            result["canvas"] = {"cleared": _clear_canvas(), "note": "已清除本地令牌"}
+        if canvas_token:
+            saved, note = _handle_canvas_token(canvas_token, verify)
+            entry = result.setdefault("canvas", {})
+            entry.update({"ok": saved, "saved": saved, "note": note})
+        if "canvas" in result:
+            result["canvas"]["state"] = _canvas_token_state()
 
         return result
 

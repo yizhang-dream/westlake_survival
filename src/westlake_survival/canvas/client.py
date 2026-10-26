@@ -121,6 +121,49 @@ def resolve_token(token: str | None = None) -> str | None:
     return first_line or None
 
 
+def save_token_file(token: str) -> Path:
+    """把 token 写进配置文件首行（覆盖），尽力设为 ``0600``。"""
+    path = token_file_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(token.strip() + "\n", encoding="utf-8")
+    try:
+        os.chmod(path, 0o600)
+    except OSError:  # pragma: no cover - Windows 上通常静默失败
+        pass
+    return path
+
+
+def clear_token_file() -> bool:
+    """删除本地 token 文件；文件本就不存在时返回 ``False``。"""
+    try:
+        token_file_path().unlink()
+    except OSError:
+        return False
+    return True
+
+
+def check_token(token: str) -> tuple[str, str]:
+    """用 ``GET /users/self`` 判断 token 是否可用，返回 ``(状态, 说明)``。
+
+    状态三值：``"ok"`` 有效、``"rejected"`` 确定被拒（HTTP 401/403）、
+    ``"unknown"`` 连不上或异常响应（令牌是否有效未知）。调用方据此决定是
+    拒绝保存还是「先存后重试」——被拒的令牌若存下来会抢占统一认证回退。
+    """
+    try:
+        response = http_session().get(
+            f"{resolve_base_url()}/users/self",
+            headers={"Authorization": f"Bearer {token.strip()}", "Accept": "application/json"},
+            timeout=DEFAULT_TIMEOUT,
+        )
+    except requests.RequestException:
+        return "unknown", "网络不可达，未能在线校验"
+    if response.status_code in (401, 403):
+        return "rejected", f"令牌被拒（HTTP {response.status_code}），确定无效"
+    if 200 <= response.status_code < 300:
+        return "ok", "令牌有效"
+    return "unknown", f"校验失败（HTTP {response.status_code}）"
+
+
 class CanvasClient:
     """Canvas REST API 客户端。
 
@@ -200,7 +243,11 @@ class CanvasClient:
             return
         body = self._response_text(response)[:_ERROR_BODY_LIMIT]
         if status == 401:
-            raise AuthError(f"Canvas 认证失败（HTTP 401）：token 无效或已过期。{body}")
+            raise AuthError(
+                "Canvas 认证失败（HTTP 401）：令牌无效或已过期。"
+                "本地令牌会抢先于统一密码，可在网页「设置」清除令牌回退统一认证，"
+                f"或更新 {TOKEN_ENV_VAR} / 令牌文件后重试。{body}"
+            )
         if status == 404:
             raise NotFound(f"Canvas 资源不存在（HTTP 404）：{body}")
         raise WestlakeError(f"Canvas 请求失败（HTTP {status}）：{body}")
@@ -1065,7 +1112,10 @@ __all__ = [
     "TOKEN_FILENAME",
     "UPLOAD_TIMEOUT",
     "CanvasClient",
+    "check_token",
+    "clear_token_file",
     "resolve_base_url",
     "resolve_token",
+    "save_token_file",
     "token_file_path",
 ]

@@ -49,6 +49,33 @@ def test_setup_writes_credentials_without_keyring(tmp_path) -> None:
         assert marker in result.stdout, marker
 
 
+def test_setup_persists_canvas_token(tmp_path) -> None:
+    """`--canvas-token` 真的落盘（旧版收下参数却从未写入）。"""
+    result = _run(
+        ["setup", "--sid", "20259999", "--password", "dummy-pass",
+         "--canvas-token", "fake-token-123", "--no-verify", "--no-keyring"],
+        tmp_path,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    token_file = tmp_path / "canvas_token.txt"
+    assert token_file.exists(), "令牌应写入 WESTLAKE_HOME"
+    assert token_file.read_text(encoding="utf-8").strip() == "fake-token-123"
+    assert "Canvas 令牌" in result.stdout
+
+
+def test_setup_clear_canvas_token_only(tmp_path) -> None:
+    """只带 `--clear-canvas-token`：删令牌、不碰教务凭据、退出码 0。"""
+    (tmp_path / "canvas_token.txt").write_text("old-token" + chr(10), encoding="utf-8")
+
+    result = _run(["setup", "--clear-canvas-token", "--no-verify", "--no-keyring"], tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (tmp_path / "canvas_token.txt").exists()
+    assert not (tmp_path / "credentials.txt").exists(), "只清令牌时不应写教务凭据"
+    assert "已清除本地令牌" in result.stdout
+
+
 def test_bare_invocation_without_credentials_does_not_hang(tmp_path) -> None:
     """非交互终端下不带子命令：快速打印帮助，不进入向导、不阻塞。"""
     result = _run([], tmp_path)
