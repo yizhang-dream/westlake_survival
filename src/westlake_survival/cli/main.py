@@ -54,6 +54,7 @@ from westlake_survival.program import cli_group as program_cmd
 from westlake_survival.research import cli_group as research_cmd
 from westlake_survival.search import cli_group as search_cmd
 from westlake_survival.setup_cmd import setup_cmd
+from westlake_survival.sharepoint import cli_group as share_cmd
 from westlake_survival.sis.aid import cli_group as aid_cmd
 from westlake_survival.sis.evals import cli_group as evals_cmd
 from westlake_survival.sis.profile import cli_group as profile_cmd
@@ -1857,6 +1858,7 @@ for _group in (
     lib_cmd,
     pms_cmd,
     booking_cmd,
+    share_cmd,
     search_cmd,
     news_cmd,
     program_cmd,

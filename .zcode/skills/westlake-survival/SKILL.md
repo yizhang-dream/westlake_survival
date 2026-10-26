@@ -37,6 +37,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 发讨论回帖（写操作） | `westlake canvas reply --course … --topic … --text "…"` |
 | 交作业（文件/文本/链接，写操作） | `westlake canvas submit --course … --assignment … --file 路径` |
 | 查看某作业已提交状态 | `westlake canvas submission --course … --assignment …` |
+| 老师用 OneDrive/SharePoint 共享的讲义（列文件 / 下载） | `westlake share files --name <名字>` / `westlake share download --name <名字> [--path 子目录] [--match 关键词]`；首次用 `westlake share add <名字> <链接>` 登记 |
 | 讲座 / 学术会议 / 演出预告 | `westlake events` |
 | 西湖新闻 / 科研进展 | `westlake news` / `westlake research` |
 | 本科培养方案 / 课程体系 / 专业介绍 | `westlake program plan [专业]` / `curriculum` / `majors` / `overview` |
@@ -216,11 +217,21 @@ westlake canvas submit --course 概率论 --assignment 简介 --text "……"   
 westlake canvas submission --course 概率论 --assignment 作业3              # 查提交状态
 ```
 
+OneDrive/SharePoint 分享（教师讲义）：
+
+```bash
+westlake share add 2183-lecture-notes https://westlakeu-my.sharepoint.com/:f:/g/personal/…   # 登记一次
+westlake share saved                                       # 已登记的分享与链接
+westlake share files --name 2183-lecture-notes             # 列文件（大小 / 修改时间 / 子目录）
+westlake share files --name 2180-lab-resources --path "Advanced Labs"   # 子目录
+westlake share download --name 2183-lecture-notes --match day01 --out ./讲义   # 只下命中项
+```
+
 `submit` 是写操作：默认先预检并弹确认，`--yes` 跳过确认，`--dry-run` 只预检不提交；课程/作业都接受 id 或名称关键词（子串匹配，唯一命中才执行；匹配不到就先用 `courses`/`assignments` 查全名——如课程叫「物理学实验 Ⅱ」，搜「物理实验」搜不到；命中多个会列出候选）。提交链路已真机验证（2026-10-15 真交 Lab 5 成功：西湖 Canvas 禁学生写课程文件区，包内自动退回本人文件区上传再提交，效果相同）。
 
 `assignments` 里没有截止时间、提交类型为 `none` 的条目（ClassParticipation、Quiz 等）多为课堂记录，不一定需要动手；要确认就看 `canvas assignment-info` 的描述。
 
-课程资料**按需从 Canvas 现拉，不依赖任何本地镜像库**：不带 `--download` 的命令只读元数据、不写盘；给 `--download <目录>` 才落文件，且只下当前命中的那门课/那个作业/那个讨论。不要为了一次查询去同步整门课或整学期——单个课件通常几十 KB 到几 MB。老师另行通过 OneDrive/SharePoint 分享的讲义不属于 Canvas 文件区，本工具没有该通道，需要在浏览器里手动获取；也不要把它当成 Canvas 内容去搜。
+课程资料**按需从 Canvas 现拉，不依赖任何本地镜像库**：不带 `--download` 的命令只读元数据、不写盘；给 `--download <目录>` 才落文件，且只下当前命中的那门课/那个作业/那个讨论。不要为了一次查询去同步整门课或整学期——单个课件通常几十 KB 到几 MB。老师另行通过 OneDrive/SharePoint 分享的讲义走 `westlake share`（见上表与下方示例）：分享链接设为「组织内任何人可查看」时免账号读取；只对特定人开放的链接会报 403，只能请分享者放开权限。
 
 ## Python API 直用（需要结构化数据时）
 
@@ -284,7 +295,7 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 55 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 56 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`，分享 `share_files`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}

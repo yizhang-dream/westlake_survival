@@ -881,6 +881,33 @@ def _tool_canvas_files(args: dict) -> Any:
     ]
 
 
+def _tool_share_files(args: dict) -> Any:
+    """OneDrive/SharePoint 分享文件夹的清单（文件名 / 大小 / 修改时间）。"""
+    from westlake_survival.sharepoint import ShareBrowser, resolve_share
+
+    ref = _opt_keyword(args, "share") or _opt_keyword(args, "url") or _opt_keyword(args, "name")
+    label, link = resolve_share(ref)
+    path = _opt_keyword(args, "path")
+    match = (_opt_keyword(args, "match") or "").lower()
+    with ShareBrowser(link) as browser:
+        items = browser.list_items(path)
+    if match:
+        items = [item for item in items if match in item.name.lower()]
+    return {
+        "share": label,
+        "count": len(items),
+        "items": [
+            {
+                "name": item.name,
+                "size": item.size,
+                "modified": item.modified,
+                "is_folder": item.is_folder,
+            }
+            for item in items
+        ],
+    }
+
+
 def _tool_canvas_assignment_info(args: dict) -> Any:
     """作业详情：描述纯文本 + 描述内附件 + 截止/提交类型。"""
     from westlake_survival.canvas import canvas
@@ -1437,6 +1464,22 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             ["course"],
         ),
         "handler": _tool_canvas_files,
+    },
+    {
+        "name": "share_files",
+        "description": (
+            "OneDrive/SharePoint 分享文件夹清单（教师共享的讲义等）："
+            "文件名 / 字节大小 / 修改时间 / 是否子目录。只读，不下载。"
+        ),
+        "inputSchema": _schema(
+            {
+                "share": _str_param("已保存的分享名字，或直接给 https 分享链接。"),
+                "path": _str_param("子目录（相对分享根），可省略。"),
+                "match": _str_param("按文件名关键词筛选（子串，不区分大小写）。"),
+            },
+            ["share"],
+        ),
+        "handler": _tool_share_files,
     },
     {
         "name": "canvas_assignment_info",
