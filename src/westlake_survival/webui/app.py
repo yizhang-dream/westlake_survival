@@ -1043,6 +1043,80 @@ def _hpc_context() -> dict:
     return context
 
 
+def _sport_context(day: str | None = None) -> dict:
+    """场馆页：场景 × 当日场地可约状态 + 我的预约（独立正元系统）。
+
+    体育场馆/游泳不在预约中心（``booking``），见 docs/sportvenue_notes.md。
+    每次刷新要打 15 个场景接口，所以按日期做 10 分钟磁盘缓存。
+    """
+    from datetime import date as _date
+    from datetime import timedelta
+
+    from westlake_survival._cache import load_cached, save_cached
+
+    context: dict = {"day": "", "scenes": [], "mine": [], "error": None, "note": ""}
+    module = _import_module("sportvenue")
+    if module is None:
+        context["error"] = "sportvenue 模块不可用"
+        return context
+    when = day or (_date.today() + timedelta(days=1)).isoformat()
+    context["day"] = when
+    cached = load_cached(f"sport/page_{when}.json", 600)
+    if cached is not None:
+        context.update(cached)
+        return context
+    try:
+        mine = module.my_reservations(limit=10)
+        rows = []
+        for scene in module.scenes():
+            entry = {
+                "name": scene.name,
+                "uuid": scene.uuid,
+                "sites": [],
+                "total": 0,
+                "bookable": 0,
+                "reason": "",
+            }
+            try:
+                sites = module.sites(scene, when)
+            except Exception as exc:  # noqa: BLE001 - 单场景失败不影响整页
+                entry["reason"] = f"查询失败：{exc.__class__.__name__}"
+                rows.append(entry)
+                continue
+            entry["sites"] = [
+                {
+                    "name": site.name,
+                    "location": site.location,
+                    "bookable": site.bookable,
+                    "reason": site.reason,
+                }
+                for site in sites
+            ]
+            entry["total"] = len(sites)
+            entry["bookable"] = sum(1 for site in sites if site.bookable)
+            reasons = {site.reason for site in sites if not site.bookable and site.reason}
+            entry["reason"] = "；".join(sorted(reasons))[:80]
+            rows.append(entry)
+        payload = {
+            "scenes": rows,
+            "mine": [
+                {
+                    "date": str(row.get("reserveDate") or row.get("createTime") or ""),
+                    "scene": str(row.get("sceneName") or ""),
+                    "site": str(row.get("siteName") or ""),
+                    "state": str(row.get("reserveState") or row.get("state") or ""),
+                }
+                for row in mine
+            ],
+            "error": None,
+        }
+        context.update(payload)
+        save_cached(f"sport/page_{when}.json", payload)
+    except Exception as exc:  # noqa: BLE001 - 页面降级
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:160]
+    return context
+
+
 def _finance_context() -> dict:
     """财务页：常用栏目的文档列表（公开）。"""
     context: dict = {"panels": [], "error": None}
@@ -2006,6 +2080,12 @@ def create_app() -> Flask:
     @app.route("/pms")
     def pms_page():
         return render_template("pms.html", **_pms_context())
+
+    # -- 场馆（体育/游泳，独立正元系统） ------------------------------------- #
+    @app.route("/sport")
+    def sport_page():
+        day = request.args.get("date", "").strip()
+        return render_template("sport.html", **_sport_context(day or None))
 
     # -- 学术资源页（订阅库 / CARSI / DOI） ---------------------------------- #
     @app.route("/scholar")

@@ -17,7 +17,7 @@
 | 模块 | 仓库先前说法 | 本次实测 | 归类 |
 | --- | --- | --- | --- |
 | 体育场馆/游泳 | 预约中心里 `state=1`，「不可预约」 | 真实入口 `sportvenue` 独立系统，登录链路已通；每天返回「表单规则未找到」 | 真做不了（服务端未配表单，非我们代码） |
-| 图书馆座位 | 「另一套 seats.library，服务端驱动 UI，尚未接入」 | `seats.library` 首页加载的是**企业微信 JSSDK**（`jwxwork`）+ `lab-user-data` 空 `accessToken`，属企业微信微应用；浏览器直连拿不到 token | 逆向未做完（缺的是企微授权路径，不是接口） |
+| 图书馆座位 | 「另一套 seats.library，服务端驱动 UI，尚未接入」 | 前端是**汇图 zhishulib** 的产品（`api.huitu.zhishulib.com`），首页加载**企业微信 JSSDK**（`jwxwork`）+ `lab-user-data` 空 `accessToken`，登录走企微 OAuth 签名；浏览器直连拿不到 token | 逆向未做完（缺的是企微授权路径，不是接口） |
 | 场馆预约（表单） | **未提及** | 办事大厅有独立应用「场馆预约」`infoplus/form/CGYY`，另有「资源预约」`ResourceReservation`、「会议室预约申请管理」`YY_JSSQXXGL`；均 CAS 登录，**发起即创建流程实例**（写操作），未探明字段 | 没建（且属写操作，需用户授权一次） |
 | 选课 | 被视为「不做」的写操作，能力面不含 | `westlake probe` 当场回「SIS 选课组件授权：**已授权（可开发选课功能！）**」——组件页现在就能打开，**只读查询是可做的** | 判断错（把政策边界当成能力上限） |
 | 办事/任务中心 | 记忆里标为「登录失败」阻塞项 | `westlake todo list` → 「没有待办任务」；`iam.login_for` 直登成功 | 判断错（旧结论已失效） |

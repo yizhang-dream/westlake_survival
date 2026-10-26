@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}场馆 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">场馆预约 <span class="chip">体育/游泳 · 独立系统</span></h1>
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+{% set total_sites = scenes | map(attribute='total') | sum %}
+{% set bookable_sites = scenes | map(attribute='bookable') | sum %}
+<div class="stats">
+  <div class="stat"><div class="label">场景</div><div class="value" data-count="{{ scenes | length }}">{{ scenes | length }}</div></div>
+  <div class="stat"><div class="label">{{ day }} 场地</div><div class="value" data-count="{{ total_sites }}">{{ total_sites }}</div></div>
+  <div class="stat"><div class="label">可约</div><div class="value" data-count="{{ bookable_sites }}">{{ bookable_sites }}</div></div>
+  <div class="stat"><div class="label">我的预约</div><div class="value" data-count="{{ mine | length }}">{{ mine | length }}</div></div>
+</div>
+
+<div class="callout"><span>
+体育场馆与游泳<strong>不在预约中心</strong>（那里看不到这些分类），入口是独立的正元场馆系统
+<code>sportvenue.westlake.edu.cn</code>，统一密码登录。
+{% if total_sites and not bookable_sites %}
+当前所有场地都不可约且原因一致时，通常是<strong>服务端没有配好预约表单</strong>，与本机网络或账号无关。
+{% endif %}
+</span></div>
+
+<form method="get" action="/sport" class="filter">
+  <label>查看日期 <input type="date" name="date" value="{{ day }}"></label>
+  <button class="btn" type="submit">切换</button>
+</form>
+
+{% for scene in scenes %}
+<details class="fold"{% if scene.bookable %} open{% endif %}>
+  <summary>{{ scene.name }}
+    <span class="chip">{{ scene.total }} 个场地</span>
+    {% if scene.bookable %}<span class="chip ok">可约 {{ scene.bookable }}</span>
+    {% elif scene.total %}<span class="chip warn">不可约</span>{% endif %}
+  </summary>
+  <div class="fold-body">
+    {% if scene.sites %}
+    <table class="data">
+      <thead><tr><th>场地</th><th>位置</th><th>状态</th></tr></thead>
+      <tbody>
+      {% for site in scene.sites %}
+        <tr>
+          <td>{{ site.name }}</td>
+          <td class="muted">{{ site.location or '—' }}</td>
+          <td>{% if site.bookable %}<span class="chip ok">可约</span>{% else %}{{ site.reason or '不可约' }}{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% elif scene.reason %}
+    <p class="muted">{{ scene.reason }}</p>
+    {% else %}
+    <p class="muted">该场景当日没有场地数据（会员卡类场景没有场地）。</p>
+    {% endif %}
+  </div>
+</details>
+{% endfor %}
+
+<h2>我的场馆预约</h2>
+{% if mine %}
+<table class="data">
+  <thead><tr><th>日期</th><th>场景</th><th>场地</th><th>状态</th></tr></thead>
+  <tbody>
+  {% for row in mine %}
+    <tr><td>{{ row.date }}</td><td>{{ row.scene }}</td><td>{{ row.site }}</td><td>{{ row.state }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="callout mute"><span>当前没有进行中的场馆预约。</span></div>
+{% endif %}
+
+<div class="callout"><span>
+命令行：<code>westlake sport scenes</code> / <code>sites &lt;场景&gt;</code> /
+<code>days &lt;场景&gt; &lt;场地&gt; --start --end</code> / <code>mine</code>。
+侦查笔记：<code>docs/sportvenue_notes.md</code>；同族系统对照：<code>docs/module_audit_2026-10-27.md</code>。
+</span></div>
+{% endblock %}

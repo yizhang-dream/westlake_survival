@@ -266,6 +266,63 @@ def _tool_sis_other_applications(args: dict) -> Any:
     return other_applications().to_dict()
 
 
+def _tool_sport_scenes(args: dict) -> Any:
+    """场馆系统全部场景（球场 / 会员卡 / 游泳次卡）。"""
+    from westlake_survival.sportvenue import scenes
+
+    return [
+        {"uuid": item.uuid, "name": item.name, "related_type": item.related_type}
+        for item in scenes()
+    ]
+
+
+def _tool_sport_sites(args: dict) -> Any:
+    """某场景某日的场地列表与可约状态。"""
+    from westlake_survival.sportvenue import sites
+
+    scene = _opt_str(args, "scene") or ""
+    if not scene:
+        raise ToolHint("需要 scene 参数：场景名（如 游泳次卡）或 uuid，见 sport_scenes")
+    rows = sites(scene, _opt_str(args, "date"))
+    return [
+        {
+            "uuid": item.uuid,
+            "name": item.name,
+            "location": item.location,
+            "bookable": item.bookable,
+            "reason": item.reason,
+            "code": item.code,
+        }
+        for item in rows
+    ]
+
+
+def _tool_sport_days(args: dict) -> Any:
+    """某场地逐日可约状态与不可约原因。"""
+    from westlake_survival.sportvenue import days, find_site
+
+    scene = _opt_str(args, "scene") or ""
+    site = _opt_str(args, "site") or ""
+    if not scene or not site:
+        raise ToolHint("需要 scene 与 site 参数（场景名与场地名，均支持子串）")
+    target = find_site(scene, site)
+    rows = days(target, start=_opt_str(args, "start"), end=_opt_str(args, "end"))
+    return [
+        {"date": item.day, "bookable": item.bookable, "reason": item.reason, "code": item.code}
+        for item in rows
+    ]
+
+
+def _tool_sport_reservations(args: dict) -> Any:
+    """我的场馆预约（进行中 / 历史）。"""
+    from westlake_survival.sportvenue import my_reservations
+
+    return my_reservations(
+        history=bool(args.get("history")),
+        limit=_opt_int(args, "limit", 20, minimum=1, maximum=100),
+    )
+
+
 def _tool_sites_index(args: dict) -> Any:
     """全部已接入站点索引（key/名称/分组/URL）。"""
     from westlake_survival.sites import sites_index
@@ -1246,6 +1303,49 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             required=["url"],
         ),
         "handler": _tool_site_detail,
+    },
+    {
+        "name": "sport_scenes",
+        "description": "体育场馆/游泳系统（正元 sportvenue）的全部场景；游泳与球场不在预约中心。",
+        "inputSchema": _schema(),
+        "handler": _tool_sport_scenes,
+    },
+    {
+        "name": "sport_sites",
+        "description": "某场馆场景某日的场地列表与可约状态（不可约时给服务端原因）。",
+        "inputSchema": _schema(
+            {
+                "scene": _str_param("场景名（子串）或 uuid，先用 sport_scenes 查。"),
+                "date": _str_param("日期 YYYY-MM-DD（缺省明天）。"),
+            },
+            required=["scene"],
+        ),
+        "handler": _tool_sport_sites,
+    },
+    {
+        "name": "sport_days",
+        "description": "某场地逐日可约状态与原因（游泳当前普遍是服务端表单规则缺失）。",
+        "inputSchema": _schema(
+            {
+                "scene": _str_param("场景名（子串）或 uuid。"),
+                "site": _str_param("场地名（子串）或 uuid。"),
+                "start": _str_param("起始日期 YYYY-MM-DD（缺省今天）。"),
+                "end": _str_param("结束日期 YYYY-MM-DD（缺省起始 +13 天）。"),
+            },
+            required=["scene", "site"],
+        ),
+        "handler": _tool_sport_days,
+    },
+    {
+        "name": "sport_reservations",
+        "description": "我的场馆预约记录（进行中，或 history=true 取历史）。",
+        "inputSchema": _schema(
+            {
+                "history": {"type": "boolean", "description": "true 取历史记录。"},
+                "limit": _int_param("最多返回条数", minimum=1, maximum=100),
+            }
+        ),
+        "handler": _tool_sport_reservations,
     },
     {
         "name": "vpn_status",
