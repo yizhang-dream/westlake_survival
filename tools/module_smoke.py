@@ -60,6 +60,8 @@ COMMANDS: list[tuple[str, list[str], str]] = [
     ("careers", ["careers", "--limit", "3"], "招聘岗位"),
     ("careers", ["careers", "detail", "https://www.westlake.edu.cn/careers/OpenPositions/postdoctoral_fellow/bshsls/202508/t20250827_58224.html"], "岗位详情（样例 URL 会过期）"),
     ("career", ["career", "list", "--kind", "jobfair"], "就业服务网招聘会"),
+    ("career", ["career", "deep", "--kind", "campus", "--page", "1"], "就业深列表（登录态）"),
+    ("career", ["career", "detail", "1129108"], "就业详情（样例 id 会过期）"),
     ("faculty", ["faculty", "--limit", "3"], "教师名录"),
     ("faculty", ["faculty", "detail", "https://www.westlake.edu.cn/faculty/jianhao-zhang.html"], "教师主页详情"),
     ("campus", ["campus", "dining", "--campus", "云谷"], "食堂"),
@@ -113,6 +115,7 @@ COMMANDS: list[tuple[str, list[str], str]] = [
     ("sis", ["sis", "schedule"], "课表"),
     ("sis", ["sis", "grades"], "成绩"),
     ("sis", ["sis", "exams"], "考试"),
+    ("sis", ["sis", "cart"], "选课车（只读）"),
     ("sis-evals", ["sis-evals", "list", "--pending"], "待评教"),
     ("profile", ["profile", "info"], "个人信息"),
     ("profile", ["profile", "academic"], "学籍数据"),
@@ -225,15 +228,17 @@ def run(argv: list[str], timeout: float = 90.0) -> tuple[str, str, float]:
 def main() -> int:
     argv = sys.argv[1:]
     out_path = ""
+    bare_json = False
     if "--json" in argv:
         index = argv.index("--json")
         if index + 1 < len(argv) and not argv[index + 1].startswith("--"):
             out_path = argv[index + 1]
             argv = argv[:index] + argv[index + 2 :]
         else:
+            bare_json = True  # 裸 --json：stdout 输出 JSON（此前会静默降级成文本，坑过工作流）
             argv = argv[:index] + argv[index + 1 :]
     args = [a for a in argv if not a.startswith("--")]
-    as_json = bool(out_path) or "--stdout-json" in sys.argv
+    as_json = bool(out_path) or bare_json or "--stdout-json" in sys.argv
     chosen = [row for row in COMMANDS if not args or any(a in row[0] for a in args)]
     results: list[Result] = []
     for module, argv, note in chosen:

@@ -1254,6 +1254,31 @@ def sis_exams() -> None:
     _print_table(rows, ("课程代码", "课程名称", "日期", "时间", "类型", "方式", "考场", "座位"))
 
 
+@sis_cmd.command(name="cart")
+@_handle_errors
+def sis_cart() -> None:
+    """打印选课车内容（只读；不做任何 add/drop/swap 写操作）。"""
+    from westlake_survival.sis import shopping_cart
+
+    items = shopping_cart()
+    if not items:
+        click.echo("解析成功：购物车为空（没有暂存课程）。")
+        return
+    rows = []
+    for c in items:
+        extra = "；".join(f"{k}：{v}" for k, v in (c.extra or {}).items())
+        rows.append(
+            (
+                c.course_code or "—",
+                c.course_title or "—",
+                c.units or "—",
+                c.status or "—",
+                extra or "—",
+            )
+        )
+    _print_table(rows, ("课程代码", "课程名称", "学分", "状态", "其他"))
+
+
 @sis_cmd.command(name="ical")
 @click.option("--out", type=click.Path(dir_okay=False, path_type=Path), default="schedule.ics", show_default=True, help="写入 .ics 文件。")
 @_handle_errors

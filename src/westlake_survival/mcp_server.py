@@ -813,6 +813,40 @@ def _tool_career_latest(args: dict) -> Any:
     }
 
 
+def _tool_sis_cart(args: dict) -> Any:
+    """SIS 选课车内容（只读；不做任何 add/drop/swap 写操作）。"""
+    from westlake_survival.sis import shopping_cart
+
+    return [course.to_dict() for course in shopping_cart()]
+
+
+def _tool_career_deep(args: dict) -> Any:
+    """就业服务网登录态深列表（分页全量）。"""
+    from westlake_survival.careersite import deep
+
+    kind = _opt_str(args, "kind") or "campus"
+    page = _opt_int(args, "page", 1, minimum=1, maximum=200)
+    limit = _opt_int(args, "limit", 50, minimum=1, maximum=200)
+    items = deep(kind, page)
+    return {
+        "count": len(items),
+        "kind": kind,
+        "page": page,
+        "note": "登录态深列表（统一密码自动登录）；详情用 career_detail",
+        "items": [i.to_dict() for i in items[:limit]],
+    }
+
+
+def _tool_career_detail(args: dict) -> Any:
+    """就业服务网详情页（SSR 正文 + 附件）。"""
+    from westlake_survival.careersite import detail
+
+    ref = _opt_str(args, "ref")
+    if not ref:
+        raise ValueError("参数 ref 不能为空（career_deep 列表输出的 id / URL / news tag）")
+    return detail(ref).to_dict()
+
+
 def _tool_find_capability(args: dict) -> Any:
     """运行时自发现：按需求关键词搜 CLI/MCP/网页/学术库/服务注册表。"""
     from westlake_survival.capabilities import find_capabilities
@@ -1219,6 +1253,12 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "取当前学期考试安排（日期 / 时间 / 类型 / 考场 / 座位）。",
         "inputSchema": _schema(),
         "handler": _tool_sis_exams,
+    },
+    {
+        "name": "sis_cart",
+        "description": "取 SIS 选课车内容（课程 / 学分 / 状态；只读，不做选课写操作）。",
+        "inputSchema": _schema(),
+        "handler": _tool_sis_cart,
     },
     {
         "name": "sis_evals_pending",
@@ -1692,6 +1732,33 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             }
         ),
         "handler": _tool_career_latest,
+    },
+    {
+        "name": "career_deep",
+        "description": (
+            "就业服务网登录态深列表（campus/jobfair/teachin/news 分页全量；"
+            "统一密码自动登录，只读）。"
+        ),
+        "inputSchema": _schema(
+            {
+                "kind": _str_param(
+                    "列表类型，默认 campus。",
+                    enum=["campus", "jobfair", "teachin", "news"],
+                ),
+                "page": _int_param("页码，默认 1。", minimum=1, maximum=200),
+                "limit": _int_param("最多返回条数，默认 50。", minimum=1, maximum=200),
+            }
+        ),
+        "handler": _tool_career_deep,
+    },
+    {
+        "name": "career_detail",
+        "description": "就业服务网详情页：标题 / 日期 / 正文摘要 / 附件（SSR，需登录）。",
+        "inputSchema": _schema(
+            {"ref": _str_param("career_deep 输出的条目 id / news tag / 完整 URL。")},
+            ["ref"],
+        ),
+        "handler": _tool_career_detail,
     },
     {
         "name": "find_capability",

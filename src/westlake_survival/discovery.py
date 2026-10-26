@@ -31,7 +31,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from westlake_survival._cache import http_get_with_etag
 from westlake_survival._net import DEFAULT_TIMEOUT, http_session
-from westlake_survival.exceptions import ParseError, WestlakeError
+from westlake_survival.exceptions import AuthError, ParseError, WestlakeError
 
 __all__ = [
     "TASKCENTER_BASE",
@@ -280,6 +280,10 @@ def portal_services() -> list[dict]:
                 page.fill('input[placeholder*="密码"]', password)
                 page.locator('button.content_submit').first.click(timeout=10000)
             page.wait_for_timeout(12000)
+            if "iam.westlake.edu.cn" in page.url:
+                # 登录被拒（密码错或验证码/风控锁态）：此时抓不到站点图，
+                # 报 AuthError 而不是误报「接口结构变化」。
+                raise AuthError("门户登录未通过（可能处于验证码/风控锁态或密码被拒）")
 
             rows: list[dict] = []
             for body in captured.values():

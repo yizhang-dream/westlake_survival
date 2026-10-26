@@ -18,7 +18,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 下一班校车 / 某校区班车时刻表 | `westlake transit next` / `westlake transit table` |
 | 一句话「此刻西湖」（日期+周次+事件+班车+天气） | `westlake context` |
 | 每日晨报（快照+活动+班车+周次+Canvas） | `westlake digest` |
-| 我的课表 / 成绩 / 考试安排 | `westlake sis schedule` / `grades` / `exams` |
+| 我的课表 / 成绩 / 考试安排 / 选课车 | `westlake sis schedule` / `grades` / `exams` / `westlake sis cart` |
 | 待评教任务 | `westlake sis-evals list --pending` |
 | 第二课堂成绩单（5 维度 + 每项进度） | `westlake records second-class` |
 | 学业导师（分配结果 + 两轮名单） | `westlake records advisor` |
@@ -45,7 +45,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 通识课程清单（学分/开课学期/教师） | `westlake program courses [--category 理工\|人文\|素质]` |
 | 官网全站搜索 | `westlake search <关键词>` |
 | 招聘岗位 / 导师名录 | `westlake careers` / `westlake faculty` |
-| 校园招聘/招聘会/宣讲会（就业服务网） | `westlake career list [--kind campus|jobfair|teachin]`，网页 `/careers` 下半区 |
+| 校园招聘/招聘会/宣讲会/新闻资讯（就业服务网） | 免登录首页三区块 `westlake career list [--kind campus\|jobfair\|teachin]`；登录态全量 `westlake career deep --kind campus --page 1`、详情 `westlake career detail <id>`，网页 `/careers` 下半区 |
 | 食堂咖啡 / 公寓 / 电话地址 | `westlake campus dining` / `housing` / `contact phones` |
 | 校区地图 / 校园全景 / 怎么到校 | `westlake map [--campus 云谷]` |
 | 什么事在哪儿办（全校流程应用目录） | `westlake affairs apps [关键词]` |
@@ -242,6 +242,7 @@ westlake sso login                           # 验证凭据是否有效
 westlake sis schedule
 westlake sis grades
 westlake sis exams
+westlake sis cart                             # 选课车（只读；空车打印明确空态）
 westlake sis ical --out schedule.ics
 westlake sis-evals list --pending
 westlake profile info                        # info|academic|extended
@@ -267,6 +268,15 @@ westlake sport sites 游泳次卡 [--date 2026-10-28]        # 当日场地与�
 westlake sport sites C16羽毛球场 --date 2026-10-28
 westlake sport days 游泳次卡 游泳场次 --start 2026-10-28 --end 2026-11-03
 westlake sport mine [--history]                          # 我的场馆预约
+```
+
+就业服务网深列表/详情（campus/jobfair/teachin 需统一密码自动登录；news 公开、
+登录被风控挡住时自动降级匿名；只读，投递等动作由本人完成）：
+
+```bash
+westlake career deep --kind campus --page 1    # campus|jobfair|teachin|news 分页全量
+westlake career deep --kind news --page 1      # news=毕业之后+生源速览两个栏目合并
+westlake career detail 1129108                 # 详情正文（REF 也可用列表输出的 URL / news aid、tag）
 ```
 
 需 Canvas 访问（令牌或统一密码会话）：
@@ -384,7 +394,7 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 60 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`，分享 `share_files`，场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 63 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，就业 `career_latest`/`career_deep`/`career_detail`，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`，分享 `share_files`，场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}
