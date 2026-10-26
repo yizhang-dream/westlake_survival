@@ -1601,12 +1601,45 @@ def _probe_canvas_token() -> tuple[str, str]:
     return "未配置", f"设置环境变量 {token_env} 或写入 canvas_token.txt"
 
 
+#: 场馆与座位两类「约不了」系统的入口（各自独立，不在预约中心）。
+VENUE_ENTRIES = (
+    ("sportvenue", "场馆系统 sportvenue（游泳/球场）"),
+    ("seats.library", "图书馆座位 seats.library（企业微信）"),
+)
+
+
+def _probe_venue_entries() -> tuple[str, str]:
+    """探测场馆/座位系统入口是否在线（只 GET 首页，不登录）。"""
+    from westlake_survival.discovery import direct_session
+
+    session = direct_session()
+    session.headers["User-Agent"] = "Mozilla/5.0 (westlake-survival probe)"
+    alive: list[str] = []
+    dead: list[str] = []
+    for host, _label in VENUE_ENTRIES:
+        try:
+            response = session.get(
+                f"https://{host}.westlake.edu.cn/", timeout=PROBE_TIMEOUT, verify=False
+            )
+        except Exception:  # noqa: BLE001 - 探测失败即视为不可达
+            dead.append(host)
+            continue
+        (alive if response.status_code < 500 else dead).append(host)
+    if dead and not alive:
+        return "全部不可达", "、".join(dead) + "（需校园网/VPN）"
+    note = "在线：" + "、".join(alive)
+    if dead:
+        note += "；不可达：" + "、".join(dead)
+    return "在线（独立系统，需登录）", note + "；游泳卡点见 docs/sportvenue_notes.md"
+
+
 #: probe 各项：(中文名, 探测函数)。探测函数返回 ``(状态, 说明)``。
 PROBE_ITEMS = (
     ("SIS 选课组件授权", _probe_sis_cart),
     ("OPAC 端点", _probe_opac),
     ("打印系统匿名接口", _probe_pms),
     ("Canvas token", _probe_canvas_token),
+    ("场馆/座位入口", _probe_venue_entries),
 )
 
 

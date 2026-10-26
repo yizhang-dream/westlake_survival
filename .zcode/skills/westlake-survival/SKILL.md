@@ -1,11 +1,11 @@
 ---
 name: westlake-survival
-description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、87 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
+description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与卡点见文档）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、92 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
 ---
 
 # 西湖大学生存手册（westlake-survival）
 
-把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：本技能以查询与导出为主；写操作只有三类，且都必须凭用户当轮明确指令执行——`canvas submit` 交作业、`booking book` 预约场地、`booking cancel` 取消预约（见下）；不做选课、抢课等其他写操作。
+把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：本技能以查询与导出为主；写操作仅限五条，且都必须凭用户当轮明确指令执行——`canvas submit` 交作业、`canvas reply` 讨论回帖、`canvas send` 回私信、`booking book` 预约场地、`booking cancel` 取消预约（见下）；不做选课、抢课等其他写操作。
 
 ## 能力地图：哪类问题用哪条命令
 
@@ -71,14 +71,15 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 某房间某天的空闲时段 | `westlake booking slots "E12-302研讨室" --date 2026-10-27 [--duration 120]` |
 | 预约场地（写操作） | `westlake booking book "4楼研习仓A" --date … --start 19:00 --end 21:00 [--dry-run]` |
 | 我的预约 / 取消 | `westlake booking mine`；`westlake booking cancel <预约号> --reason …` |
-| 游泳/体育场馆为什么约不了 | `westlake booking sports`（列可见分类 + 体育类资源启用状态） |
+| 游泳/体育场馆为什么约不了 | `westlake booking sports`（列可见分类 + 体育类资源启用状态）；真实入口与卡点见 docs/sportvenue_notes.md |
+| 场馆/座位/游泳从哪个入口进 | `westlake probe`（新增「场馆/座位入口」项）+ `westlake affairs apps 预约`；四套系统对照见 docs/module_audit_2026-10-27.md |
 | 学术数据库清单与访问通道 | `westlake scholar dbs [-k 关键词]`，网页 `/scholar` |
 | 某篇论文（DOI）的题录/PDF | `westlake scholar doi <doi> [-o out.pdf]`（校园网内走订阅通道直下） |
 | 当前 IP 能否直连订阅库 | `westlake scholar campus`（信标探测，缓存 30 分钟） |
 | CARSI 联盟资源目录（356 个） | `westlake scholar carsi [关键词] [--refresh]` |
 | 校外登录某数据库（CARSI/统一密码） | `westlake scholar ensure`（Agent 主入口：会话活着零动作→验证码关时无头登录→必要时弹浏览器由本人输一次验证码；会话 cookie 全机共享）；`status` 查会话与验证码态 |
 | 让别的 Agent 一气呵成用学术资源 | `westlake scholar ensure` 一条命令拿共享会话（~/.westlake_survival/scholar_cookies.json），之后 `scholar doi … -o` 直接带订阅通道下载 |
-| 服务是否可达（选课/OPAC/打印/token） | `westlake probe` |
+| 服务是否可达（选课组件/OPAC/打印/token/场馆座位入口） | `westlake probe` |
 | 这套工具一共能干什么、哪些要账号 | `westlake webui serve` → `/capabilities`（或 `curl /api/capabilities`） |
 | 前端接口有哪些、返回什么 | `/capabilities` 页底部「HTTP 接口」区（含实时样例） |
 | 一步打开全部功能 | `westlake go`（启动 WebUI 并自动开浏览器，用户唯一要记的命令） |
@@ -109,12 +110,47 @@ Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
-- **预约中心（`booking`）**：同一套统一密码，登录走预约中心自己的 OIDC（`booking.westlake.edu.cn/sso/oauth2`，隐式流取 access_token），`iam.login_for` 一步到位，无需另配令牌。**看到分类先别高兴**：接口对「没权限的分类」不报错、只返回空列表，判断能不能约要看 `booking types`（首页可见卡片）。**体育场馆/游泳不在预约中心**：那里 `state=1` 且校验回「当前资源类型不可预约」；真实入口是独立的正元智慧场馆系统 `sportvenue.westlake.edu.cn`（SSO+签名链路、API 面与当前「表单规则未找到」卡点见 [docs/sportvenue_notes.md](../../../docs/sportvenue_notes.md)，2026-10-27 实测）。图书馆座位走**另一套** `seats.library.westlake.edu.cn`（lab4，IAM CAS `client_id=zwyy` 可登录，但选座/预约是服务端驱动 UI，尚未接入）。
+- **预约中心（`booking`）**：同一套统一密码，登录走预约中心自己的 OIDC（`booking.westlake.edu.cn/sso/oauth2`，隐式流取 access_token），`iam.login_for` 一步到位，无需另配令牌。**看到分类先别高兴**：接口对「没权限的分类」不报错、只返回空列表，判断能不能约要看 `booking types`（首页可见卡片）。
+- **预约类需求不是一套系统**（2026-10-27 审计，见 [docs/module_audit_2026-10-27.md](../../../docs/module_audit_2026-10-27.md)）：预约中心只覆盖自习室/研讨室/琴房等 17 类；**体育场馆/游泳**在独立的正元系统 `sportvenue.westlake.edu.cn`（登录已通，卡在服务端「表单规则未找到」，见 [docs/sportvenue_notes.md](../../../docs/sportvenue_notes.md)）；**图书馆座位**在 `seats.library.westlake.edu.cn`，它加载企业微信 JSSDK（`jwxwork`），属企业微信微应用，浏览器直连拿不到 `accessToken`；办事大厅还另有「场馆预约」`infoplus/form/CGYY` 与「资源预约」`ResourceReservation` 两个**流程表单**（发起即创建流程实例，属写操作，字段未探明）。
 - **Canvas 类**（`canvas`）：优先令牌（`/setup` 保存、`WESTLAKE_CANVAS_TOKEN` 环境变量或 `~/.westlake_survival/canvas_token.txt` 首行）；**无令牌时自动回退统一认证**（IAM CAS 会话，2026-10-24 实测 REST API 认会话 Cookie）——配好教务统一密码即可用 Canvas，无需任何令牌。报 401 先怀疑「存了过期令牌抢在统一密码前面」：`westlake setup --clear-canvas-token` 或在 `/setup` 点「清除令牌」即可回退。
 - **电子地图类**：无账号。`/map` 只放官网公开内容（校区地图图片 + 720° 全景链接 + 交通），按用户裁定 2026-10-24 已移除账号与数据集抓取体系。
 - **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`，以及 `scholar dbs|campus|doi|carsi`（学术库注册表、校园 IP 信标、DOI 解析、CARSI 目录——后两者离线也查得到快照，PDF 下载需校园网/VPN 或 OA 副本）。
 - **学术资源（2026-10-24 实测）**：本校是 CARSI 联盟成员（`idp.westlake.edu.cn` Shibboleth IdP），统一密码可登录各出版社；校园网内出版社按 IP 认账（ScienceDirect 实测自动认证、Springer PDF 直下实测 200）。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url（校园 IP 订阅通道）」两级取全文；校外先 `scholar sso <库>` 建立联盟会话（Playwright profile 持久化，IAM 若弹图形验证码由本人在窗口输入一次）。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
+
+## 卡点判断：先归因，再谈能不能做（2026-10-27 复盘）
+
+用户说某件事「做不了」时，**不要直接把它记成「系统不支持」**。先按五问定性：
+
+1. **锚定**：我把这个需求绑到了某一个系统上吗？（「预约」= 预约中心 → 漏了 sportvenue、seats.library、CGYY 表单）
+2. **时效**：我依据的是历史通知/旧记录吗？（8 月通知 ≠ 现在的开放状态）
+3. **占位符**：仓库/页面上有没有「外链、勿动、另一套系统、暂未接入」这类注记？它们是入口线索，不是结论。
+4. **搜不到**：我是「确认不存在」还是「没搜到」？（DNS 词表漏了 sportvenue；Wayback 缓存只有 11 个域名；单级词表找不到 `seats.library`）
+5. **问人**：卡住超过一轮，就别再猜——用户知道自己平时从哪个 App/入口办。
+
+判定前先跑这三条，都是只读、几十秒：
+
+```bash
+westlake probe          # 选课组件授权/OPAC/打印/场馆座位入口——已有的「堵点仪器」
+westlake hosts list     # 清单含证据源合并结果；新发现的主机在这里出现
+westlake affairs apps 预约   # 办事大厅 176 个应用；外链应用常指向真实系统
+```
+
+**卡住就写三栏表**，第三栏通常就是用户：
+
+| 我知道 | 我不知道 | 谁知道 |
+| --- | --- | --- |
+| 已实测的接口、状态码、错误文案 | 未验证的猜测 | 用户 / 信息技术中心 / 总务部 |
+
+归类只有四种，结论里必须写明是哪一种：
+
+- **真做不了**：权限/网络/服务端缺失（例：sportvenue 表单规则未找到、OPAC 404、HPC 成果库断）。
+- **没建工具**：接口通、只是我们没写（例：自习室预约、就业服务网深列表、`eval` 学工平台）。
+- **逆向没做完**：链路只通一半（例：图书馆座位需企业微信授权）。
+- **我判断错了**：旧结论过期或锚定单一系统（例：任务中心「登录失败」已不成立；选课组件实际已授权）。
+
+对应清单见 [docs/module_audit_2026-10-27.md](../../../docs/module_audit_2026-10-27.md)；新增系统先登记进
+`discovery.EVIDENCE_HOSTS`，别只写在对话里。
 
 ## 常用命令速查表
 
@@ -306,7 +342,7 @@ for course in c.list_courses():                                   # 扫描当前
 ## Agent 行为守则
 
 - **网络一律直连（库层已内置）**：所有 HTTP 会话默认 `trust_env=False`（无视 `HTTP_PROXY/HTTPS_PROXY` 直连），**Agent 自己临时写脚本抓校园站点时也必须显式直连**（`requests` 传 `trust_env=False`，或复用 `westlake_survival.discovery.direct_session()`）；唯一例外是 HPC 成果库（172.16.75.35:8007）的代理兜底通道。诊断「校内服务连不上」时先排除代理劫持（对照：直连 vs 代理各试一次），再怀疑防火墙/网段 ACL。
-- **默认只读，写操作都要当轮明确指令**：查询/导出命令可自由执行；写操作只有三类——交作业 `canvas submit`（MCP 的 `canvas_submit`）、讨论回帖 `canvas reply`、私信回复 `canvas send`。三者都只凭用户当轮明确给出的课程/会话、对象与内容执行，不尝试选课、抢课、删除等其他写操作，不构造未文档化的请求。
+- **默认只读，写操作都要当轮明确指令**：查询/导出命令可自由执行；写操作仅限五条——交作业 `canvas submit`（MCP 的 `canvas_submit`）、讨论回帖 `canvas reply`、私信回复 `canvas send`、预约场地 `booking book`、取消预约 `booking cancel`。三者都只凭用户当轮明确给出的课程/会话、对象与内容执行，不尝试选课、抢课、删除等其他写操作，不构造未文档化的请求。
 - **交作业三步走**：①预检 `--dry-run`（作业未锁定、类型允许、文件可读）；②提交（用户点名文件即视为授权）；③回读 `canvas submission` 核验（状态 submitted、附件文件名、未迟交）确认后才报完成。已评分（graded）的作业技术上可重交但默认不碰，除非用户明确要求改交。
 - **回帖与私信同样先确认**：`canvas reply` / `canvas send` 默认打印将发送的正文并等确认，`--yes` 才直接发；发完回读（`canvas entries` / `canvas conversation`）核对内容确实落地。不可回复的会话（`cannot_reply`）直接拒绝，不绕过。
 - **写作业内容先看课程资料**：动笔前先看作业描述与附件（`canvas assignment-info`），再看课程文件区（`canvas files`）与模块条目（`canvas modules`）；实验报告参照本人历史提交物的格式惯例。不要假定资料在某个固定本地路径。
