@@ -818,7 +818,7 @@ def site_content(key: str, limit: int = 8) -> SiteContent:
             content.sections = _fetch_baida_columns(key, config.get("cols") or {}, limit)
         except Exception as exc:
             content.error = f"{exc.__class__.__name__}: {exc}"[:120]
-        if not content.sections:
+        if not content.sections and not content.error:
             content.intro = "办事型站点，栏目为流程文档；入口直达。"
         return content
     if key in STATIC_SITES:
@@ -956,7 +956,9 @@ def sites_site(key: str, limit: int) -> None:
     if content.intro:
         click.echo(content.intro)
     if content.error:
+        # 抓取失败必须显式失败：以前只打 stderr 且 exit 0，上层无从察觉站点已挂。
         click.secho(f"抓取异常：{content.error}", fg="red", err=True)
+        raise SystemExit(1)
     for section in content.sections:
         click.echo(f"\n[{section.label}]")
         if not section.items:

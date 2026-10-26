@@ -541,7 +541,13 @@ def _cli():
     @group.command(name="portal")
     def portal_cmd() -> None:
         """登录门户取服务大厅 18 项部门/应用目录（统一密码）。"""
-        rows = portal_services()
+        # 门户接口结构变化时 portal_services 抛 WestlakeError；这里必须收敛成
+        # 一行可读错误，而不是把 traceback 甩给用户（2026-10-27 审计）。
+        try:
+            rows = portal_services()
+        except WestlakeError as exc:
+            click.secho(f"错误：{exc}", fg="red", err=True)
+            raise SystemExit(1) from exc
         click.echo(f"门户服务目录：{len(rows)} 项")
         for item in rows:
             click.echo(f"  {item['name']}　{item['url']}")

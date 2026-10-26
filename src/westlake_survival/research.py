@@ -412,6 +412,8 @@ def latest(
     )
     if category is not None:
         items = [item for item in items if item.category == category]
+    # 官网把条目按研究方向分组，直接展平再截断会让「最新 5 条」其实是首组前 5 条。
+    items.sort(key=lambda item: item.date or datetime.min, reverse=True)
     if limit is not None:
         items = items[: max(0, limit)]
     return items

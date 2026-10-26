@@ -689,6 +689,7 @@ def _parse_representatives(block: str) -> list[FacultyRepresentative]:
         _build_representative(item)
         for item in raw_list
         if isinstance(item, dict)
+        and str(item.get("title") or "").strip() not in ("联系我们", "Contact Us", "Contact")
     ]
 
 
