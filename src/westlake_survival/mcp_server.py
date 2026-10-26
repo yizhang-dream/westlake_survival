@@ -170,6 +170,22 @@ def _opt_str(args: dict, key: str) -> str | None:
     return raw or None
 
 
+def _opt_keyword(args: dict, key: str) -> str | None:
+    """取课程/作业/主题这类「id 或关键词」参数。
+
+    客户端常把纯数字 id 按整数传进来，这里一并接受，统一转成字符串交给
+    ``find_*`` 方法处理。
+    """
+    raw = args.get(key)
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        return str(raw)
+    if isinstance(raw, str):
+        return raw.strip() or None
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # 工具实现（每个惰性 import 对应业务模块；抛异常即 isError）
 # --------------------------------------------------------------------------- #
@@ -850,17 +866,131 @@ def _tool_canvas_todo(args: dict) -> Any:
     return canvas().todo(limit=limit)
 
 
-def _tool_canvas_deadlines(args: dict) -> Any:
-    """未来 N 天内到期的 Canvas 作业；无 token 时返回获取引导。"""
-    from westlake_survival.canvas import CHINA_TZ, canvas, resolve_token
+def _tool_canvas_files(args: dict) -> Any:
+    """某门课的文件区清单：``file_id`` / 文件名 / 字节大小。"""
+    from westlake_survival.canvas import canvas
 
-    if resolve_token() is None:
-        raise ToolHint(
-            "未配置 Canvas API token，无法查询作业截止时间。请在 Canvas 网页"
-            "「账户 → 设置 → 新建访问令牌」生成令牌后，设置环境变量 "
-            "WESTLAKE_CANVAS_TOKEN（或写入 ~/.westlake_survival/canvas_token.txt "
-            "首行），再重试。"
-        )
+    course = _opt_keyword(args, "course")
+    if not course:
+        raise ValueError("参数 course 必填（课程 id 或名称关键词）。")
+    client = canvas()
+    found = client.find_course(course)
+    return [
+        {"file_id": item.id, "name": item.display_name, "size": item.size}
+        for item in client.list_files(found.id)
+    ]
+
+
+def _tool_canvas_assignment_info(args: dict) -> Any:
+    """作业详情：描述纯文本 + 描述内附件 + 截止/提交类型。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import html_to_text
+
+    course = _opt_keyword(args, "course")
+    assignment = _opt_keyword(args, "assignment")
+    if not course or not assignment:
+        raise ValueError("参数 course 与 assignment 必填（id 或名称关键词）。")
+    client = canvas()
+    found_course = client.find_course(course)
+    found_assignment = client.find_assignment(found_course.id, assignment)
+    detail = client.get_assignment(found_course.id, found_assignment.id)
+    return {
+        "course": found_course.name,
+        "assignment_id": detail.id,
+        "name": detail.name,
+        "due_at": detail.due_at.isoformat() if detail.due_at else None,
+        "points_possible": detail.points_possible,
+        "submission_types": detail.submission_types,
+        "locked_for_user": detail.locked_for_user,
+        "allowed_extensions": detail.allowed_extensions,
+        "allowed_attempts": detail.allowed_attempts,
+        "grading_type": detail.grading_type,
+        "rubric": detail.rubric,
+        "rubric_settings": detail.rubric_settings,
+        "description": html_to_text(detail.description or ""),
+        "attachments": client.assignment_attachments(found_course.id, detail.id),
+    }
+
+
+def _tool_canvas_discussions(args: dict) -> Any:
+    """课程讨论主题（标题 / 未读 / 回复数 / 北京时间 / 链接）。"""
+    from westlake_survival.canvas import canvas
+
+    course = _opt_keyword(args, "course")
+    if not course:
+        raise ValueError("参数 course 必填（课程 id 或名称关键词）。")
+    client = canvas()
+    found = client.find_course(course)
+    return client.discussions(found.id)
+
+
+def _tool_canvas_announcements(args: dict) -> Any:
+    """课程公告（时间 / 标题 / 链接）。"""
+    from westlake_survival.canvas import canvas
+
+    course = _opt_keyword(args, "course")
+    if not course:
+        raise ValueError("参数 course 必填（课程 id 或名称关键词）。")
+    client = canvas()
+    found = client.find_course(course)
+    return client.list_announcements(found.id)
+
+
+def _tool_canvas_inbox(args: dict) -> Any:
+    """收件箱会话列表 + 未读数。"""
+    from westlake_survival.canvas import canvas
+
+    limit = _opt_int(args, "limit", 20, minimum=1, maximum=100)
+    client = canvas()
+    return {"unread": client.unread_count(), "conversations": client.conversations(limit=limit)}
+
+
+def _tool_canvas_conversation(args: dict) -> Any:
+    """单个会话的完整消息与附件。"""
+    from westlake_survival.canvas import canvas
+
+    conversation_id = args.get("conversation_id")
+    if isinstance(conversation_id, bool) or not isinstance(conversation_id, (int, str)):
+        raise ValueError("参数 conversation_id 必填（整数，见 canvas_inbox 返回的 id）。")
+    if not str(conversation_id).strip():
+        raise ValueError("参数 conversation_id 不能为空。")
+    return canvas().conversation(conversation_id)
+
+
+def _tool_canvas_discussion_entries(args: dict) -> Any:
+    """讨论主题详情 + 回帖（正文转纯文本）。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import html_to_text
+
+    course = _opt_keyword(args, "course")
+    topic = _opt_keyword(args, "topic")
+    if not course or not topic:
+        raise ValueError("参数 course 与 topic 必填（课程/主题的 id 或名称关键词）。")
+    limit = _opt_int(args, "limit", 20, minimum=1, maximum=200)
+    client = canvas()
+    found = client.find_course(course)
+    topic_id = client.find_topic(found.id, topic)
+    detail = client.discussion_topic(found.id, topic_id)
+    entries = client.discussion_entries(found.id, topic_id, limit=limit)
+    return {
+        "topic": {
+            "id": detail["id"],
+            "title": detail["title"],
+            "author": detail["author"],
+            "posted_at": detail["posted_at"],
+            "entries": detail["entries"],
+            "url": detail["url"],
+            "message": html_to_text(detail["message"]),
+        },
+        "entries": [
+            {**item, "message": html_to_text(item["message"])} for item in entries
+        ],
+    }
+
+
+def _tool_canvas_deadlines(args: dict) -> Any:
+    """未来 N 天内到期的 Canvas 作业（令牌或统一密码会话均可）。"""
+    from westlake_survival.canvas import CHINA_TZ, canvas
 
     days = _opt_int(args, "days", 14, minimum=1, maximum=180)
     now = datetime.now(CHINA_TZ)
@@ -894,8 +1024,8 @@ def _tool_canvas_submit(args: dict) -> Any:
             "首行），再重试。"
         )
 
-    course = _opt_str(args, "course")
-    assignment = _opt_str(args, "assignment")
+    course = _opt_keyword(args, "course")
+    assignment = _opt_keyword(args, "assignment")
     if not course or not assignment:
         raise ValueError("参数 course 与 assignment 必填（课程/作业的 id 或名称关键词）。")
     raw_files = args.get("files") or []
@@ -1285,7 +1415,7 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
     },
     {
         "name": "canvas_deadlines",
-        "description": "未来 N 天内到期的 Canvas 作业截止（需配置 Canvas API token）。",
+        "description": "未来 N 天内到期的 Canvas 作业截止（令牌或统一密码会话均可）。",
         "inputSchema": _schema(
             {"days": _int_param("未来天数窗口，默认 14。", minimum=1, maximum=180)}
         ),
@@ -1298,6 +1428,83 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             {"limit": _int_param("返回条数，默认 20。", minimum=1, maximum=100)}
         ),
         "handler": _tool_canvas_todo,
+    },
+    {
+        "name": "canvas_files",
+        "description": "某门 Canvas 课程的文件区清单（file_id / 文件名 / 字节大小）。",
+        "inputSchema": _schema(
+            {"course": _str_param("课程 id 或名称关键词。")},
+            ["course"],
+        ),
+        "handler": _tool_canvas_files,
+    },
+    {
+        "name": "canvas_assignment_info",
+        "description": (
+            "作业详情：描述纯文本、描述内附件（file_id/名称/大小）、"
+            "截止时间（北京时间 ISO8601）与提交类型。"
+        ),
+        "inputSchema": _schema(
+            {
+                "course": _str_param("课程 id 或名称关键词。"),
+                "assignment": _str_param("作业 id 或名称关键词。"),
+            },
+            ["course", "assignment"],
+        ),
+        "handler": _tool_canvas_assignment_info,
+    },
+    {
+        "name": "canvas_discussions",
+        "description": "课程讨论主题（标题 / 未读 / 回复数 / 北京时间 / 链接）。",
+        "inputSchema": _schema(
+            {"course": _str_param("课程 id 或名称关键词。")},
+            ["course"],
+        ),
+        "handler": _tool_canvas_discussions,
+    },
+    {
+        "name": "canvas_announcements",
+        "description": "课程公告（时间 / 标题 / 链接）。",
+        "inputSchema": _schema(
+            {"course": _str_param("课程 id 或名称关键词。")},
+            ["course"],
+        ),
+        "handler": _tool_canvas_announcements,
+    },
+    {
+        "name": "canvas_inbox",
+        "description": "收件箱会话列表（未读数 + 主题 / 参与者 / 最近消息时间）。",
+        "inputSchema": _schema(
+            {"limit": _int_param("返回条数，默认 20。", minimum=1, maximum=100)}
+        ),
+        "handler": _tool_canvas_inbox,
+    },
+    {
+        "name": "canvas_conversation",
+        "description": "单个会话的完整消息与附件（conversation_id 取自 canvas_inbox）。",
+        "inputSchema": _schema(
+            {
+                "conversation_id": {
+                    "type": "integer",
+                    "description": "会话 id（canvas_inbox 返回的 conversation id）。",
+                }
+            },
+            ["conversation_id"],
+        ),
+        "handler": _tool_canvas_conversation,
+    },
+    {
+        "name": "canvas_discussion_entries",
+        "description": "讨论主题详情 + 回帖列表（正文已转纯文本）。",
+        "inputSchema": _schema(
+            {
+                "course": _str_param("课程 id 或名称关键词。"),
+                "topic": _str_param("讨论主题 id 或标题关键词。"),
+                "limit": _int_param("回帖条数，默认 20。", minimum=1, maximum=200),
+            },
+            ["course", "topic"],
+        ),
+        "handler": _tool_canvas_discussion_entries,
     },
     {
         "name": "canvas_submit",

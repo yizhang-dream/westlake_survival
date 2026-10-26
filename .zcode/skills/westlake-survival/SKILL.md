@@ -1,6 +1,6 @@
 ---
 name: westlake-survival
-description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、交作业（写操作）；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、87 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
+description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、87 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
 ---
 
 # 西湖大学生存手册（westlake-survival）
@@ -28,6 +28,13 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 贷款 / 勤工助学 / 海外交流 / 社团 | `westlake aid loans` 等（见下） |
 | Canvas 课程 / 作业截止 / 测验考试 | `westlake canvas courses` / `deadlines` / `exams` |
 | 列出某课程的作业（查作业 id/名称） | `westlake canvas assignments --course <id或关键词>` |
+| 看作业题目描述与附件（可下载） | `westlake canvas assignment-info --course … --assignment … [--download 目录]` |
+| 作业评分细则 / 允许的扩展名 / 提交次数 | `westlake canvas assignment-info …`（同一条命令输出） |
+| 课程文件区清单 / 批量下载 | `westlake canvas files --course … [--match 关键词] [--download 目录]` |
+| 课程讨论区 / 课程公告 | `westlake canvas discussions --course …` / `westlake canvas announcements --course …` |
+| 讨论主题正文 / 回帖列表 | `westlake canvas discussion --course … --topic …` / `westlake canvas entries …` |
+| 收发站内信（收件箱） | `westlake canvas inbox` / `westlake canvas conversation <会话id>`；回信 `canvas send`（写操作） |
+| 发讨论回帖（写操作） | `westlake canvas reply --course … --topic … --text "…"` |
 | 交作业（文件/文本/链接，写操作） | `westlake canvas submit --course … --assignment … --file 路径` |
 | 查看某作业已提交状态 | `westlake canvas submission --course … --assignment …` |
 | 讲座 / 学术会议 / 演出预告 | `westlake events` |
@@ -169,13 +176,24 @@ westlake lib loans
 westlake pms jobs
 ```
 
-需 Canvas 令牌：
+需 Canvas 访问（令牌或统一密码会话）：
 
 ```bash
 westlake canvas courses
 westlake canvas deadlines --limit 10
 westlake canvas exams --days 30
 westlake canvas assignments --course 概率论        # 列作业（课程给 id 或名称关键词均可）
+westlake canvas assignment-info --course 概率论 --assignment Assignment5           # 描述 + 描述内附件
+westlake canvas assignment-info --course 概率论 --assignment Assignment5 --download ./资料   # 顺带下载附件
+westlake canvas files --course 概率论 --match 作业 --download ./资料                # 文件区筛选下载
+westlake canvas discussions --course 概率论        # 讨论主题（未读 / 回复数 / 时间）
+westlake canvas announcements --course 概率论      # 课程公告
+westlake canvas discussion --course 马原 --topic 什么是空间   # 主题正文 + 附件
+westlake canvas entries --course 马原 --topic 4123 --limit 20  # 回帖列表
+westlake canvas reply --course 马原 --topic 4123 --text "……"  # 发回帖（写操作）
+westlake canvas inbox --limit 20 [--unread]        # 收件箱会话 + 未读数（打开单个会话会标为已读）
+westlake canvas conversation 2041 --download ./资料 # 会话全文 + 附件下载
+westlake canvas send --conversation 2041 --text "……"  # 回私信（写操作）
 westlake canvas submit --course 概率论 --assignment 作业3 --file hw3.pdf   # 交作业
 westlake canvas submit --course 概率论 --assignment 作业3 --file hw3.pdf --dry-run  # 只预检
 westlake canvas submit --course 概率论 --assignment 简介 --text "……"      # 文本提交
@@ -184,7 +202,11 @@ westlake canvas submission --course 概率论 --assignment 作业3              
 
 `submit` 是写操作：默认先预检并弹确认，`--yes` 跳过确认，`--dry-run` 只预检不提交；课程/作业都接受 id 或名称关键词（子串匹配，唯一命中才执行；匹配不到就先用 `courses`/`assignments` 查全名——如课程叫「物理学实验 Ⅱ」，搜「物理实验」搜不到；命中多个会列出候选）。提交链路已真机验证（2026-10-15 真交 Lab 5 成功：西湖 Canvas 禁学生写课程文件区，包内自动退回本人文件区上传再提交，效果相同）。
 
+`assignments` 里没有截止时间、提交类型为 `none` 的条目（ClassParticipation、Quiz 等）多为课堂记录，不一定需要动手；要确认就看 `canvas assignment-info` 的描述。
+
 ## Python API 直用（需要结构化数据时）
+
+前提：用与 `westlake` 命令同一个解释器（`pip show westlake-survival` 可查安装位置）。直接 `import westlake_survival` 报 ModuleNotFoundError，通常只是没装进当前解释器，换到装了包的那个即可。
 
 ```python
 from westlake_survival.context import snapshot, Level
@@ -205,7 +227,7 @@ for g in grades():                                      # 不计算 GPA（无官
 ```
 
 ```python
-from westlake_survival.canvas import canvas                       # 需 Canvas 令牌
+from westlake_survival.canvas import canvas                       # 令牌或统一密码会话
 from westlake_survival.canvas.models import (SUBMISSION_TYPE_UPLOAD,
     SUBMISSION_TYPE_TEXT, SUBMISSION_TYPE_URL)
 
@@ -219,9 +241,32 @@ for course in c.list_courses():                                   # 扫描当前
                   s.workflow_state if s.submitted_at else "未交")
 ```
 
+`CanvasClient` 的其余方法（CLI 同名命令已覆盖大部分，需要结构化数据时直用）：
+
+| 方法 | 返回 / 作用 |
+| --- | --- |
+| `me()` / `list_courses()` / `get_course(id)` | 当前用户 / 课程列表 / 单课程 |
+| `find_course(关键词)` / `find_assignment(cid, 关键词)` | 名称或 id 唯一定位（零命中 NotFound、多命中列候选） |
+| `todo(limit)` | 待办 `TodoItem`（课程、类型、截止，北京时间） |
+| `modules(course_id)` | 模块与条目 `[{name, count, items}]` |
+| `discussions(course_id)` | 讨论主题 `[{id, title, unread, replies, posted, url}]` |
+| `discussion_topic(cid, tid)` / `discussion_entries(cid, tid)` | 主题正文与附件 / 回帖列表 |
+| `find_topic(cid, 关键词)` | 主题 id 或标题唯一定位 |
+| `list_announcements(course_id)` | 课程公告 `Announcement` |
+| `conversations(limit)` / `unread_count()` | 收件箱会话（时间已换算） / 未读数 |
+| `conversation(id)` | 会话全文与附件 `{subject, participants, messages}` |
+| `reply_to_discussion(cid, tid, text)` / `reply_conversation(id, body)` | 发回帖 / 回私信（写操作） |
+| `get_assignment(cid, aid)` | 单作业详情（描述、评分细则 rubric、允许扩展名、提交次数） |
+| `assignment_attachments(cid, aid)` | 从描述抽附件 `[{file_id, name, size}]` |
+| `list_files(course_id)` / `file_info(file_id)` | 课程文件清单 / 单文件元数据 |
+| `download_file(file_id, dest)` | 流式下载（签名地址，不带 token） |
+| `submit_assignment(…)` / `get_submission(cid, aid)` | 提交（干跑/真交） / 回读提交状态 |
+
+**题目文件可能挂在三处**：作业描述里的文件链接（`assignment-info` 已抽取）、课程文件区（`canvas files`）、模块条目（`canvas modules`）。描述里没有附件不代表没有题目文件，另两处要一起看。
+
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 48 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业 `canvas_deadlines`/`canvas_submit`）。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 55 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}
@@ -231,10 +276,11 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## Agent 行为守则
 
-- **网络一律直连（2026-10-25 用户裁定，库层已内置）**：用户通常人在校园网但开着系统代理（Clash 等），代理节点没有校园路由——走代理访问 `*.westlake.edu.cn` 会 502/超时。本 skill 所有 HTTP 会话默认 `trust_env=False`（无视 `HTTP_PROXY/HTTPS_PROXY` 直连），**Agent 自己临时写脚本抓校园站点时也必须显式直连**（`requests` 传 `trust_env=False`，或复用 `westlake_survival.discovery.direct_session()`）；唯一例外是 HPC 成果库（172.16.75.35:8007）的代理兜底通道。诊断「校内服务连不上」时先查是否被代理劫持（对照：直连 vs 代理各试一次），再怀疑防火墙/网段 ACL。
-- **默认只读，交作业是唯一写操作**：只执行查询/导出命令；`canvas submit`（含 MCP 的 `canvas_submit`）仅凭用户当轮明确给出的课程、作业与文件执行，不尝试选课、抢课、删除等其他写操作，不构造未文档化的请求。
+- **网络一律直连（库层已内置）**：所有 HTTP 会话默认 `trust_env=False`（无视 `HTTP_PROXY/HTTPS_PROXY` 直连），**Agent 自己临时写脚本抓校园站点时也必须显式直连**（`requests` 传 `trust_env=False`，或复用 `westlake_survival.discovery.direct_session()`）；唯一例外是 HPC 成果库（172.16.75.35:8007）的代理兜底通道。诊断「校内服务连不上」时先排除代理劫持（对照：直连 vs 代理各试一次），再怀疑防火墙/网段 ACL。
+- **默认只读，写操作都要当轮明确指令**：查询/导出命令可自由执行；写操作只有三类——交作业 `canvas submit`（MCP 的 `canvas_submit`）、讨论回帖 `canvas reply`、私信回复 `canvas send`。三者都只凭用户当轮明确给出的课程/会话、对象与内容执行，不尝试选课、抢课、删除等其他写操作，不构造未文档化的请求。
 - **交作业三步走**：①预检 `--dry-run`（作业未锁定、类型允许、文件可读）；②提交（用户点名文件即视为授权）；③回读 `canvas submission` 核验（状态 submitted、附件文件名、未迟交）确认后才报完成。已评分（graded）的作业技术上可重交但默认不碰，除非用户明确要求改交。
-- **写作业内容先查本地**：动笔前先查 `D:\CanvasMirror` 与 DeepTutor 课程组的本校讲义（与网络通用版有实质差异），实验报告参照本人历史提交物的格式惯例。
+- **回帖与私信同样先确认**：`canvas reply` / `canvas send` 默认打印将发送的正文并等确认，`--yes` 才直接发；发完回读（`canvas entries` / `canvas conversation`）核对内容确实落地。不可回复的会话（`cannot_reply`）直接拒绝，不绕过。
+- **写作业内容先看课程资料**：动笔前先看作业描述与附件（`canvas assignment-info`），再看课程文件区（`canvas files`）与模块条目（`canvas modules`）；实验报告参照本人历史提交物的格式惯例。不要假定资料在某个固定本地路径。
 - **绝不打印凭据/令牌**：不 `cat` `~/.westlake_survival/credentials.txt` 或 `canvas_token.txt`，不在输出中回显学号密码或 `WESTLAKE_CANVAS_TOKEN`；只看 `sso creds status` 的「有 / 无」。
 - **个人数据脱敏**：成绩、学籍、住宿、贷款等属个人隐私，输出给第三方前默认做脱敏/摘要提示，并提醒用户自行确认是否适合分享。
 - **失败降级**：`OffCampusError` = 目标系统仅校园网/VPN 可达，提示用户连接 <https://vpn.westlake.edu.cn/>；`AuthError` = 凭据缺失或失效，提示 `westlake sso creds set`；Canvas 报错则提示配置 `WESTLAKE_CANVAS_TOKEN`。命令失败时如实转述错误，不臆造数据。

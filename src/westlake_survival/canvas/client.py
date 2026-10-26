@@ -21,8 +21,10 @@ Token 解析顺序（`:class:`CanvasClient` 构造时确定）：
 
 from __future__ import annotations
 
+import html
 import mimetypes
 import os
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
@@ -45,6 +47,7 @@ from westlake_survival.canvas.models import (
     Submission,
     TodoItem,
     User,
+    parse_datetime,
 )
 from westlake_survival.exceptions import (
     ActionError,
@@ -77,6 +80,12 @@ MAX_PAGES = 200
 
 #: 非 2xx 错误消息里附带的响应体长度上限。
 _ERROR_BODY_LIMIT = 200
+
+#: 作业描述里指向文件区的链接（``/courses/:cid/files/:fid``），用来抽附件。
+_FILE_LINK_RE = re.compile(
+    r'<a\b[^>]*href="[^"]*?/files/(?P<id>\d+)[^"]*"[^>]*>(?P<text>[^<]*)</a>',
+    re.IGNORECASE,
+)
 
 _TOKEN_HELP = (
     "未找到 Canvas API token。请在 Canvas 网页「账户 → 设置 → 新建访问令牌」"
@@ -369,6 +378,113 @@ class CanvasClient:
         )
         return rows[:limit]
 
+    # ------------------------------------------------------------------
+    # 收件箱（Canvas conversations）
+    # ------------------------------------------------------------------
+    def conversations(self, limit: int = 20) -> list[dict]:
+        """收件箱会话列表（``GET /conversations``）。
+
+        Returns:
+            ``[{id, subject, state, unread, messages, last_message_at,
+            last_message, course, participants}]``；``last_message_at`` 为
+            ``CHINA_TZ`` 的 aware datetime。
+        """
+        rows: list[dict] = []
+        for item in self._paginate("/conversations"):
+            if not isinstance(item, dict):
+                continue
+            participants = item.get("participants") or []
+            names = [
+                str(person.get("name") or person.get("full_name") or "")
+                for person in participants
+                if isinstance(person, Mapping)
+            ]
+            rows.append(
+                {
+                    "id": item.get("id"),
+                    "subject": item.get("subject") or "",
+                    "state": item.get("workflow_state") or "",
+                    "unread": item.get("workflow_state") == "unread",
+                    "messages": item.get("message_count") or 0,
+                    "last_message_at": parse_datetime(item.get("last_message_at")),
+                    "last_message": item.get("last_message") or "",
+                    "course": item.get("context_name") or "",
+                    "participants": [name for name in names if name],
+                }
+            )
+        rows.sort(
+            key=lambda row: (
+                row["last_message_at"] is None,
+                -row["last_message_at"].timestamp() if row["last_message_at"] else 0.0,
+            )
+        )
+        return rows[:limit]
+
+    def unread_count(self) -> int:
+        """收件箱未读数（``GET /conversations/unread_count``）。"""
+        data = self._json(self._get("/conversations/unread_count"))
+        if not isinstance(data, Mapping):
+            return 0
+        try:
+            return int(data.get("unread_count") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def conversation(self, conversation_id: int | str) -> dict:
+        """单个会话的完整消息（``GET /conversations/:id``）。
+
+        Returns:
+            ``{id, subject, course, cannot_reply, participants, messages}``；
+            ``messages`` 每项带 ``author`` / ``created_at`` / ``body`` /
+            ``attachments``（:class:`File` 列表）。
+        """
+        data = self._json(self._get(f"/conversations/{conversation_id}"))
+        obj = data if isinstance(data, Mapping) else {}
+        participants = obj.get("participants") or []
+        people = [
+            {
+                "id": person.get("id"),
+                "name": person.get("name") or person.get("full_name") or "",
+            }
+            for person in participants
+            if isinstance(person, Mapping)
+        ]
+        name_by_id = {person["id"]: person["name"] for person in people}
+        messages: list[dict] = []
+        for message in obj.get("messages") or []:
+            if not isinstance(message, Mapping):
+                continue
+            attachments = [
+                File.from_json(attachment)
+                for attachment in (message.get("attachments") or [])
+                if isinstance(attachment, Mapping)
+            ]
+            messages.append(
+                {
+                    "id": message.get("id"),
+                    "author_id": message.get("author_id"),
+                    "author": name_by_id.get(message.get("author_id")) or "",
+                    "created_at": parse_datetime(message.get("created_at")),
+                    "body": message.get("body") or "",
+                    "attachments": attachments,
+                }
+            )
+        return {
+            "id": obj.get("id"),
+            "subject": obj.get("subject") or "",
+            "course": obj.get("context_name") or "",
+            "cannot_reply": obj.get("cannot_reply"),
+            "participants": [person["name"] for person in people if person["name"]],
+            "messages": messages,
+        }
+
+    def reply_conversation(self, conversation_id: int | str, body: str) -> Any:
+        """在已有会话里回一条消息（写操作，``POST /conversations/:id/add_message``）。"""
+        response = self._post(
+            f"/conversations/{conversation_id}/add_message", data={"body": body}
+        )
+        return self._json(response)
+
     def modules(self, course_id: int | str) -> list[dict]:
         """课程模块与条目（``GET /courses/:id/modules?include[]=items``）。
 
@@ -398,7 +514,8 @@ class CanvasClient:
         """课程讨论（``GET /courses/:id/discussion_topics``）。
 
         Returns:
-            ``[{title, unread, replies, posted, url}]``。
+            ``[{title, unread, replies, posted, url}]``，``posted`` 为
+            ``CHINA_TZ`` 的 aware datetime（缺失时 ``None``）。
         """
         rows: list[dict] = []
         for item in self._paginate(
@@ -408,14 +525,83 @@ class CanvasClient:
                 continue
             rows.append(
                 {
+                    "id": item.get("id"),
                     "title": item.get("title") or "",
                     "unread": item.get("unread_count") or 0,
                     "replies": item.get("discussion_subentry_count") or 0,
-                    "posted": item.get("posted_at") or "",
+                    "posted": parse_datetime(item.get("posted_at")),
                     "url": item.get("html_url") or "",
                 }
             )
         return rows
+
+    def discussion_topic(self, course_id: int | str, topic_id: int | str) -> dict:
+        """单个讨论主题的详情（``GET /courses/:id/discussion_topics/:tid``）。
+
+        Returns:
+            ``{id, title, message, posted_at, author, entries, url,
+            attachments}``；``message`` 为原始 HTML，``posted_at`` 为
+            ``CHINA_TZ`` 的 aware datetime。
+        """
+        data = self._json(
+            self._get(f"/courses/{course_id}/discussion_topics/{topic_id}")
+        )
+        obj = data if isinstance(data, Mapping) else {}
+        author = obj.get("author")
+        attachments = [
+            File.from_json(attachment)
+            for attachment in (obj.get("attachments") or [])
+            if isinstance(attachment, Mapping)
+        ]
+        return {
+            "id": obj.get("id"),
+            "title": obj.get("title") or "",
+            "message": obj.get("message") or "",
+            "posted_at": parse_datetime(obj.get("posted_at") or obj.get("created_at")),
+            "author": (author.get("display_name") or "") if isinstance(author, Mapping) else "",
+            "entries": obj.get("discussion_subentry_count") or 0,
+            "url": obj.get("html_url") or "",
+            "attachments": attachments,
+        }
+
+    def discussion_entries(
+        self, course_id: int | str, topic_id: int | str, limit: int = 50
+    ) -> list[dict]:
+        """讨论主题下的回帖（``GET /courses/:id/discussion_topics/:tid/entries``）。
+
+        Returns:
+            ``[{id, author, created_at, message, parent_id}]``，``message`` 为
+            原始 HTML；按 Canvas 返回顺序（顶层帖在前）。
+        """
+        rows: list[dict] = []
+        path = f"/courses/{course_id}/discussion_topics/{topic_id}/entries"
+        for item in self._paginate(path, {"per_page": min(max(limit, 1), 50)}):
+            if not isinstance(item, dict):
+                continue
+            rows.append(
+                {
+                    "id": item.get("id"),
+                    "author": item.get("user_name") or "",
+                    "created_at": parse_datetime(item.get("created_at")),
+                    "message": item.get("message") or "",
+                    "parent_id": item.get("parent_id"),
+                }
+            )
+        return rows[:limit]
+
+    def reply_to_discussion(
+        self, course_id: int | str, topic_id: int | str, text: str
+    ) -> Any:
+        """在讨论主题下发一条回帖（写操作）。
+
+        ``POST /courses/:id/discussion_topics/:tid/entries``，正文按纯文本
+        提交（Canvas 会原样作为 HTML 段落渲染）。
+        """
+        response = self._post(
+            f"/courses/{course_id}/discussion_topics/{topic_id}/entries",
+            data={"message": text},
+        )
+        return self._json(response)
 
     def list_assignments(
         self,
@@ -543,6 +729,43 @@ class CanvasClient:
         rows = self._paginate(f"/courses/{course_id}/files")
         return [File.from_json(item) for item in rows]
 
+    def file_info(self, file_id: int | str) -> File:
+        """取单个文件的元数据（``GET /files/:id``，含下载地址与大小）。"""
+        return File.from_json(self._json(self._get(f"/files/{file_id}")))
+
+    def assignment_attachments(
+        self, course_id: int | str, assignment_id: int | str
+    ) -> list[dict]:
+        """从作业描述 HTML 里抽附件（``file_id`` / 文件名 / 大小）。
+
+        Canvas 的作业对象没有 ``attachments`` 字段，题目附件的常见挂法是
+        描述里的文件链接（``/courses/:cid/files/:fid``）。这里按 file_id
+        去重，并尽量用 ``GET /files/:id`` 补全真实文件名与大小；取不到就
+        退回链接文字。
+
+        Returns:
+            ``[{file_id, name, size}]``，``size`` 未知时为 ``None``。
+        """
+        assignment = self.get_assignment(course_id, assignment_id)
+        rows: list[dict] = []
+        seen: set[int] = set()
+        for match in _FILE_LINK_RE.finditer(assignment.description or ""):
+            file_id = int(match.group("id"))
+            if file_id in seen:
+                continue
+            seen.add(file_id)
+            name = html.unescape(match.group("text").strip()) or f"file-{file_id}"
+            size = None
+            try:
+                info = self.file_info(file_id)
+            except WestlakeError:
+                pass
+            else:
+                name = info.display_name or name
+                size = info.size
+            rows.append({"file_id": file_id, "name": name, "size": size})
+        return rows
+
     def download_file(self, file_id: int | str, dest: Path | str) -> Path:
         """下载文件到 *dest*（流式写入），返回 *dest*。
 
@@ -586,9 +809,14 @@ class CanvasClient:
     # 作业提交（写操作）：定位作业 → 上传文件 → POST submission → 回读
     # ------------------------------------------------------------------
     def get_assignment(self, course_id: int | str, assignment_id: int | str) -> Assignment:
-        """取单个作业详情（``GET /courses/:cid/assignments/:aid``）。"""
+        """取单个作业详情（``GET /courses/:cid/assignments/:aid``，含评分细则）。"""
         return Assignment.from_json(
-            self._json(self._get(f"/courses/{course_id}/assignments/{assignment_id}"))
+            self._json(
+                self._get(
+                    f"/courses/{course_id}/assignments/{assignment_id}",
+                    {"include[]": "rubric"},
+                )
+            )
         )
 
     def find_course(self, keyword: str) -> Course:
@@ -643,6 +871,32 @@ class CanvasClient:
             listed = "；".join(f"{a.name}（id={a.id}）" for a in matches[:8])
             raise ActionError(f"「{keyword}」匹配到多个作业：{listed}。请换更精确的关键词或用 id。")
         return matches[0]
+
+    def find_topic(self, course_id: int | str, keyword: str) -> int:
+        """按讨论主题 id 或标题关键词定位唯一主题，返回 topic id。
+
+        规则同 :meth:`find_course`：纯数字按 id；否则在标题上做大小写不敏感
+        的子串匹配，零命中抛 :class:`NotFound`、多命中抛 :class:`ActionError`。
+        """
+        topic_id = self._coerce_int(str(keyword).strip())
+        if topic_id is not None:
+            return topic_id
+        text = str(keyword).strip().lower()
+        if not text:
+            raise ActionError("讨论主题关键词为空：请给 topic id 或标题关键词。")
+        matches = [
+            item for item in self.discussions(course_id)
+            if text in (item.get("title") or "").lower()
+        ]
+        if not matches:
+            raise NotFound(
+                f"课程 {course_id} 下没有标题含「{keyword}」的讨论主题；"
+                "请用 `westlake canvas discussions --course …` 查看标题或 id。"
+            )
+        if len(matches) > 1:
+            listed = "；".join(f"{m['title']}（id={m['id']}）" for m in matches[:8])
+            raise ActionError(f"「{keyword}」匹配到多个讨论主题：{listed}。请换更精确的关键词或用 id。")
+        return int(matches[0]["id"])
 
     def upload_course_file(self, course_id: int | str, file_path: Path | str) -> File:
         """把本地文件上传到课程文件区，返回 :class:`File`（含 ``id``）。

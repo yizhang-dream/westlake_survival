@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+import html
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
@@ -80,6 +82,23 @@ def _as_dict(data: Any) -> Mapping[str, Any]:
     return data if isinstance(data, Mapping) else {}
 
 
+def html_to_text(fragment: str) -> str:
+    """把 Canvas 富文本（作业描述、公告正文）压成可读纯文本。
+
+    去脚本/样式、把块级标签换行、剥掉其余标签、还原 HTML 实体，最后压掉
+    多余空白。空输入返回空串。
+    """
+    if not fragment:
+        return ""
+    text = re.sub(r"(?is)<(script|style)\b.*?</\1>", " ", fragment)
+    text = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</li>|</tr>", "\n", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text)
+    text = re.sub(r"[ \t\u00a0]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 @dataclass
 class User:
     """当前用户（``GET /users/self``）。"""
@@ -133,7 +152,12 @@ class Course:
 
 @dataclass
 class Assignment:
-    """作业。``due_at`` 为 ``None`` 表示无截止日期。"""
+    """作业。``due_at`` 为 ``None`` 表示无截止日期。
+
+    ``rubric`` / ``rubric_settings`` 只在请求带 ``include[]=rubric`` 且教师
+    配置了评分细则时非空；``allowed_extensions`` / ``allowed_attempts`` /
+    ``grading_type`` 是提交约束，``allowed_attempts`` 为 ``-1`` 表示不限次数。
+    """
 
     id: int | None = None
     course_id: int | None = None
@@ -144,6 +168,11 @@ class Assignment:
     submission_types: list[str] = field(default_factory=list)
     html_url: str | None = None
     locked_for_user: bool | None = None
+    allowed_extensions: list[str] = field(default_factory=list)
+    allowed_attempts: int | None = None
+    grading_type: str | None = None
+    rubric: list[dict] = field(default_factory=list)
+    rubric_settings: dict | None = None
 
     @classmethod
     def from_json(cls, data: Any) -> "Assignment":
@@ -151,6 +180,13 @@ class Assignment:
         submission_types = obj.get("submission_types")
         if not isinstance(submission_types, list):
             submission_types = []
+        extensions = obj.get("allowed_extensions")
+        if not isinstance(extensions, list):
+            extensions = []
+        rubric = obj.get("rubric")
+        if not isinstance(rubric, list):
+            rubric = []
+        rubric_settings = obj.get("rubric_settings")
         return cls(
             id=obj.get("id"),
             course_id=obj.get("course_id"),
@@ -161,6 +197,11 @@ class Assignment:
             submission_types=[str(item) for item in submission_types],
             html_url=obj.get("html_url"),
             locked_for_user=obj.get("locked_for_user"),
+            allowed_extensions=[str(item) for item in extensions],
+            allowed_attempts=obj.get("allowed_attempts"),
+            grading_type=obj.get("grading_type"),
+            rubric=[item for item in rubric if isinstance(item, Mapping)],
+            rubric_settings=rubric_settings if isinstance(rubric_settings, Mapping) else None,
         )
 
 
@@ -386,5 +427,6 @@ __all__ = [
     "Submission",
     "TodoItem",
     "User",
+    "html_to_text",
     "parse_datetime",
 ]

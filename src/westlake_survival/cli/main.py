@@ -554,9 +554,51 @@ def _handle_canvas_errors(func):
     return wrapper
 
 
-@click.group(name="canvas", help="Canvas LMS：课程与作业截止。")
+def _human_size(size: int | None) -> str:
+    """把字节数转成便于阅读的 KB / MB 文本；未知大小返回 ``—``。"""
+    if not size:
+        return "—"
+    value = float(size)
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} GB"
+
+
+def _download_target(directory: Path, name: str, file_id: int) -> Path:
+    """给下载文件挑一个不互相覆盖的落点（只取文件名，防目录穿越）。"""
+    safe = Path(name or "").name or f"file-{file_id}"
+    target = directory / safe
+    if target.exists():
+        target = directory / f"{target.stem}-{file_id}{target.suffix}"
+    return target
+
+
+def _download_one(client, file_id: int, target_dir: Path, name: str) -> None:
+    """下载一个文件到 *target_dir*；失败只告警，不中断整批下载。"""
+    dest = _download_target(target_dir, name, file_id)
+    try:
+        saved = client.download_file(file_id, dest)
+    except WestlakeError as exc:
+        click.secho(f"下载失败（file_id={file_id}）：{exc}", fg="red", err=True)
+        return
+    click.echo(f"已保存：{saved}")
+
+
+def _people_label(names: list[str] | tuple[str, ...], limit: int = 2) -> str:
+    """把参与者名单压成「前 N 人 等 M 人」，避免群发会话撑爆表格。"""
+    names = [name for name in names if name]
+    if not names:
+        return "—"
+    if len(names) <= limit:
+        return "、".join(names)
+    return "、".join(names[:limit]) + f" 等 {len(names)} 人"
+
+
+@click.group(name="canvas", help="Canvas LMS：课程、作业、文件与公告。")
 def canvas_cmd() -> None:
-    """Canvas 命令（需要个人访问令牌）。"""
+    """Canvas 命令（令牌或统一密码会话均可）。"""
 
 
 @canvas_cmd.command(name="courses")
@@ -631,6 +673,279 @@ def canvas_modules(course: str) -> None:
             click.echo(f"   - [{item['type']}] {item['title']} {item['url']}")
 
 
+@canvas_cmd.command(name="files")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--match", default=None, help="只处理文件名含该关键词的条目。")
+@click.option(
+    "--download",
+    "download_dir",
+    type=click.Path(file_okay=False),
+    default=None,
+    help="下载到该目录（不存在会自动创建）；不给则只列清单。",
+)
+@_handle_canvas_errors
+def canvas_files(course: str, match: str | None, download_dir: str | None) -> None:
+    """列出课程文件区；给 --download 时一并下载。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    found = client.find_course(course)
+    files = client.list_files(found.id)
+    if match:
+        needle = match.lower()
+        files = [item for item in files if needle in (item.display_name or "").lower()]
+    if not files:
+        click.echo("没有匹配的课程文件")
+        return
+    rows = [
+        (str(item.id or "—"), item.display_name or "—", _human_size(item.size))
+        for item in files
+    ]
+    _print_table(rows, ("文件ID", "文件名", "大小"))
+    click.echo(f"课程：{found.course_code or ''} {found.name}（{len(files)} 个文件）")
+    if not download_dir:
+        click.echo("提示：加 --download <目录> 可一并下载。")
+        return
+    target_dir = Path(download_dir).expanduser()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for item in files:
+        if item.id is None:
+            continue
+        _download_one(client, item.id, target_dir, item.display_name or "")
+
+
+@canvas_cmd.command(name="discussions")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@_handle_canvas_errors
+def canvas_discussions(course: str) -> None:
+    """列出课程讨论主题（标题 / 未读 / 回复数 / 时间）。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    found = client.find_course(course)
+    items = client.discussions(found.id)
+    if not items:
+        click.echo("该课程没有讨论主题")
+        return
+    rows = [
+        (
+            item["title"] or "—",
+            str(item["unread"]),
+            str(item["replies"]),
+            item["posted"].strftime("%Y-%m-%d %H:%M") if item["posted"] else "—",
+            item["url"] or "",
+        )
+        for item in items
+    ]
+    _print_table(rows, ("标题", "未读", "回复", "时间", "链接"))
+
+
+@canvas_cmd.command(name="announcements")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@_handle_canvas_errors
+def canvas_announcements(course: str) -> None:
+    """列出课程公告（时间 / 标题 / 链接）。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    found = client.find_course(course)
+    items = client.list_announcements(found.id)
+    if not items:
+        click.echo("该课程没有公告")
+        return
+    rows = [
+        (
+            item.posted_at.strftime("%Y-%m-%d %H:%M") if item.posted_at else "—",
+            item.title or "—",
+            item.html_url or "",
+        )
+        for item in items
+    ]
+    _print_table(rows, ("时间", "标题", "链接"))
+
+
+def _resolve_topic(client, course_id, keyword: str) -> int:
+    """把讨论主题 id 或标题关键词解析成 topic id。"""
+    return client.find_topic(course_id, keyword)
+
+
+@canvas_cmd.command(name="inbox")
+@click.option("--limit", type=int, default=20, show_default=True, help="返回条数。")
+@click.option("--unread", "only_unread", is_flag=True, help="只看未读会话。")
+@_handle_canvas_errors
+def canvas_inbox(limit: int, only_unread: bool) -> None:
+    """收件箱会话列表（未读 / 时间 / 课程 / 主题 / 参与者）。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    unread = client.unread_count()
+    items = client.conversations(limit=limit if not only_unread else 100)
+    if only_unread:
+        items = [item for item in items if item["unread"]][:limit]
+    if not items:
+        click.echo(f"收件箱没有{'未读' if only_unread else ''}会话" + (f"（未读 {unread}）" if unread else ""))
+        return
+    rows = [
+        (
+            "●" if item["unread"] else "",
+            item["last_message_at"].strftime("%Y-%m-%d %H:%M") if item["last_message_at"] else "—",
+            item["course"] or "—",
+            item["subject"] or "—",
+            _people_label(item["participants"]),
+            str(item["messages"]),
+            str(item["id"]),
+        )
+        for item in items
+    ]
+    _print_table(rows, ("未读", "时间", "课程", "主题", "参与者", "条数", "会话ID"))
+    click.echo(f"未读会话：{unread}")
+
+
+@canvas_cmd.command(name="conversation")
+@click.argument("conversation_id", type=int)
+@click.option(
+    "--download",
+    "download_dir",
+    type=click.Path(file_okay=False),
+    default=None,
+    help="把消息附件下载到该目录。",
+)
+@_handle_canvas_errors
+def canvas_conversation(conversation_id: int, download_dir: str | None) -> None:
+    """查看一个会话的完整消息（CONVERSATION_ID 由 canvas inbox 给出）。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import html_to_text
+
+    client = canvas()
+    thread = client.conversation(conversation_id)
+    click.echo(f"主题：{thread['subject'] or '—'}")
+    if thread["course"]:
+        click.echo(f"课程：{thread['course']}")
+    click.echo(f"参与者：{_people_label(thread['participants'], limit=3)}")
+    if thread["cannot_reply"]:
+        click.echo("状态：该会话不可回复")
+    target_dir = Path(download_dir).expanduser() if download_dir else None
+    if target_dir:
+        target_dir.mkdir(parents=True, exist_ok=True)
+    for message in thread["messages"]:
+        when = message["created_at"].strftime("%Y-%m-%d %H:%M") if message["created_at"] else "—"
+        click.secho(f"\n[{when}] {message['author'] or '—'}", bold=True)
+        body = html_to_text(message["body"])
+        if body:
+            click.echo(body)
+        for item in message["attachments"]:
+            click.echo(f"   附件：{item.display_name}（file_id={item.id}，{_human_size(item.size)}）")
+            if target_dir and item.id is not None:
+                _download_one(client, item.id, target_dir, item.display_name or "")
+
+
+@canvas_cmd.command(name="send")
+@click.option("--conversation", "conversation_id", type=int, required=True, help="会话 id（canvas inbox 可见）。")
+@click.option("--text", required=True, help="回复正文（纯文本）。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="跳过确认直接发送。")
+@_handle_canvas_errors
+def canvas_send(conversation_id: int, text: str, skip_confirm: bool) -> None:
+    """在已有会话里回一条消息（写操作）。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    thread = client.conversation(conversation_id)
+    click.echo(f"会话：{thread['subject'] or '—'}（id={conversation_id}）")
+    click.echo(f"参与者：{_people_label(thread['participants'], limit=3)}")
+    click.secho(f"将发送：{text}", fg="yellow")
+    if thread["cannot_reply"]:
+        raise click.ClickException("该会话标记为不可回复")
+    if not skip_confirm:
+        click.confirm("确认发送以上内容？", abort=True)
+    client.reply_conversation(conversation_id, text)
+    click.secho("已发送。", fg="green")
+
+
+@canvas_cmd.command(name="discussion")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--topic", required=True, help="讨论主题 id 或标题关键词。")
+@click.option("--download", "download_dir", type=click.Path(file_okay=False), default=None,
+              help="把主题附件下载到该目录。")
+@_handle_canvas_errors
+def canvas_discussion(
+    course: str, topic: str, download_dir: str | None
+) -> None:
+    """查看一个讨论主题的正文（首帖 + 附件 + 回帖数）。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import html_to_text
+
+    client = canvas()
+    found = client.find_course(course)
+    topic_id = _resolve_topic(client, found.id, topic)
+    detail = client.discussion_topic(found.id, topic_id)
+    when = detail["posted_at"].strftime("%Y-%m-%d %H:%M") if detail["posted_at"] else "—"
+    click.echo(f"主题：{detail['title']}（id={detail['id']}，{when}，{detail['author'] or '—'}）")
+    click.echo(f"回帖：{detail['entries']} 条　链接：{detail['url']}")
+    body = html_to_text(detail["message"])
+    if body:
+        click.echo(body)
+    target_dir = Path(download_dir).expanduser() if download_dir else None
+    if target_dir:
+        target_dir.mkdir(parents=True, exist_ok=True)
+    for item in detail["attachments"]:
+        click.echo(f"附件：{item.display_name}（file_id={item.id}，{_human_size(item.size)}）")
+        if target_dir and item.id is not None:
+            _download_one(client, item.id, target_dir, item.display_name or "")
+
+
+@canvas_cmd.command(name="entries")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--topic", required=True, help="讨论主题 id 或标题关键词。")
+@click.option("--limit", type=int, default=20, show_default=True, help="返回条数。")
+@click.option("--full", is_flag=True, help="不截断回帖正文。")
+@_handle_canvas_errors
+def canvas_entries(course: str, topic: str, limit: int, full: bool) -> None:
+    """列出讨论主题下的回帖。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import html_to_text
+
+    client = canvas()
+    found = client.find_course(course)
+    topic_id = _resolve_topic(client, found.id, topic)
+    items = client.discussion_entries(found.id, topic_id, limit=limit)
+    if not items:
+        click.echo("该主题还没有回帖")
+        return
+    rows = [
+        (
+            item["created_at"].strftime("%Y-%m-%d %H:%M") if item["created_at"] else "—",
+            item["author"] or "—",
+            "" if item["parent_id"] else "顶层",
+            html_to_text(item["message"])[:120] if not full else html_to_text(item["message"]),
+        )
+        for item in items
+    ]
+    _print_table(rows, ("时间", "作者", "层级", "内容"))
+
+
+@canvas_cmd.command(name="reply")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--topic", required=True, help="讨论主题 id 或标题关键词。")
+@click.option("--text", required=True, help="回帖正文（纯文本）。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="跳过确认直接发布。")
+@_handle_canvas_errors
+def canvas_reply(course: str, topic: str, text: str, skip_confirm: bool) -> None:
+    """在讨论主题下回帖（写操作）。"""
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    found = client.find_course(course)
+    topic_id = _resolve_topic(client, found.id, topic)
+    detail = client.discussion_topic(found.id, topic_id)
+    click.echo(f"课程：{found.course_code or ''} {found.name}")
+    click.echo(f"主题：{detail['title']}（id={topic_id}）")
+    click.secho(f"将发布：{text}", fg="yellow")
+    if not skip_confirm:
+        click.confirm("确认发布以上回帖？", abort=True)
+    client.reply_to_discussion(found.id, topic_id, text)
+    click.secho("已发布。", fg="green")
+
+
 @canvas_cmd.command(name="exams")
 @click.option("--days", type=int, default=None, help="只看未来 N 天（含今天）；缺省不过滤。")
 @_handle_canvas_errors
@@ -678,6 +993,87 @@ def canvas_assignments(course: str) -> None:
     ]
     _print_table(rows, ("作业ID", "作业", "截止时间", "提交类型"))
     click.echo(f"课程：{found.course_code or ''} {found.name}（id={found.id}）")
+
+
+@canvas_cmd.command(name="assignment-info")
+@click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--assignment", required=True, help="作业 id 或名称关键词。")
+@click.option(
+    "--download",
+    "download_dir",
+    type=click.Path(file_okay=False),
+    default=None,
+    help="把描述里的附件下载到该目录。",
+)
+@click.option("--full", is_flag=True, help="显示完整描述（默认截断 2000 字）。")
+@_handle_canvas_errors
+def canvas_assignment_info(
+    course: str, assignment: str, download_dir: str | None, full: bool
+) -> None:
+    """查看作业详情：题目描述 + 附件 + 评分细则（可下载）。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import html_to_text
+
+    client = canvas()
+    found_course = client.find_course(course)
+    found_assignment = client.find_assignment(found_course.id, assignment)
+    detail = client.get_assignment(found_course.id, found_assignment.id)
+    click.echo(f"课程：{found_course.course_code or ''} {found_course.name}（id={found_course.id}）")
+    click.echo(f"作业：{detail.name}（id={detail.id}）")
+    due = detail.due_at.strftime("%Y-%m-%d %H:%M") if detail.due_at else "—"
+    points = "—" if detail.points_possible is None else f"{detail.points_possible:g}"
+    locked = "是" if detail.locked_for_user else "否"
+    click.echo(
+        f"截止：{due}　满分：{points}　锁定：{locked}　"
+        f"提交类型：{'、'.join(detail.submission_types) or '—'}"
+    )
+    constraints: list[str] = []
+    if detail.grading_type:
+        constraints.append(f"评分方式：{detail.grading_type}")
+    if detail.allowed_attempts is not None:
+        attempts = "不限" if detail.allowed_attempts < 0 else str(detail.allowed_attempts)
+        constraints.append(f"提交次数：{attempts}")
+    if detail.allowed_extensions:
+        constraints.append(f"允许扩展名：{'、'.join(detail.allowed_extensions)}")
+    if constraints:
+        click.echo("　".join(constraints))
+    if detail.rubric:
+        click.secho("评分细则：", bold=True)
+        for criterion in detail.rubric:
+            name = criterion.get("description") or "—"
+            score = criterion.get("points")
+            click.echo(f"   - {name}（{score if score is not None else '—'} 分）")
+            long_description = html_to_text(str(criterion.get("long_description") or ""))
+            if long_description:
+                click.echo(f"     {long_description[:300]}")
+        settings = detail.rubric_settings or {}
+        if settings.get("points_possible") is not None:
+            click.echo(f"   合计 {settings['points_possible']} 分")
+    description = html_to_text(detail.description or "")
+    if description:
+        shown = description if full else description[:2000]
+        click.secho("描述：", bold=True)
+        click.echo(shown + ("…（加 --full 看全文）" if len(description) > len(shown) else ""))
+    else:
+        click.echo("描述：—")
+    attachments = client.assignment_attachments(found_course.id, detail.id)
+    if attachments:
+        click.secho("描述内附件：", bold=True)
+        for item in attachments:
+            click.echo(
+                f"   - {item['name']}（file_id={item['file_id']}，"
+                f"{_human_size(item.get('size'))}）"
+            )
+    else:
+        click.echo("描述内没有附件链接；题目文件也可能在课程文件区（canvas files）或模块里（canvas modules）。")
+    if download_dir:
+        if not attachments:
+            click.echo("没有可下载的描述内附件。")
+            return
+        target_dir = Path(download_dir).expanduser()
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for item in attachments:
+            _download_one(client, item["file_id"], target_dir, item["name"])
 
 
 def _print_submission(submission) -> None:

@@ -1,4 +1,0 @@
-本目录下的 .venv 原基于 Anaconda python 3.13（2026-10-24 conda 已卸载）。
-重建（uv）：
-  rm -rf <venv目录> && uv venv --seed --python 3.13 <venv目录> && uv pip install --python <venv目录>/Scripts/python.exe --no-deps -r requirements-from-conda-20261024.txt
-然后 python -m pip check 补缺。

@@ -53,6 +53,7 @@ __all__ = [
     "User",
     "canvas",
     "reset_canvas",
+    "resolve_token",
     "upcoming_deadlines",
 ]
 
