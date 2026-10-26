@@ -109,7 +109,7 @@ vs 实际 6 条（11-27、12-13、次年 01-28 三条凭空消失）。这条缺
 | --- | --- | --- |
 | 预约中心 / 场馆 / 图书馆 / 打印 | 未跑 | 需 IAM 登录，风控中 |
 | 校历 / 班车 / 办事 / 门户 / VPN | 未跑 | 部分需 IAM；`affairs portal` 已单独修 |
-| 学术资源 / HPC / 财务 / 镜像 | 审计代理运行中 | 免凭据为主 |
+| 学术资源 / HPC / 财务 / 镜像 | 已审已修（见下） | 免凭据 |
 | 教务（SIS 13 条） | 代码已修，CLI 未复验 | IAM 风控 |
 
 解除风控后的第一件事：
@@ -127,3 +127,23 @@ aid 各返回空列表而不是报错。
 - 改任何模块的解析层：先跑 `python tools/module_smoke.py <模块>` 留基线，改完再跑一次对比。
 - 加新模块：在 `tools/module_smoke.py` 的 `COMMANDS` 里加一条只读命令，否则它永远不会被体检。
 - 每条新命令的自检问题只有一个：**这条命令返回空的时候，我能不能说清是哪种空。**
+
+## 六、第四批（学术 / 集群 / 财务 / 镜像）追加
+
+| 缺陷 | 位置 | 形态 | 状态 |
+| --- | --- | --- | --- |
+| 队列数 17 而站点实际 18；`GPUv100p3` 出现伪 spec「CPU 1 / GPU No」 | `hpc.py` `_parse_queues` | 下一条队列恰好叫 `CPU`/`GPU`，被当成上一条的键吞掉 | 已修：同队列内键不重复，遇重复键即断行 |
+| `4卡V100` 的「内存 / NVME」两行静默消失 | `hpc.py` spec 键集 | 键集只有英文，站点部分集群用中文键 | 已修：补 内存/显存/硬盘 |
+| 镜像页 Help 链接 0 条渲染、统计虚报 | `mirrors.html` + `MirrorRepo` | 模板读 `r.help`，字段叫 `help_url` | 已修 |
+| Help URL 是相对路径且拼错前缀 | `mirrors.py` | `/posts/xxx_help.html` 被拼到 `…/posts/mirrors.html` 后面 | 已修：按站点源拼 |
+| 财务栏目混入 6 条新闻（27 条里 6 条是 info/） | `finance.py` `sections` | 只按「href 含 /」过滤 | 已修：排除 `info/` |
+| 财务坏路径静默变「该栏目没有文章」 | `finance.py` `_fetch` | 不校验 HTTP 状态码 | 已修：非 200 抛错并带状态码 |
+| 探测失败被显示成「不在校园网」 | `scholar.py` `campus` | 与 docstring 承诺相反 | 已修：首行改「探测失败（结果未知）」 |
+
+实测：`hpc overview` 18 个队列、`4卡V100` 含内存/NVME；`westlake mirrors` Help 为
+绝对地址；`/mirrors` 页 200 且 Help 链接渲染数与统计一致；`finance sections` 不再
+含新闻；`finance articles notexist.htm` 返回「HTTP 404」。
+
+未修（记录）：`finance articles()` 里 `sections()` 失败时导航过滤静默失效；
+`hpc` 队列表窗口混切三张集群表、队列不带集群归属——需要按 `Computing Resource`
+分段解析，属结构性改造，留作下一轮。

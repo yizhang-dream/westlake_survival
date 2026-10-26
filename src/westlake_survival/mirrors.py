@@ -53,7 +53,14 @@ def repos(
             slug = href.rsplit("/", 1)[-1].replace("_help.html", "")
             for item in items:
                 if item.name.lower().replace("-", "") == slug.lower().replace("-", ""):
-                    item.help_url = href
+                    # 存绝对地址：CLI 输出可复制、页面 href 也可直接点。
+                    if href.startswith("http"):
+                        item.help_url = href
+                    else:
+                        # MIRRORS_URL 是页面地址（…/posts/mirrors.html），拼相对链接
+                        # 会出现 …/posts/mirrors.html/posts/xxx_help.html 这种坏链。
+                        origin = MIRRORS_URL.split("/", 3)
+                        item.help_url = "/".join(origin[:3]) + href
                     break
             continue
         if href.startswith("https://mirrors.westlake.edu.cn/") and title and title != "Help" and href not in seen:

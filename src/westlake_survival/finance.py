@@ -53,6 +53,9 @@ def _fetch(path: str, session: requests.Session, timeout: float) -> str:
         raise WestlakeError("财务部站点请求超时") from exc
     except requests.RequestException as exc:
         raise WestlakeError(f"财务部站点请求失败：{exc}") from exc
+    if response.status_code >= 400:
+        # 以前 404/500 页与正常页同管道，坏路径静默变成「该栏目没有文章」。
+        raise WestlakeError(f"财务部站点返回 HTTP {response.status_code}：{url[:80]}")
     return response.content.decode("utf-8", errors="replace")
 
 
@@ -99,7 +102,8 @@ def sections(
     items = [
         SectionLink(title=title, path=href)
         for title, href in _links(html)
-        if "/" in href and not href.startswith("http")
+        # info/ 是新闻详情页（「财务部开展…」），不是栏目；混进来会让栏目数虚高。
+        if "/" in href and not href.startswith("http") and not href.startswith("info/")
     ]
     if len(items) < 5:
         raise ParseError("财务部栏目解析异常（结构可能已变化）")

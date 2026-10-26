@@ -5,14 +5,14 @@
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
 <div class="stats">
   <div class="stat"><div class="label">镜像仓库</div><div class="value" data-count="{{ repos | length }}">{{ repos | length }}</div></div>
-  <div class="stat"><div class="label">带换源帮助</div><div class="value">{{ repos | selectattr('help', 'ne', none) | list | length }}<small> 个</small></div></div>
+  <div class="stat"><div class="label">带换源帮助</div><div class="value">{{ repos | selectattr('help_url', 'ne', '') | list | length }}<small> 个</small></div></div>
 </div>
 <div class="grid cols-2">
   {% for r in repos %}
   <div class="card">
     <div style="font-weight:600">{{ r.name }}</div>
     <div class="muted" style="font-size:.82rem;margin-top:.2rem"><a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.url }}</a></div>
-    {% if r.help %}<div style="font-size:.82rem;margin-top:.3rem"><a href="{{ r.help }}" target="_blank" rel="noopener">换源配置 Help →</a></div>{% endif %}
+    {% if r.help_url %}<div style="font-size:.82rem;margin-top:.3rem"><a href="{{ r.help_url }}" target="_blank" rel="noopener">换源配置 Help →</a></div>{% endif %}
   </div>
   {% endfor %}
 </div>

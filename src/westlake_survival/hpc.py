@@ -122,8 +122,17 @@ def _parse_queues(bundle: str) -> list[QueueSpec]:
             i += 1
             continue
         specs: list[tuple[str, str]] = []
+        seen_keys: set[str] = set()
         j = i + 2
-        while j + 1 < len(cells) and cells[j] in ("CPU", "Memory", "NVME", "GPU", "Other"):
+        # 站点部分集群用中文键（内存/显存/硬盘），旧键集会让这些行静默丢失。
+        # 同一条队列内键不会重复；键重复说明已经走到下一条队列——而那条队列的名字
+        # 恰好可能就叫 CPU/GPU，不做这个判断会被当成上一个队列的键吞掉（实测 17/18）。
+        while (
+            j + 1 < len(cells)
+            and cells[j] in ("CPU", "Memory", "内存", "NVME", "GPU", "显存", "硬盘", "Other")
+            and cells[j] not in seen_keys
+        ):
+            seen_keys.add(cells[j])
             specs.append((cells[j], cells[j + 1]))
             j += 2
         if specs:
