@@ -6,11 +6,13 @@
 列（按真页 ``th`` 表头原样）：``课程学历 / Term / Course Code / Course Title /
 Class / Evaluate Category / Date/Time / Evaluation Status / Detail``。
 
-**status 取值集合（实测）**：真页 25 行 ``Evaluation Status`` **全部为**
-``Submit``，未见其它取值；``Evaluate Category`` 全部为 ``End``。站点未在页面上
-提供状态图例，故 :data:`COMPLETED_STATUSES`（已完成标记集合）按 PeopleSoft
-评教组件的常见收尾标记**保守**取值，其中**没有任何一项在真页出现过**——
-真页若出现新状态值，pending 判定需据此复核（见 :func:`pending_evaluations`）。
+**status 取值集合（实测）**：2026-09-23 英文页 25 行 ``Evaluation Status``
+**全部为** ``Submit``；2026-10-27 中文页 25 行全部为 ``已提交``（表头为
+``课程学历 / 学期 / 课程代码 / 课程名称 / 班级 / 评价类型 / 评价时间 /
+评价状态 / 详情``，列名映射已双语化）。两个实测值均计入
+:data:`COMPLETED_STATUSES`（已完成）：站点把「已提交 / Submit」当评教收尾
+态；真页若出现新状态值，pending 判定需据此复核（见
+:func:`pending_evaluations`）。
 
 **period 拆分**：``Date/Time`` 形如 ``2026/06/02 10:00 - 2026/06/26 23:59``
 （起止以 `` - `` 连接）。本模块把原始串保留在 ``period_raw``，同时按首个
@@ -57,12 +59,12 @@ EVALS_GRID_ID = "WL_EVAL_WRK"
 
 #: 已完成状态标记集合（用于 :func:`pending_evaluations` 的「非已完成」判定）。
 #:
-#: **重要**：2026-09-23 实测真页 25 行状态全部为 ``Submit``，下述标记**均未
-#: 在真页出现过**；站点也未提供状态图例。这里按 PeopleSoft 评教组件常见的
-#: 收尾标记保守取值，仅作「什么算已完成」的可覆盖口径。若真页出现新值，
-#: 应据此集合复核 pending 判定。
+#: 实测取值：2026-09-23 英文页 25 行状态全部为 ``Submit``；2026-10-27 中文页
+#: 全部为 ``已提交``——两者都是已完成的收尾态，必须计入本集合，否则修完
+#: 中文表头后会把全部已提交任务误报成待评。其余标记按 PeopleSoft 评教组件
+#: 常见收尾口径保守补充。若真页出现新值，应据此集合复核 pending 判定。
 COMPLETED_STATUSES = frozenset(
-    {"Submitted", "Completed", "Complete", "Finished", "Evaluated"}
+    {"Submitted", "Completed", "Complete", "Finished", "Evaluated", "Submit", "已提交"}
 )
 
 #: ``Date/Time`` 起止分隔符。
@@ -116,22 +118,26 @@ class EvalTask:
     def from_row(cls, row: dict) -> "EvalTask":
         """从 :func:`~westlake_survival.sis.pages.parse_fluid_grid` 的行字典构造。
 
-        列名以真页 ``th`` 文本为准，并对 ``Class``/``Class Nbr``、
-        ``Evaluate Category``/``Category``、``Date/Time``/``Date-Time``、
-        ``Evaluation Status``/``Status`` 等常见变体做别名兜底。
+        列名以真页 ``th`` 文本为准（表头语言随账号登录语言，2026-10-27 实测
+        中文表头为 ``学期 / 课程代码 / 课程名称 / 班级 / 评价类型 / 评价时间 /
+        评价状态 / 详情``，逐列中英双名取第一个命中），并对 ``Class``/
+        ``Class Nbr``、``Evaluate Category``/``Category``、``Date/Time``/
+        ``Date-Time``、``Evaluation Status``/``Status`` 等常见变体做别名兜底。
         """
-        period_raw = _pick(row, "Date/Time", "Date-Time", "DateTime").strip()
+        period_raw = _pick(
+            row, "Date/Time", "Date-Time", "DateTime", "评价时间"
+        ).strip()
         start, end = _split_period(period_raw)
         return cls(
-            term=_pick(row, "Term").strip(),
-            course_code=_pick(row, "Course Code").strip(),
-            course_title=_pick(row, "Course Title").strip(),
-            class_nbr=_pick(row, "Class", "Class Nbr").strip(),
-            category=_pick(row, "Evaluate Category", "Category").strip(),
+            term=_pick(row, "Term", "学期").strip(),
+            course_code=_pick(row, "Course Code", "课程代码").strip(),
+            course_title=_pick(row, "Course Title", "课程名称").strip(),
+            class_nbr=_pick(row, "Class", "Class Nbr", "班级").strip(),
+            category=_pick(row, "Evaluate Category", "Category", "评价类型").strip(),
             period_start=start,
             period_end=end,
             period_raw=period_raw,
-            status=_pick(row, "Evaluation Status", "Status").strip(),
+            status=_pick(row, "Evaluation Status", "Status", "评价状态").strip(),
             detail_url=_pick(row, "Detail URL", "Detail Url").strip(),
         )
 
@@ -165,25 +171,29 @@ def evaluations() -> list[EvalTask]:
         AuthError: 会话失效。
         OffCampusError: 校外访问被拒。
         ActionError: 评教组件未授权。
-        ParseError: 页面结构变化导致网格解析失败。
+        ParseError: 页面结构变化导致网格解析失败；或页面有数据行但所有
+            具名字段均为空（表头可能又一次变化，见
+            :func:`~westlake_survival.sis.pages.assert_named_fields`）。
     """
     html = pages.fetch_page(EVALS_COMPONENT, query=EVALS_QUERY)
+    rows = pages.parse_fluid_grid(html, EVALS_GRID_ID)
     result: list[EvalTask] = []
-    for row in pages.parse_fluid_grid(html, EVALS_GRID_ID):
+    for row in rows:
         task = EvalTask.from_row(row)
         if not (task.course_code or task.course_title):
             continue  # 站点残留的空行
         result.append(task)
+    pages.assert_named_fields(rows, result, page="评教中心")
     return result
 
 
 def pending_evaluations() -> list[EvalTask]:
     """取尚未完成的评估任务（``status`` 非空且不在 :data:`COMPLETED_STATUSES`）。
 
-    已完成口径见 :data:`COMPLETED_STATUSES`：真页（2026-09-23）25 行状态全部为
-    ``Submit``，该集合中的标记均未在真页出现，故当前真页下本函数返回全部 25 行
-    ——即站点未把任何一条标记为已完成。``status`` 为空串时视为「无法判定」，
-    不计入 pending（避免臆断）。
+    已完成口径见 :data:`COMPLETED_STATUSES`：实测英文页状态全为 ``Submit``、
+    中文页全为 ``已提交``，两者均已计入已完成——故 2026-10-27 的真实页（全部
+    已提交）下本函数返回空列表。``status`` 为空串时视为「无法判定」，不计入
+    pending（避免臆断）。
 
     Returns:
         未完成 :class:`EvalTask` 列表（保持页面顺序）。

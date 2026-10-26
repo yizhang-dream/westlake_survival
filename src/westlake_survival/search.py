@@ -212,9 +212,14 @@ def parse_search(payload: dict, *, page: int = 1) -> SearchResult:
 
     信封里缺 ``data`` 列表（或类型不对）时抛 :class:`ParseError`。
     """
+    if "data" not in payload:
+        # 静默返回 [] 会让「接口改版」伪装成「没有搜索结果」——2026-10-27 审计
+        # 的典型形态；键存在且为 [] 才是真的空结果。
+        raise ParseError(
+            "官网搜索接口响应缺少 data 字段（接口可能已改版）："
+            f"键有 {', '.join(list(payload)[:6]) or '（空 JSON）'}"
+        )
     raw_hits = payload.get("data")
-    if raw_hits is None:
-        raw_hits = []
     if not isinstance(raw_hits, list):
         raise ParseError("官网搜索接口的 data 字段不是数组")
 

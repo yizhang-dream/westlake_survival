@@ -357,7 +357,10 @@ class CanvasClient:
 
     def list_courses(self, enrollment_state: str = "active") -> list[Course]:
         """列出当前用户的课程（``GET /courses``）。"""
-        params = {"enrollment_state": enrollment_state} if enrollment_state else None
+        # 不带 include[]=term 时 Canvas 不回学期字段，课程列表的「学期」列恒空。
+        params: dict = {"include[]": "term"}
+        if enrollment_state:
+            params["enrollment_state"] = enrollment_state
         return [Course.from_json(item) for item in self._paginate("/courses", params)]
 
     def get_course(self, course_id: int | str) -> Course:
@@ -676,19 +679,27 @@ class CanvasClient:
     def upcoming_deadlines(self, limit: int = 10) -> list[Assignment]:
         """汇总所有 active 课程中即将到期的作业，按截止时间升序。
 
-        遍历 active 课程的 ``bucket=upcoming`` 作业，跳过 ``due_at`` 为
-        ``None`` 的条目，合并后按 ``due_at`` 升序取前 *limit* 条。
+        遍历 active 课程的 ``bucket=upcoming`` 与 ``future`` 作业，跳过
+        ``due_at`` 为 ``None`` 的条目，合并后按 ``due_at`` 升序取前 *limit* 条。
         """
         collected: list[Assignment] = []
+        seen: set = set()
         for course in self.list_courses(enrollment_state="active"):
             if course.id is None:
                 continue
-            for assignment in self.list_assignments(course.id, bucket="upcoming"):
-                if assignment.due_at is None:
-                    continue
-                if assignment.course_id is None:
-                    assignment.course_id = course.id
-                collected.append(assignment)
+            # ``bucket=upcoming`` 只覆盖未来约 7 天；更远的截止日在 ``future`` 桶里。
+            # 只取 upcoming 会让「还有哪些作业要交」在一周以外静默漏报（2026-10-27 实测）。
+            for bucket in ("upcoming", "future"):
+                for assignment in self.list_assignments(course.id, bucket=bucket):
+                    if assignment.due_at is None:
+                        continue
+                    key = (course.id, assignment.id)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    if assignment.course_id is None:
+                        assignment.course_id = course.id
+                    collected.append(assignment)
         collected.sort(key=lambda item: item.due_at)
         return collected[:limit]
 

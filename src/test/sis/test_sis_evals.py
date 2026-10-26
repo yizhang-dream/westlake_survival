@@ -78,9 +78,11 @@ def test_evals_constants():
     assert EVALS_GRID_ID == "WL_EVAL_WRK"
 
 
-def test_completed_statuses_is_frozenset_and_excludes_submit():
+def test_completed_statuses_is_frozenset_and_covers_observed_values():
+    """实测收尾态必须计入已完成：英文页 ``Submit`` / 中文页 ``已提交``
+    （2026-10-27 修订：漏计会把全部已提交任务误报成待评）。"""
     assert isinstance(COMPLETED_STATUSES, frozenset)
-    assert "Submit" not in COMPLETED_STATUSES
+    assert {"Submit", "已提交"} <= COMPLETED_STATUSES
 
 
 def test_evaltask_from_row_maps_all_columns():
@@ -203,18 +205,19 @@ def test_evaluations_real_status_set_is_submit_only(monkeypatch, evals_real_html
 # --------------------------------------------------------------------------- #
 # pending 口径
 # --------------------------------------------------------------------------- #
-def test_pending_returns_all_when_none_completed(monkeypatch, evals_real_html):
-    """真页全部 Submit（不在 COMPLETED_STATUSES）→ pending 等于全部。"""
+def test_pending_returns_none_when_all_completed(monkeypatch, evals_real_html):
+    """真页全部 Submit（在 COMPLETED_STATUSES）→ pending 为空。"""
     _patch_page(monkeypatch, evals_real_html)
-    assert len(pending_evaluations()) == len(evaluations()) == 7
+    assert len(evaluations()) == 7
+    assert pending_evaluations() == []
 
 
 def test_pending_filters_completed_status(monkeypatch):
     html = _grid(
         "<tr><td>T</td><td>A</td><td>a</td><td>1</td><td>End</td>"
-        "<td>2026/01/01 00:00 - 2026/01/02 00:00</td><td>Submit</td></tr>"
+        "<td>2026/01/01 00:00 - 2026/01/02 00:00</td><td>Not Started</td></tr>"
         "<tr><td>T</td><td>B</td><td>b</td><td>2</td><td>End</td>"
-        "<td>2026/01/01 00:00 - 2026/01/02 00:00</td><td>Submitted</td></tr>"
+        "<td>2026/01/01 00:00 - 2026/01/02 00:00</td><td>Submit</td></tr>"
     )
     _patch_page(monkeypatch, html)
     assert [t.course_code for t in pending_evaluations()] == ["A"]

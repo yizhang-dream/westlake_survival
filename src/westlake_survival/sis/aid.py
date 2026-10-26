@@ -187,6 +187,10 @@ ACTIVITY_GRID_ID = "WL_STU_ACT_LIST_FL"
 # --------------------------------------------------------------------------- #
 
 #: 空记录页正文特征（小写子串匹配）。空页不渲染网格，需据此与「结构漂移」区分。
+#: 2026-10-27 起界面语言为中文，补中文空页文案（实测逐句登录态核对）：
+#: 贷款「您当前没有助贷申请。」、勤工助学「未查询到相应数据！」、
+#: 海外交流 / Exchange「您(你)当前还没有申请…」、社团活动「当前没有活动报名…」
+#: 「你还没有参与活动的记录…」。
 _NO_DATA_MARKERS = (
     "you currently do not have a loan application",
     "you have not applied yet",
@@ -195,6 +199,11 @@ _NO_DATA_MARKERS = (
     "no data found",
     "there are currently no activity registrations",
     "you don't have a club yet",
+    "您当前没有助贷申请",
+    "未查询到相应数据",
+    "当前还没有申请",
+    "当前没有活动报名",
+    "你还没有参与活动的记录",
 )
 
 #: PeopleSoft 网格数据行 id：``{grid_id}${group}_row_{row}``。
@@ -315,6 +324,20 @@ def _pick(row: dict, *keys: str) -> str:
         if value is not None and str(value).strip():
             return str(value).strip()
     return ""
+
+
+def _models(rows: list[dict], build, page: str) -> list:
+    """行字典 → 模型列表；「页面有数据行但具名字段全空」时抛 ParseError。
+
+    2026-10-27 中文表头事故教训：表头语言切换后具名字段全部取空，
+    ``raw`` 兜底虽有数据但 CLI 只显示「—」——静默空返回比报错更危险，
+    故统一走 :func:`westlake_survival.sis.pages.assert_named_fields` 守卫。
+    """
+    models = [build(row) for row in rows]
+    pages.assert_named_fields(
+        rows, models, page=page, is_empty=pages.named_fields_empty
+    )
+    return models
 
 
 # --------------------------------------------------------------------------- #
@@ -717,7 +740,9 @@ def loans() -> list[LoanRecord]:
         ParseError: 页面结构变化导致网格解析失败（非空页）。
     """
     html = pages.fetch_page(LOAN_LIST_COMPONENT, query=LOAN_LIST_QUERY)
-    return [LoanRecord.from_row(row) for row in _grid_rows(html, LOAN_LIST_GRID_ID)]
+    return _models(
+        _grid_rows(html, LOAN_LIST_GRID_ID), LoanRecord.from_row, "贷款记录"
+    )
 
 
 def loan_application() -> list[LoanRecord]:
@@ -727,7 +752,9 @@ def loan_application() -> list[LoanRecord]:
         :class:`LoanRecord` 列表；空记录页返回空列表。
     """
     html = pages.fetch_page(LOAN_OWN_COMPONENT)
-    return [LoanRecord.from_row(row) for row in _grid_rows(html, LOAN_OWN_GRID_ID)]
+    return _models(
+        _grid_rows(html, LOAN_OWN_GRID_ID), LoanRecord.from_row, "贷款申请"
+    )
 
 
 def loan_repayments() -> list[LoanRepayment]:
@@ -737,7 +764,11 @@ def loan_repayments() -> list[LoanRepayment]:
         :class:`LoanRepayment` 列表；空记录页返回空列表。
     """
     html = pages.fetch_page(LOAN_REPAYMENT_COMPONENT)
-    return [LoanRepayment.from_row(row) for row in _grid_rows(html, LOAN_REPAYMENT_GRID_ID)]
+    return _models(
+        _grid_rows(html, LOAN_REPAYMENT_GRID_ID),
+        LoanRepayment.from_row,
+        "还款记录",
+    )
 
 
 def work_study_tabs() -> list[WorkStudyTab]:
@@ -757,15 +788,20 @@ def study_jobs() -> list[StudyJob]:
         :class:`StudyJob` 列表；空记录页（实测当前账号如此）返回空列表。
     """
     html = pages.fetch_page(WORK_POSITIONS_COMPONENT, query=WORK_POSITIONS_QUERY)
-    return [StudyJob.from_row(row) for row in _grid_rows(html, WORK_POSITIONS_GRID_ID)]
+    return _models(
+        _grid_rows(html, WORK_POSITIONS_GRID_ID), StudyJob.from_row, "勤工助学"
+    )
 
 
 #: 工时申报页组件（``CHN_PACKAGE`` 菜单，2026-10-24 实测）。
 CLAIM_COMPONENT = "CHN_PACKAGE_CS.CHN_SW_CLAIM_LIST.GBL"
 
 #: 工时申报页空态提示（无岗位时整页仅此一句，无网格；在去标签前匹配，
-#: 以 ``<`` 截断避免吃到后续脚本/页脚文本）。
-_CLAIM_EMPTY_RE = re.compile(r"(You haven't got a job yet\.|No Data[^<]{0,60})")
+#: 以 ``<`` / 句终符截断避免吃到后续脚本/页脚文本）。2026-10-27 实测中文
+#: 空页文案：「你还没有勤工俭学被录用的岗位信息！」。
+_CLAIM_EMPTY_RE = re.compile(
+    r"(You haven't got a job yet\.|No Data[^<]{0,60}|你还没有勤工俭学[^<。！]{0,40}[。！])"
+)
 
 
 def job_claim() -> dict:
@@ -796,7 +832,9 @@ def outbound_programs() -> list[OutboundRecord]:
         :class:`OutboundRecord` 列表；空记录页返回空列表。
     """
     html = pages.fetch_page(OUTBOUND_COMPONENT)
-    return [OutboundRecord.from_row(row) for row in _grid_rows(html, OUTBOUND_GRID_ID)]
+    return _models(
+        _grid_rows(html, OUTBOUND_GRID_ID), OutboundRecord.from_row, "Outbound 申请"
+    )
 
 
 def exchange_applications() -> list[ExchangeRecord]:
@@ -806,7 +844,9 @@ def exchange_applications() -> list[ExchangeRecord]:
         :class:`ExchangeRecord` 列表；空记录页返回空列表。
     """
     html = pages.fetch_page(EXCHANGE_APPL_COMPONENT)
-    return [ExchangeRecord.from_row(row) for row in _grid_rows(html, EXCHANGE_APPL_GRID_ID)]
+    return _models(
+        _grid_rows(html, EXCHANGE_APPL_GRID_ID), ExchangeRecord.from_row, "Exchange 申请"
+    )
 
 
 def exchange_schools() -> list[ExchangeSchool]:
@@ -816,7 +856,11 @@ def exchange_schools() -> list[ExchangeSchool]:
         :class:`ExchangeSchool` 列表；空记录页返回空列表。
     """
     html = pages.fetch_page(EXCHANGE_SCHOOL_COMPONENT)
-    return [ExchangeSchool.from_row(row) for row in _grid_rows(html, EXCHANGE_SCHOOL_GRID_ID)]
+    return _models(
+        _grid_rows(html, EXCHANGE_SCHOOL_GRID_ID),
+        ExchangeSchool.from_row,
+        "Exchange 院校",
+    )
 
 
 def student_orgs() -> list[OrgRecord]:
@@ -836,7 +880,7 @@ def my_clubs() -> list[OrgRecord]:
         :class:`OrgRecord` 列表（填 ``academic_year`` 等具名实测列）；空记录页为空列表。
     """
     html = pages.fetch_page(ORG_LIST_COMPONENT)
-    return [OrgRecord.from_row(row) for row in _grid_rows(html, ORG_LIST_GRID_ID)]
+    return _models(_grid_rows(html, ORG_LIST_GRID_ID), OrgRecord.from_row, "我的社团")
 
 
 def student_activities() -> list[ActivityRecord]:
@@ -846,7 +890,9 @@ def student_activities() -> list[ActivityRecord]:
         :class:`ActivityRecord` 列表；空记录页返回空列表。
     """
     html = pages.fetch_page(ACTIVITY_COMPONENT)
-    return [ActivityRecord.from_row(row) for row in _grid_rows(html, ACTIVITY_GRID_ID)]
+    return _models(
+        _grid_rows(html, ACTIVITY_GRID_ID), ActivityRecord.from_row, "社团活动"
+    )
 
 
 # --------------------------------------------------------------------------- #

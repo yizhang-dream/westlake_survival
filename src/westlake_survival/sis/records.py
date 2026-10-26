@@ -254,13 +254,22 @@ def _row_non_empty(row: dict) -> bool:
     return any((value or "").strip() for value in row.values())
 
 
-def _rows_to_models(rows, build) -> list:
-    """把行字典列表经 ``build`` 映射为模型，跳过全空行。"""
+def _rows_to_models(rows, build, *, page: str) -> list:
+    """把行字典列表经 ``build`` 映射为模型，跳过全空行。
+
+    「页面有数据行但所有模型具名字段全空」时抛 ``ParseError``（表头可能
+    又变了）——2026-10-27 中文表头事故的教训：只匹配英文表头时真实数据行
+    全被当空行，命令静默输出「—」，比报错更危险。守卫统一走
+    :func:`westlake_survival.sis.pages.assert_named_fields`。
+    """
     result = []
     for row in rows:
         if not _row_non_empty(row):
             continue
         result.append(build(row))
+    pages.assert_named_fields(
+        rows, result, page=page, is_empty=pages.named_fields_empty
+    )
     return result
 
 
@@ -300,13 +309,20 @@ class DormApplication:
 
     @classmethod
     def from_row(cls, row: dict) -> "DormApplication":
-        """从 :func:`~westlake_survival.sis.pages.parse_fluid_grid` 的行字典构造。"""
+        """从行字典构造（表头双语：2026-10-27 实测中文表头为
+        ``申请号 / 申请类型 / 申请原因 / 申请提交时间 / 状态``）。"""
         return cls(
-            application_no=_pick(row, "Application No.", "Application Nbr"),
-            application_type=_pick(row, "Application Type", "Type"),
-            reason=_pick(row, "Apply Reason", "Reason"),
-            date_time=_pick(row, "Date/Time", "Date Time", "Date"),
-            status=_pick(row, "Status"),
+            application_no=_pick(
+                row, "Application No.", "Application Nbr", "申请号"
+            ),
+            application_type=_pick(
+                row, "Application Type", "Type", "申请类型"
+            ),
+            reason=_pick(row, "Apply Reason", "Reason", "申请原因"),
+            date_time=_pick(
+                row, "Date/Time", "Date Time", "Date", "申请提交时间"
+            ),
+            status=_pick(row, "Status", "状态"),
             raw=dict(row),
         )
 
@@ -351,7 +367,7 @@ def dormitory() -> DormRecord:
     """
     html = pages.fetch_page(DORM_COMPONENT, query=DORM_QUERY)
     rows = _grid_rows(html, DORM_GRID_ID)
-    applications = _rows_to_models(rows, DormApplication.from_row)
+    applications = _rows_to_models(rows, DormApplication.from_row, page="住宿申请")
     info = pages.parse_label_values(html)
     return DormRecord(applications=applications, info=info)
 
@@ -424,7 +440,7 @@ def leave_requests() -> list[LeaveRequest]:
         ParseError: 已渲染的申请网格结构变化（缺表头等）。
     """
     html = pages.fetch_page(LEAVE_COMPONENT)
-    return _rows_to_models(_grid_rows(html), LeaveRequest.from_row)
+    return _rows_to_models(_grid_rows(html), LeaveRequest.from_row, page="请假申请")
 
 
 # --------------------------------------------------------------------------- #
@@ -484,7 +500,9 @@ def honors() -> list[HonorRecord]:
         ParseError: 已渲染的荣誉网格结构变化（缺表头等）。
     """
     html = pages.fetch_page(HONORS_COMPONENT, query=HONORS_QUERY)
-    return _rows_to_models(_grid_rows(html, HONORS_GRID_ID), HonorRecord.from_row)
+    return _rows_to_models(
+        _grid_rows(html, HONORS_GRID_ID), HonorRecord.from_row, page="荣誉记录"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -529,15 +547,27 @@ class VolunteerRecord:
 
     @classmethod
     def from_row(cls, row: dict) -> "VolunteerRecord":
-        """从 :func:`~westlake_survival.sis.pages.parse_fluid_grid` 的行字典构造。"""
+        """从行字典构造（表头双语：2026-10-27 实测中文表头为
+        ``已选择 / 学年 / 志愿服务编号 / 志愿服务名称 / 当前状态 /
+        志愿服务日期 / 志愿服务时数``）。"""
         return cls(
-            selected=_pick(row, "Selected"),
-            year=_pick(row, "Year", "Academic Year"),
-            number=_pick(row, "Voluntary Service NBR", "Service Nbr"),
-            name=_pick(row, "Service Name", "Volunteer Service Name"),
-            status=_pick(row, "Status"),
-            activity_time=_pick(row, "Activity Time"),
-            hours=_pick(row, "Maximum Number Of  Hour", "Maximum Number Of Hour", "Hours"),
+            selected=_pick(row, "Selected", "已选择"),
+            year=_pick(row, "Year", "Academic Year", "学年"),
+            number=_pick(
+                row, "Voluntary Service NBR", "Service Nbr", "志愿服务编号"
+            ),
+            name=_pick(
+                row, "Service Name", "Volunteer Service Name", "志愿服务名称"
+            ),
+            status=_pick(row, "Status", "当前状态"),
+            activity_time=_pick(row, "Activity Time", "志愿服务日期"),
+            hours=_pick(
+                row,
+                "Maximum Number Of  Hour",
+                "Maximum Number Of Hour",
+                "Hours",
+                "志愿服务时数",
+            ),
             raw=dict(row),
         )
 
@@ -555,7 +585,9 @@ def volunteer_records() -> list[VolunteerRecord]:
         ParseError: 已渲染的网格结构变化（缺表头等）。
     """
     html = pages.fetch_page(VOLUNTEER_COMPONENT, query=VOLUNTEER_QUERY)
-    return _rows_to_models(_grid_rows(html, VOLUNTEER_GRID_ID), VolunteerRecord.from_row)
+    return _rows_to_models(
+        _grid_rows(html, VOLUNTEER_GRID_ID), VolunteerRecord.from_row, page="志愿服务"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -623,7 +655,7 @@ def social_practice() -> list[PracticeRecord]:
         ParseError: 已渲染的网格结构变化（缺表头等）。
     """
     html = pages.fetch_page(PRACTICE_COMPONENT, query=PRACTICE_QUERY)
-    return _rows_to_models(_grid_rows(html), PracticeRecord.from_row)
+    return _rows_to_models(_grid_rows(html), PracticeRecord.from_row, page="社会实践")
 
 
 # --------------------------------------------------------------------------- #
@@ -683,7 +715,9 @@ def discipline_records() -> list[DisciplineRecord]:
         ParseError: 已渲染的网格结构变化（缺表头等）。
     """
     html = pages.fetch_page(DISCIPLINE_COMPONENT, query=DISCIPLINE_QUERY)
-    return _rows_to_models(_grid_rows(html), DisciplineRecord.from_row)
+    return _rows_to_models(
+        _grid_rows(html), DisciplineRecord.from_row, page="违纪信息"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -732,13 +766,31 @@ class VolunteerHistoryEntry:
 
     @classmethod
     def from_row(cls, row: dict) -> "VolunteerHistoryEntry":
-        """从行字典构造（列名 2026-10-24 实测）。"""
+        """从行字典构造（表头双语：2026-10-27 实测中文表头为
+        ``学年 / 官方录入/自主提交 / 志愿服务名称 / 志愿服务时间 /
+        服务时长（小时）``，注意末列是全角括号）。"""
         return cls(
-            year=_pick(row, "Academic Year", "Year"),
-            source=_pick(row, "Official Entry / Self Submitted", "Source"),
-            name=_pick(row, "Volunteer Service Name", "Service Name", "Name"),
-            time_text=_pick(row, "Volunteer Time", "Activity Time", "Time"),
-            hours=_pick(row, "Service Duration (Hours)", "Duration", "Hours"),
+            year=_pick(row, "Academic Year", "Year", "学年"),
+            source=_pick(
+                row, "Official Entry / Self Submitted", "Source", "官方录入/自主提交"
+            ),
+            name=_pick(
+                row,
+                "Volunteer Service Name",
+                "Service Name",
+                "Name",
+                "志愿服务名称",
+            ),
+            time_text=_pick(
+                row, "Volunteer Time", "Activity Time", "Time", "志愿服务时间"
+            ),
+            hours=_pick(
+                row,
+                "Service Duration (Hours)",
+                "Duration",
+                "Hours",
+                "服务时长（小时）",
+            ),
             raw=dict(row),
         )
 
@@ -748,8 +800,9 @@ class VolunteerHistory:
     """志愿服务历史页整体：总时长 + 明细列表。
 
     Attributes:
-        total_time: 总时长文本（实测 label ``Total Time Of Volunteer Service``
-            的值 ``24HOUR`` 规范化为 ``24 HOUR``）。
+        total_time: 总时长文本（label 双语：英文 ``Total Time Of Volunteer
+            Service`` / 中文 ``志愿服务累计时长``；值 ``24HOUR`` / ``24小时``
+            规范化为 ``24 HOUR`` / ``24 小时``）。
         entries: 志愿服务历史明细（无记录时为空列表）。
     """
 
@@ -782,8 +835,17 @@ def volunteer_history() -> VolunteerHistory:
     """
     html = pages.fetch_page(VOL_HISTORY_COMPONENT)
     rows = _grid_rows(html, VOL_HISTORY_GRID_ID)
-    entries = _rows_to_models(rows, VolunteerHistoryEntry.from_row)
-    total = pages.parse_label_values(html).get("Total Time Of Volunteer Service", "")
+    entries = _rows_to_models(
+        rows, VolunteerHistoryEntry.from_row, page="志愿服务历史"
+    )
+    # 总时长 label 双语：英文 ``Total Time Of Volunteer Service`` / 中文
+    # ``志愿服务累计时长``（2026-10-27 实测界面语言为中文时取后者）。
+    labels = pages.parse_label_values(html)
+    total = (
+        labels.get("Total Time Of Volunteer Service")
+        or labels.get("志愿服务累计时长")
+        or ""
+    )
     match = _TOTAL_TIME_RESUB.match(total.replace(" ", ""))
     if match:
         total = f"{match.group(1)} {match.group(2)}"
@@ -965,55 +1027,100 @@ LEAVING_CHECK_COMPONENT = "WL_CUSTOMIZE_MENU.WL_STU_LAV_CHECK.GBL"
 #: 生源信息确认组件。
 SOURCE_INFO_COMPONENT = "WL_SA_MENU.WL_SA_SOURCE_INFO.GBL"
 
-#: 状态页正文抽取范围：``welcome to SIS`` 欢迎语后到 ``Supplementary Panel``
-#: 前（导航头里也有 ``Back`` 字样，不能用其做锚点）。
-_STATUS_TEXT_RE = re.compile(r"welcome to SIS(.*)Supplementary Panel", re.S)
+#: 状态页正文抽取范围：登录问候语（中英）之后到补充面板（中英）之前。
+#: 问候语里含学生姓名、正文前部含 ``ptnbsid`` 会话参数与导航噪音，均不应
+#: 回显（2026-10-27 之前的实现整页倾倒，含姓名/参数/导航噪音）。
+_STATUS_REGION_RE = re.compile(
+    r"(?:welcome to SIS|您好，欢迎登录SIS系统)(.*?)(?:Supplementary Panel|辅助面板)",
+    re.S,
+)
+
+#: 导航 / 框架噪音词（按空白切词后整词剔除，避免误删句中子串）。
+_STATUS_NOISE_TOKENS = frozenset({
+    "Back", "test", "后退", "种类", "*种类", "全部", "导航器", "关键字", "操作",
+    "新窗口", "主页", "搜索", "添加至主页", "添加至导航栏", "添加至收藏夹",
+    "帮助", "登出", "个性化页面", "跳至主内容", "相关信息", "问卷调查",
+})
+
+#: 关键状态句：以中英句终符收尾的短句。
+_STATUS_SENTENCE_RE = re.compile(r"[^。！？!?]+[。！？!?]")
 
 
-def _status_message(html: str) -> str:
-    """抽状态页正文提示句（先去 script/style 再锚定，避免吃到 JS 里的导航文本）。"""
-    body = re.sub(r"<script.*?</script>", " ", html, flags=re.S)
+def _status_messages(html: str, *, title: str = "", page: str = "状态页") -> list[str]:
+    """抽状态页关键提示句（一行一句，不含问候语 / 会话参数 / 导航噪音）。
+
+    步骤：去 script/style → 锚定问候语到补充面板之间的正文 → 去标签 →
+    剔除 ``ptnbsid`` 会话参数与导航噪音词（整词匹配）→ 按句终符切句。
+    页面标题等无句终符的碎片自然被丢弃。抽不到任何句子时抛
+    :class:`~westlake_survival.exceptions.ParseError`（结构变化不静默）。
+    """
+    from westlake_survival.exceptions import ParseError
+
+    body = re.sub(r"<script.*?</script>", " ", html or "", flags=re.S)
     body = re.sub(r"<style.*?</style>", " ", body, flags=re.S)
-    match = _STATUS_TEXT_RE.search(body)
+    match = _STATUS_REGION_RE.search(body)
     segment = match.group(1) if match else body
     text = re.sub(r"<[^>]+>", " ", segment)
     text = text.replace("&nbsp;", " ")
-    text = re.sub(r"\s+", " ", text).strip()
-    # 去掉正文首部的页面标题残留（如「Self Check List of Students Leaving School」）
-    return text[:300]
+    text = re.sub(r"(?i)ptnbsid[^\s'\"<>]*", " ", text)  # 不回显会话参数
+    tokens = [
+        token
+        for token in text.split()
+        if token not in _STATUS_NOISE_TOKENS and token != title
+    ]
+    text = " ".join(tokens)
+    sentences = [
+        sentence.strip() for sentence in _STATUS_SENTENCE_RE.findall(text)
+        if len(sentence.strip()) > 1
+    ]
+    if not sentences:
+        raise ParseError(f"{page}未找到关键提示句，页面结构可能已变化。")
+    return sentences
 
 
 def leaving_check() -> dict:
     """取离校自查清单状态。
 
     Returns:
-        ``{"message": 提示句}``；2026-10-24 实测为
-        ``You currently have no task to leave school!``（在读学生无离校
-        任务）。有任务时应为清单网格，届时按需扩展。
+        ``{"messages": [提示句, …]}``（一行一句）；2026-10-27 中文页实测为
+        ``["您当前暂无离校任务！"]``，2026-10-24 英文页为
+        ``["You currently have no task to leave school!"]``。有任务时应为
+        清单网格，届时按需扩展。
 
     Raises:
         AuthError: 会话失效。
         OffCampusError: 校外访问被拒。
         ActionError: 离校组件未授权。
+        ParseError: 状态页未找到关键提示句（结构可能已变化）。
     """
     html = pages.fetch_page(LEAVING_CHECK_COMPONENT)
-    return {"message": _status_message(html)}
+    return {
+        "messages": _status_messages(
+            html, title="学生离校自查清单", page="离校自查"
+        )
+    }
 
 
 def source_info_status() -> dict:
     """取生源信息确认状态。
 
     Returns:
-        ``{"message": 提示句}``；2026-10-24 实测为
-        ``Not yet open, unable to confirm student source information.``。
+        ``{"messages": [提示句, …]}``；2026-10-27 中文页实测为
+        ``["未开放，还不能确认生源信息。"]``，2026-10-24 英文页为
+        ``["Not yet open, unable to confirm student source information."]``。
 
     Raises:
         AuthError: 会话失效。
         OffCampusError: 校外访问被拒。
         ActionError: 生源组件未授权。
+        ParseError: 状态页未找到关键提示句（结构可能已变化）。
     """
     html = pages.fetch_page(SOURCE_INFO_COMPONENT)
-    return {"message": _status_message(html)}
+    return {
+        "messages": _status_messages(
+            html, title="学生确认生源信息", page="生源信息"
+        )
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -1195,15 +1302,17 @@ def records_appointments() -> None:
 @cli_group.command(name="leaving-check")
 @_handle_errors
 def records_leaving_check() -> None:
-    """显示离校自查清单状态。"""
-    click.echo(leaving_check()["message"] or "未获取到提示")
+    """显示离校自查清单状态（关键提示句，一行一条）。"""
+    for line in leaving_check()["messages"]:
+        click.echo(line)
 
 
 @cli_group.command(name="source-info")
 @_handle_errors
 def records_source_info() -> None:
-    """显示生源信息确认状态。"""
-    click.echo(source_info_status()["message"] or "未获取到提示")
+    """显示生源信息确认状态（关键提示句，一行一条）。"""
+    for line in source_info_status()["messages"]:
+        click.echo(line)
 
 
 @cli_group.command(name="advisor")

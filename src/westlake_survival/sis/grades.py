@@ -104,13 +104,17 @@ def grades() -> list[Grade]:
         AuthError: 会话失效。
         OffCampusError: 校外访问被拒。
         ActionError: 成绩组件未授权。
-        ParseError: 页面结构变化导致网格解析失败。
+        ParseError: 页面结构变化导致网格解析失败；或页面有数据行但所有
+            具名字段均为空（表头可能又一次变化，见
+            :func:`~westlake_survival.sis.pages.assert_named_fields`）。
     """
     html = pages.fetch_page(GRADES_COMPONENT)
+    rows = pages.parse_fluid_grid(html, GRADES_GRID_ID)
     result: list[Grade] = []
-    for row in pages.parse_fluid_grid(html, GRADES_GRID_ID):
+    for row in rows:
         grade = Grade.from_row(row)
         if not (grade.course_code or grade.course_title):
             continue  # 站点残留的空行 / 汇总行
         result.append(grade)
+    pages.assert_named_fields(rows, result, page="成绩")
     return result

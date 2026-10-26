@@ -1043,6 +1043,24 @@ def _hpc_context() -> dict:
     return context
 
 
+def _mirrors_context() -> dict:
+    """镜像站页：公开仓库目录（无凭据）。
+
+    2026-10-27 审计：`/mirrors` 路由引用了这个函数但从未定义，页面一直 500
+    （`NameError: _mirrors_context`）。模板要 ``repos`` 与 ``error`` 两个键。
+    """
+    context: dict = {"repos": [], "error": None}
+    module = _import_module("mirrors")
+    if module is None:
+        context["error"] = "mirrors 模块不可用"
+        return context
+    try:
+        context["repos"] = module.repos()
+    except Exception as exc:  # noqa: BLE001 - 页面降级，不让整页 500
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    return context
+
+
 def _sport_context(day: str | None = None) -> dict:
     """场馆页：场景 × 当日场地可约状态 + 我的预约（独立正元系统）。
 

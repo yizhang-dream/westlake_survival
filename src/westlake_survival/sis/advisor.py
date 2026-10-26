@@ -19,8 +19,11 @@
 列名兜底
 ========
 不同轮次列不一致，故数据模型只固化 ``name/gender/country/school/quota/
-remaining`` 六个稳定字段，其余 ``*Choice`` 原样进 ``choices`` 字典（键为
-页面表头），轮次增减志愿不丢数据。
+remaining`` 六个稳定字段，其余志愿列进 ``choices`` 字典并**归一为**
+``1st Choice`` … ``7th Choice`` 键（页面表头随登录语言在英文
+``1st Choice`` 与中文 ``第一志愿`` 之间切换，2026-10-27 实测中文页：
+``姓名 / 性别 / 国家/地区 / 学院 / 名额 / 剩余名额 / 第一志愿…``），轮次
+增减志愿不丢数据。
 """
 
 from __future__ import annotations
@@ -64,11 +67,36 @@ _OPTION_RE = re.compile(
     r"<option value=(['\"])(.*?)\1([^>]*)>([^<]*)</option>"
 )
 
-#: 志愿列：``1st Choice`` / ``7th Choice`` …
-_CHOICE_RE = re.compile(r"^\d+(?:st|nd|rd|th) Choice$")
+#: 志愿列（英文）：``1st Choice`` / ``7th Choice`` …
+_CHOICE_EN_RE = re.compile(r"^(\d+)(?:st|nd|rd|th) Choice$")
+#: 志愿列（中文）：``第一志愿`` / ``第七志愿`` …
+_CHOICE_ZH_RE = re.compile(r"^第([一二三四五六七八九十]|\d+)志愿$")
+#: 中文数字志愿序号（站点实测最多第七志愿）。
+_ZH_ORDINALS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7,
+                "八": 8, "九": 9, "十": 10}
 
 #: 公告里「已公布」的结果：``…announced: 某某 (Name).``
 _ASSIGNED_RE = re.compile(r"announced:\s*(.+?)[.。]?\s*$")
+
+
+def _ordinal(number: int) -> str:
+    """``1`` → ``1st``、``2`` → ``2nd``、``3`` → ``3rd``、其余 ``Nth``。"""
+    return {1: "st", 2: "nd", 3: "rd"}.get(number, "th")
+
+
+def _choice_key(header: str) -> str | None:
+    """把页面志愿列表头归一为 ``Nth Choice``；非志愿列返回 ``None``。"""
+    match = _CHOICE_EN_RE.match(header)
+    if match:
+        number = int(match.group(1))
+        return f"{number}{_ordinal(number)} Choice"
+    match = _CHOICE_ZH_RE.match(header)
+    if match:
+        number = _ZH_ORDINALS.get(match.group(1))
+        if number is None:
+            return None
+        return f"{number}{_ordinal(number)} Choice"
+    return None
 
 
 @dataclass
@@ -94,16 +122,39 @@ class Advisor:
             "choices": dict(self.choices),
         }
 
+    #: 六个稳定字段的表头双语文备（英文 / 2026-10-27 中文实测）。
+    _COLUMNS = {
+        "name": ("Name", "姓名"),
+        "gender": ("Gender", "性别"),
+        "country": ("Country/Region", "国家/地区", "Country", "Region"),
+        "school": ("School", "学院"),
+        "quota": ("Quota", "名额"),
+        "remaining": ("Remaining Quota", "剩余名额"),
+    }
+
     @classmethod
     def from_row(cls, row: dict) -> "Advisor":
-        choices = {k: v for k, v in row.items() if _CHOICE_RE.match(str(k))}
+        """从行字典构造（表头双语，逐列取第一个命中的语言键；志愿列
+        ``1st Choice`` / ``第一志愿`` 归一为 ``Nth Choice`` 键）。"""
+        def pick(*names: str) -> str:
+            for name in names:
+                value = row.get(name)
+                if value is not None and str(value).strip():
+                    return str(value).strip()
+            return ""
+
+        choices = {}
+        for header, value in row.items():
+            key = _choice_key(str(header))
+            if key is not None:
+                choices[key] = str(value or "").strip()
         return cls(
-            name=str(row.get("Name") or "").strip(),
-            gender=str(row.get("Gender") or "").strip(),
-            country=str(row.get("Country/Region") or "").strip(),
-            school=str(row.get("School") or "").strip(),
-            quota=str(row.get("Quota") or "").strip(),
-            remaining=str(row.get("Remaining Quota") or "").strip(),
+            name=pick(*cls._COLUMNS["name"]),
+            gender=pick(*cls._COLUMNS["gender"]),
+            country=pick(*cls._COLUMNS["country"]),
+            school=pick(*cls._COLUMNS["school"]),
+            quota=pick(*cls._COLUMNS["quota"]),
+            remaining=pick(*cls._COLUMNS["remaining"]),
             choices=choices,
         )
 
@@ -166,8 +217,13 @@ def _rotation_options(html: str) -> list[tuple[str, str, bool]]:
 
 
 def _advisors(html: str) -> list[Advisor]:
+    """解析名单网格；「有数据行但具名字段全空」时抛 ParseError（表头漂移守卫）。"""
     rows = parse_fluid_grid(html, ADVISOR_GRID_ID)
-    return [Advisor.from_row(row) for row in rows]
+    advisors = [Advisor.from_row(row) for row in rows]
+    pages.assert_named_fields(
+        rows, advisors, page="导师名单", is_empty=pages.named_fields_empty
+    )
+    return advisors
 
 
 def advising() -> AdvisorInfo:

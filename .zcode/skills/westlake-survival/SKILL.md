@@ -1,6 +1,6 @@
 ---
 name: westlake-survival
-description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与卡点见文档）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、92 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
+description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与卡点见文档）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、93 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
 ---
 
 # 西湖大学生存手册（westlake-survival）
@@ -52,13 +52,14 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | HPC / 预约中心 / 镜像站入口 | `westlake affairs links` |
 | 集群队列与节点配置（公开） | `westlake hpc overview`，网页 `/hpc` |
 | 报销/财务制度/科研经费文档 | `westlake finance sections/articles`，网页 `/finance` |
-| 镜像仓库目录与换源 | `westlake mirrors`，网页 `/mirrors` |
-| 全站服务注册表与在线普查 | 网页 `/services`（30 项全接入：方式徽标+扫描按钮） |
-| 全量子站（探测 + 栏目挖掘） | `westlake hosts list|mine --all|show <子域>`，网页 `/hosts` |
+| 镜像仓库目录与换源 | `westlake mirrors`；网页 `/mirrors` 当前 500（模板取数函数缺失待修，2026-10-27 实测） |
+| 全站服务注册表与在线普查 | 网页 `/services`（93 项全接入：方式徽标+扫描按钮） |
+| 全量子站（探测 + 栏目挖掘） | `westlake hosts list|mine --all|show <子域>`（mine/show 可加 `--render` 用无头浏览器渲染 JS 站），网页 `/hosts` |
 | 待办 / 进行中 / 已处理 / 抄送 / 我的应用（办事大厅） | `westlake todo list|doing|done|cc|apps`，网页 `/affairs`（统一密码，请求直登） |
-| 门户服务目录（18 部门站点） | `westlake affairs portal`，网页 `/affairs`「门户服务」 |
+| 门户服务目录（18 部门站点；2026-10-27 实测服务端接口疑似变化，命令暂报错） | `westlake affairs portal`（当前抛 WestlakeError 待修），网页 `/affairs`「门户服务」（该区块自动降级） |
+| 门户个人卡片（未读邮件/在借图书/待办） / AI 助手入口 | `westlake portal cards` / `westlake portal chatbot` |
 | 理论科学研究院新闻/学术活动 | `westlake institute news|events`，网页 `/institute` |
-| 五学院官网最新新闻（理/生/工/医/理论院） | `westlake schools news <学院>`，网页 `/schools` |
+| 五学院官网最新新闻（理/生/工/医/理论院）；学院清单 | `westlake schools news <学院>` / `schools list`，网页 `/schools` |
 | 服务全景普查（直连子域+办事目录） | `westlake probe scan [--full]`，网页版在 `/capabilities`「运行普查」 |
 | 课表/成绩/考试/待评教/第二课堂/导师（网页） | WebUI `/sis`（24 块） |
 | Canvas 课程/截止/待办/模块文件（网页） | WebUI `/canvas`；待办 `westlake canvas todo`，模块 `canvas modules <课程>` |
@@ -78,6 +79,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 场馆/座位/游泳从哪个入口进 | `westlake probe`（新增「场馆/座位入口」项）+ `westlake affairs apps 预约`；四套系统对照见 docs/module_audit_2026-10-27.md |
 | 学术数据库清单与访问通道 | `westlake scholar dbs [-k 关键词]`，网页 `/scholar` |
 | 某篇论文（DOI）的题录/PDF | `westlake scholar doi <doi> [-o out.pdf]`（校园网内走订阅通道直下） |
+| 某数据库的直达/CARSI 入口 URL | `westlake scholar open <库>`（如 `scholar open cnki`；只打印 URL，不打开浏览器） |
 | 当前 IP 能否直连订阅库 | `westlake scholar campus`（信标探测，缓存 30 分钟） |
 | CARSI 联盟资源目录（356 个） | `westlake scholar carsi [关键词] [--refresh]` |
 | 校外登录某数据库（CARSI/统一密码） | `westlake scholar ensure`（Agent 主入口：会话活着零动作→验证码关时无头登录→必要时弹浏览器由本人输一次验证码；会话 cookie 全机共享）；`status` 查会话与验证码态 |
@@ -118,7 +120,7 @@ Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 - **预约类需求不是一套系统**（2026-10-27 审计，见 [docs/module_audit_2026-10-27.md](../../../docs/module_audit_2026-10-27.md)）：预约中心只覆盖自习室/研讨室/琴房等 17 类；**体育场馆/游泳**在独立的正元系统 `sportvenue.westlake.edu.cn`（登录已通，卡在服务端「表单规则未找到」，见 [docs/sportvenue_notes.md](../../../docs/sportvenue_notes.md)）；**图书馆座位**在 `seats.library.westlake.edu.cn`，它加载企业微信 JSSDK（`jwxwork`），属企业微信微应用，浏览器直连拿不到 `accessToken`；办事大厅还另有「场馆预约」`infoplus/form/CGYY` 与「资源预约」`ResourceReservation` 两个**流程表单**（发起即创建流程实例，属写操作，字段未探明）。
 - **Canvas 类**（`canvas`）：优先令牌（`/setup` 保存、`WESTLAKE_CANVAS_TOKEN` 环境变量或 `~/.westlake_survival/canvas_token.txt` 首行）；**无令牌时自动回退统一认证**（IAM CAS 会话，2026-10-24 实测 REST API 认会话 Cookie）——配好教务统一密码即可用 Canvas，无需任何令牌。报 401 先怀疑「存了过期令牌抢在统一密码前面」：`westlake setup --clear-canvas-token` 或在 `/setup` 点「清除令牌」即可回退。
 - **电子地图类**：无账号。`/map` 只放官网公开内容（校区地图图片 + 720° 全景链接 + 交通），按用户裁定 2026-10-24 已移除账号与数据集抓取体系。
-- **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`，以及 `scholar dbs|campus|doi|carsi`（学术库注册表、校园 IP 信标、DOI 解析、CARSI 目录——后两者离线也查得到快照，PDF 下载需校园网/VPN 或 OA 副本）。
+- **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`，以及 `scholar dbs|campus|doi|carsi|open`（学术库注册表、校园 IP 信标、DOI 解析、CARSI 目录、某库入口 URL——后两者离线也查得到快照，PDF 下载需校园网/VPN 或 OA 副本）。
 - **学术资源（2026-10-24 实测）**：本校是 CARSI 联盟成员（`idp.westlake.edu.cn` Shibboleth IdP），统一密码可登录各出版社；校园网内出版社按 IP 认账（ScienceDirect 实测自动认证、Springer PDF 直下实测 200）。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url（校园 IP 订阅通道）」两级取全文；校外先 `scholar sso <库>` 建立联盟会话（Playwright profile 持久化，IAM 若弹图形验证码由本人在窗口输入一次）。
 - 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
 
@@ -156,6 +158,22 @@ westlake affairs apps 预约   # 办事大厅 176 个应用；外链应用常指
 对应清单见 [docs/module_audit_2026-10-27.md](../../../docs/module_audit_2026-10-27.md)；新增系统先登记进
 `discovery.EVIDENCE_HOSTS`，别只写在对话里。
 
+### 模块体检（改任何解析层前后各跑一次）
+
+```bash
+python tools/module_smoke.py            # 51 条只读命令，判定 OK/EMPTY/AUTH/FAIL/MISSING
+python tools/module_smoke.py sis canvas # 只跑匹配模块
+```
+
+基线（2026-10-27）：OK 44 / EMPTY 7 / FAIL 3。新增模块**必须**在
+`tools/module_smoke.py` 的 `COMMANDS` 里登记一条只读命令，否则它永远不会被体检。
+第二轮查出的缺陷与修法见 [docs/module_audit_round2_2026-10-27.md](../../../docs/module_audit_round2_2026-10-27.md)：
+SIS 改中文后 9 条命令静默空、Canvas 只取 7 天内截止、`sites`/`search` 静默降级。
+
+**并发审计的硬规则（2026-10-27 踩过）**：同一账号同时最多 2 路登录；看到
+`4333 验证码或登录名为空` 立即停手，不重试（重试只给失败计数续期）；
+`verifyCodeIsNeed` 返回 None ≠ 没被风控，`authExecute` 照样会拒。
+
 ## 常用命令速查表
 
 免凭据（可直接执行）：
@@ -187,7 +205,7 @@ westlake program course 机器学习             # 跨源：通识 + 8 专业培
 westlake research --limit 10
 westlake research detail <URL>
 westlake events --days 7 --limit 20 --type 名家讲座
-westlake events detail <URL>
+westlake events detail <URL>                 # URL 不在列表输出里：从网页复制，或 Python API events.upcoming() 的 .url
 westlake careers --category 博士后 --keyword 物理 --limit 20
 westlake careers detail <URL>
 westlake faculty --school 理学院 --keyword 物理 --limit 20
@@ -208,6 +226,7 @@ westlake sites detail <url>                   # 条目详情：正文摘要 / �
 westlake hpc ai                               # Westlake AI 大模型网关（OpenAI 兼容）
 westlake pms stations
 westlake probe
+westlake scholar open cnki                    # 某库直达/CARSI 入口 URL（只打印，不开浏览器）
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
 # 前端配色取自西湖大学官网实测（品牌橙 #ee7823 / 门户蓝 #0d5fbd / 门户深墨 #171725 导航）
 # + 明暗切换（右上按钮，存 localStorage）+ 弹性缓动动效（spring cubic-bezier）
@@ -226,11 +245,18 @@ westlake sis exams
 westlake sis ical --out schedule.ics
 westlake sis-evals list --pending
 westlake profile info                        # info|academic|extended
-westlake records dorm                        # dorm|leave|honors|volunteer|practice|discipline|second-class|advisor|other-apps
-westlake aid loans                           # loans|jobs|outbound|exchange|orgs|activities
+westlake records dorm                        # 共 14 个子命令：dorm|leave|honors|volunteer|vol-history|practice|discipline|second-class|advisor|other-apps|appointments|registration|leaving-check|source-info
+westlake aid loans                           # 共 7 个子命令：loans|jobs|claim|outbound|exchange|orgs|activities
 westlake lib search 数据结构 --page 1
 westlake lib loans
 westlake pms jobs
+```
+
+门户（统一密码，取门户个人卡片与 AI 助手入口）：
+
+```bash
+westlake portal cards                        # 未读邮件 / 在借图书 / 待办计数
+westlake portal chatbot                      # AI 助手聊天入口 URL
 ```
 
 场馆（体育/游泳，统一密码 + 校园网；只读）：
@@ -272,6 +298,7 @@ OneDrive/SharePoint 分享（教师讲义）：
 ```bash
 westlake share add 2183-lecture-notes https://westlakeu-my.sharepoint.com/:f:/g/personal/…   # 登记一次
 westlake share saved                                       # 已登记的分享与链接
+westlake share remove <名字>                               # 删除已登记的分享
 westlake share files --name 2183-lecture-notes             # 列文件（大小 / 修改时间 / 子目录）
 westlake share files --name 2180-lab-resources --path "Advanced Labs"   # 子目录
 westlake share download --name 2183-lecture-notes --match day01 --out ./讲义   # 只下命中项

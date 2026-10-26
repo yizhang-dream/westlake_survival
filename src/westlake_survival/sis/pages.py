@@ -39,6 +39,7 @@ SIS 路径形如 ``https://sis.westlake.edu.cn/psc/{CSPRD_x}/EMPLOYEE/SA/c/{组�
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from html.parser import HTMLParser
 
@@ -61,6 +62,8 @@ __all__ = [
     "form_state",
     "parse_fluid_grid",
     "parse_label_values",
+    "named_fields_empty",
+    "assert_named_fields",
 ]
 
 #: SIS 主机根地址（无门户索引）。
@@ -291,6 +294,61 @@ def parse_fluid_grid(html: str, grid_id: str) -> list[dict]:
         }
         result.append(record)
     return result
+
+
+# --------------------------------------------------------------------------- #
+# 列名漂移守卫（2026-10-27 中文表头事故教训）
+# --------------------------------------------------------------------------- #
+def named_fields_empty(model) -> bool:
+    """dataclass 具名字段（除 ``raw`` 兜底字典外）是否全空。
+
+    配合 :func:`assert_named_fields` 做「表头可能又变了」的检测：sis 各数据
+    模型都带 ``raw`` 原始行兜底，故具名字段判定只看非 ``raw`` 字段。
+    """
+    for field in dataclasses.fields(model):
+        if field.name == "raw":
+            continue
+        value = getattr(model, field.name, None)
+        if isinstance(value, str):
+            if value.strip():
+                return False
+        elif value:
+            return False
+    return True
+
+
+def assert_named_fields(
+    rows: list[dict], models: list, *, page: str, is_empty=None
+) -> None:
+    """「页面有数据行但所有具名字段全空」时抛 ParseError，不静默返回空。
+
+    背景（2026-10-27）：SIS 界面语言切中文后，只匹配英文表头的解析器把
+    真实数据行全部当空行跳过、命令静默报「空」（grades 已因此修过一次
+    双语映射，其余 9 条命令同根因）。静默空返回比报错更危险，故各解析器
+    收尾时统一过这道闸：原始行有内容、而解析出的模型为空列表或全部
+    具名字段为空 → 显式报错并列出页面实际列名，方便补双语映射。
+
+    Args:
+        rows: :func:`parse_fluid_grid` 的原始行字典列表。
+        models: 解析出的模型列表（跳空行实现漂移时为空列表）。
+        page: 页面名，错误消息用（如 ``"考试安排"``）。
+        is_empty: 单个模型「具名字段全空」判定；缺省按 ``not model``。
+            dataclass 模型传 :func:`named_fields_empty`。
+
+    Raises:
+        ParseError: 页面有数据行但所有具名字段均为空（表头可能又变化）。
+    """
+    data_rows = [row for row in rows if any((v or "").strip() for v in row.values())]
+    if not data_rows:
+        return  # 真空页 / 全空残留行：正常空数据
+    blank = is_empty if is_empty is not None else (lambda m: not m)
+    if models and not all(blank(m) for m in models):
+        return  # 至少一行解析出了具名字段：表头匹配正常
+    columns = ", ".join(key for key in data_rows[0] if key) or "（无）"
+    raise ParseError(
+        f"{page}：页面有 {len(data_rows)} 行数据但所有具名字段均为空，"
+        f"表头可能又一次变化，已识别列：{columns}。"
+    )
 
 
 # --------------------------------------------------------------------------- #
