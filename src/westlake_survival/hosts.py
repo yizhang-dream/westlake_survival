@@ -9,8 +9,8 @@
 * :func:`sweep` —— 清单（host / URL / 状态 / 标题 / 是否已有人工站点配置）；
 * :func:`content` —— 单个站点的栏目与条目（首页导航 + 每栏第一页）。
 
-范围：``discovery.SERVICE_REGISTRY`` 的 86 个前缀 + 证书透明度日志里的
-子域 + 一组常见候选名。只做只读 GET，不登录、不提交表单。
+范围：``discovery.SERVICE_REGISTRY`` 的 92 个前缀 + CENSUS_HOSTS + 一组功能词候选
++ 证据源缓存（Wayback/滚雪球/资产收割）里的主机。只做只读 GET，不登录、不提交表单。
 """
 
 from __future__ import annotations
@@ -37,12 +37,25 @@ INVENTORY_TTL = 12 * 3600
 CONTENT_TTL = 24 * 3600
 
 #: 常见候选名（命中即补进清单，未解析的会被标 NXDOMAIN）。
+#: 2026-10-27 审计：按「校园里存在什么服务」补功能词——场馆/座位/就诊/
+#: 缴费/快递/报修/洗衣/教室/考试/评教。此前只有主机名式缩写，sportvenue
+#: 与 seats.library 两个真实系统因此从未进入普查（详见
+#: docs/module_audit_2026-10-27.md）。
 _EXTRA_CANDIDATES = (
     "library", "opac", "print", "my-sls", "mail", "webmail", "git", "wiki", "cloud",
     "course", "lms", "exam", "jw", "jwc", "yjs", "yjsy", "job", "foundation",
     "giving", "news", "video", "live", "meeting", "zoom", "teams", "ai", "api",
     "open", "status", "monitor", "dns", "ns1", "www2", "intl", "global",
     "summer", "camp", "admission", "admissions", "career2", "heqdata2",
+    # 功能词（2026-10-27）
+    "sport", "sports", "venue", "gym", "stadium", "swim", "fitness", "court",
+    "seat", "seats", "studyroom", "classroom", "seminar", "activity", "club",
+    "card", "ecard", "pay", "express", "parcel", "laundry", "repair",
+    "hospital", "clinic", "health", "medical", "appointment", "vaccine",
+    "cet", "ielts", "elearning", "mooc", "teach", "eval", "survey",
+    "form", "flow", "approval", "sign", "doc", "docs", "disk", "storage",
+    "backup", "gitlab", "jira", "ticket", "help", "helpdesk", "service",
+    "campus", "life", "student", "union", "volunteer", "chem",
 )
 
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
@@ -84,11 +97,24 @@ def _decode(response) -> str:
 
 
 def candidate_hosts() -> list[str]:
-    """候选子域（不含 ``.westlake.edu.cn`` 后缀的相对名）。"""
-    from westlake_survival.discovery import SERVICE_REGISTRY
+    """候选子域（不含 ``.westlake.edu.cn`` 后缀的相对名）。
+
+    三类来源合并：服务注册表（已人工确认的系统）、功能词/常见名候选、
+    证据源缓存（Wayback 索引 / 滚雪球互链 / 资产收割）。第三类专门兜
+    「系统存在但名字猜不到」——2026-10-27 审计的 sportvenue 即属此类。
+    """
+    from westlake_survival.discovery import (
+        CENSUS_HOSTS,
+        EVIDENCE_HOSTS,
+        SERVICE_REGISTRY,
+        evidence_hosts,
+    )
 
     names = {key for key, _, _ in SERVICE_REGISTRY}
     names.update(_EXTRA_CANDIDATES)
+    names.update(CENSUS_HOSTS)
+    names.update(EVIDENCE_HOSTS)
+    names.update(evidence_hosts())
     return sorted(names)
 
 
@@ -96,7 +122,9 @@ def _probe_one(prefix: str, session=None) -> dict:
     # 注意：requests.Session 不是线程安全的，连接池默认 10；并发探测必须
     # 每任务独立 Session，否则会在池上互相等待（实测 40 站卡住 200 秒）。
     session = session or _session()
-    host = prefix if "." in prefix else f"{prefix}.westlake.edu.cn"
+    # 带点的是二级子域（seats.library / eer.lab / m.hpc），仍属 westlake.edu.cn；
+    # 早前按「带点即完整域名」处理，把这几类一路探测到裸主机名上，全部误判 DEAD。
+    host = prefix if prefix.endswith(".westlake.edu.cn") else f"{prefix}.westlake.edu.cn"
     for scheme in ("https", "http"):
         try:
             response = session.get(

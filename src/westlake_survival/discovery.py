@@ -38,6 +38,7 @@ __all__ = [
     "cli_group",
     "APP_DIRECTORY_PATH",
     "CENSUS_HOSTS",
+    "EVIDENCE_HOSTS",
     "HostProbe",
     "AppEntry",
     "direct_session",
@@ -47,6 +48,7 @@ __all__ = [
     "portal_services",
     "archive_hosts",
     "asset_hosts",
+    "evidence_hosts",
 ]
 
 logger = logging.getLogger(__name__)
@@ -59,14 +61,28 @@ APP_DIRECTORY_PATH = "/client/stats/apps?domain=westlake.edu.cn"
 #: 普查候选（精选：证书日志命中 + 常见服务前缀；全量字典会拖慢 probe）。
 #: 2026-10-24 大字典清扫批扩充：新命中 2dmater/aging-conference/astro/audio/
 #: bioinfo/cap/car/career/mp/pan/report/storage/visitor + m./new./old. 前缀。
+#: 2026-10-27 审计补入：sportvenue（正元场馆，游泳真实入口）、seats.library
+#: （图书馆座位，企业微信微应用）、chem（化学系）、eval（学生服务/学工平台）、
+#: payment（占位 502）。前两个此前「字典里没有」而被当成「不存在」。
 CENSUS_HOSTS = (
     "www sso iam idp my canvas sis lib library opac print pms map hpc mirrors "
     "finance hr oa one booking alumni international exchange mail energy iot "
     "security remotework its lab yanglab mydisk webvpn webvpn2 1x ac "
     "2dmater aging-conference astro audio bioinfo cap car career cbis "
-    "mp pan report storage visitor "
+    "mp pan report storage visitor payment "
+    "sportvenue seats.library chem eval "
     "m.hpc new.hpc old.hpc m.remotework"
 ).split()
+
+#: 证据式发现得到、但任何字典都猜不到的主机（2026-10-27 审计）。
+#: 教训：系统存在、登录也通，只是名字不含任何常见服务词——「搜不到」
+#: 不能当作「不存在」。新增系统一律先在这里登记，再谈能不能接。
+EVIDENCE_HOSTS = (
+    "sportvenue",
+    "seats.library",
+    "chem",
+    "eval",
+)
 
 
 def direct_session() -> requests.Session:
@@ -373,6 +389,9 @@ def snowball_hosts(
                 if candidate not in visited and host not in ("payment", "isearch"):
                     next_queue.append(candidate)
         queue = next_queue[:24]  # 控制规模
+    from westlake_survival import _cache
+
+    _cache.save_json("discovery/snowball_hosts.json", found)
     return found
 
 
@@ -465,7 +484,39 @@ def asset_hosts(
                     found.setdefault(h, [])
                     if js_url not in found[h]:
                         found[h].append(js_url)
+    from westlake_survival import _cache
+
+    _cache.save_json("discovery/asset_hosts.json", found)
     return found
+
+
+def evidence_hosts() -> list[str]:
+    """历史上由证据源抓到的 ``*.westlake.edu.cn`` 主机名（不含后缀）。
+
+    证据源 = Wayback 历史索引 + 滚雪球互链 + 静态资产收割，三者各自把结果
+    落到 ``_cache``；本函数只读缓存、不发网络请求，供 :func:`hosts.sweep`
+    把「字典没想到但证据里有」的子域并进清单。缓存为空时返回 ``[]``。
+    """
+    from westlake_survival import _cache
+
+    names: set[str] = set()
+    for cache_name in (
+        "discovery/archive_hosts.json",
+        "discovery/snowball_hosts.json",
+        "discovery/asset_hosts.json",
+    ):
+        data = _cache.load_json(cache_name, default=None)
+        if not isinstance(data, dict):
+            continue
+        for key in data:
+            if not isinstance(key, str):
+                continue
+            name = key.lower()
+            if name.endswith(".westlake.edu.cn"):
+                name = name[: -len(".westlake.edu.cn")]
+            if name and name != "westlake":
+                names.add(name)
+    return sorted(names)
 
 
 def _cli():
@@ -555,6 +606,7 @@ SERVICE_REGISTRY = (
     ("career", "就业服务网（招聘公告/招聘会/宣讲会）", "内容页（三区块）"),
     ("cbis", "CBIS（仅证书存在）", "状态卡"),
     ("chatbot", "门户 AI 助手后端", "入口卡+在线状态"),
+    ("chem", "化学系（Next.js 独立站）", "入口卡+在线状态"),
     ("cms", "危化品管理系统", "入口卡+在线状态"),
     ("construction", "基本建设部", "内容页（/sites）"),
     ("dq", "党群工作部", "内容页（/sites）"),
@@ -564,9 +616,11 @@ SERVICE_REGISTRY = (
     ("eer.lab", "生态环境研究实验室（课题组站）", "内容页（/sites）"),
     ("engineering", "工学院", "内容页（五院聚合）"),
     ("eniscps", "理化平台（英文）", "入口卡+在线状态"),
+    ("eval", "学生服务/学工平台（xsfw，CAS 登录，SPA）", "登录后 SPA，API 未探明"),
     ("exchange", "邮件（→heqdata）", "入口卡+在线状态"),
     ("facilities", "实验室与科研设施部", "内容页（/sites）"),
     ("file", "办公文件共享（登录）", "入口卡+在线状态"),
+    ("finance", "财务部（制度/科研经费文章）", "内容页（/finance）"),
     ("graduateschool", "研究生院", "内容页（/sites）"),
     ("heqdata", "数据平台", "内容页（/sites）"),
     ("hr", "人事（IAM OAuth2）", "入口卡+在线状态"),
@@ -607,9 +661,11 @@ SERVICE_REGISTRY = (
     ("qiushi", "求是西湖", "内容页（/sites）"),
     ("remotework", "远程办公", "入口卡+在线状态"),
     ("science", "理学院", "内容页（五院聚合）"),
+    ("seats.library", "图书馆座位预约（企业微信微应用）", "浏览器需企业微信授权"),
     ("security", "保卫处", "入口卡+在线状态"),
     ("share", "大型仪器共享管理系统", "内容页（/sites）"),
     ("sls", "生命科学学院", "内容页（五院聚合）"),
+    ("sportvenue", "正元场馆预约（游泳/球场，独立系统）", "登录已通，卡在服务端表单规则"),
     ("sso", "统一认证 CAS", "入口卡+在线状态"),
     ("storage", "对象存储（403）", "状态卡"),
     ("supply", "采购管理系统（登录）", "入口卡+在线状态"),
