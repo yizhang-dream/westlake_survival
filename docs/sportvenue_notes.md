@@ -71,3 +71,31 @@ API 面、以及当前卡住的位置，供后续接入 `sportvenue` 模块使�
 
 侦查脚本模式见本仓 git 历史（2026-10-27 会话），登录四步 + 签名函数可直接
 搬进将来的 `sportvenue` 模块；token 存内存不落盘。
+
+## 已接入（2026-10-27 当晚，模块 `sportvenue`）
+
+上面这条链路已落成正式模块，四步登录 + 签名全部用 requests 完成，不依赖浏览器：
+
+| 层 | 入口 |
+| --- | --- |
+| Python | `westlake_survival.sportvenue`：`scenes()` / `find_scene()` / `sites()` / `find_site()` / `days()` / `my_reservations()` |
+| CLI | `westlake sport scenes\|sites\|days\|mine` |
+| MCP | `sport_scenes` / `sport_sites` / `sport_days` / `sport_reservations` |
+| 网页 | `/sport`（场景 × 当日场地可约状态 + 我的预约，按日期 10 分钟缓存） |
+
+登录用新增的 `iam.authenticate()`——与 `login_for` 同一条认证链，但**不自动跟随
+回跳地址**，因为 `uniToken` 藏在回跳的 302 Location 里，自动跟随会把它吃掉。
+
+实测确认的接口（全部只读）：
+
+- `GET /site/api/site/scene/list` → 15 个场景（球场 + 会员卡服务 + 健身次卡 + 游泳次卡）；
+- `GET /site/api/site/scene/detail?uuid=`（POST 会 500，必须 GET）；
+- `POST /site/api/reserve/current/page` → `data` 是**列表**、总数在 `count`；
+- `POST /site/api/reserve/cross/detail` → `groupReserveVos[].reserveStatus`；
+- `POST /site/api/reserve/reserveRecord` / `historyRecord` → 我的预约 / 历史。
+
+**两处不可约原因文案不同**（同一场地同一天）：`current/page` 回
+「申请表单信息缺失」（401000316），`cross/detail` 回「表单规则未找到！！！」
+（40100082）。含义相同：服务端没有配好预约表单，与账号身份、网络无关。
+
+下单仍不接：`/api/reserve/addReserve` 带次卡支付（`PAY_CARD`），属写操作。

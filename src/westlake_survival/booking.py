@@ -718,6 +718,11 @@ def _cli():
     def sports_cmd() -> None:
         """体育场馆（含游泳）权限体检。"""
         click.echo(json.dumps(diagnose_sports(), ensure_ascii=False, indent=2))
+        click.echo(
+            "提示：游泳/球场的真实入口是独立的正元场馆系统——"
+            "用 westlake sport scenes 查（见 docs/sportvenue_notes.md）。",
+            err=True,
+        )
 
     return group
 

@@ -42,6 +42,7 @@ __all__ = [
     "SIS_LOGIN_URL",
     "SIS_OAUTH_CLIENT_ID",
     "authorize_url_for_sis",
+    "authenticate",
     "login",
     "login_for",
     "exchange_sis_session",
@@ -304,21 +305,18 @@ def login(
     return session
 
 
-def login_for(
+def authenticate(
     entity_url: str,
     user: str,
     password: str,
     *,
     session: requests.Session | None = None,
-) -> requests.Session:
-    """用统一认证登录任意接了 IAM 的系统（任务中心 / 门户 / …）。
+) -> tuple[requests.Session, str]:
+    """用统一认证登录任意接了 IAM 的系统，返回 ``(会话, 回跳地址)``。
 
-    流程与 SIS 相同，但 ``entityId`` 由目标系统自己的 OAuth 入口给出：
-    ``GET entity_url`` 跟随跳转落到 ``iam.../ac/#/index?lck=…&entityId=…``，
-    认证成功后把 authnEngine 给出的回跳地址跟完，目标系统即建立会话。
-
-    与 :func:`login` 的区别：不做 SIS 专用的 PS_TOKEN 交换，适合
-    infoplus（one.westlake）与门户（my.westlake）这类 OAuth 客户端。
+    与 :func:`login_for` 的区别只有一处：**不跟随回跳地址**。场馆系统
+    （sportvenue）需要在回跳的 302 里抠 ``uniToken``，自动跟随会把中间
+    Location 吃掉；调用方自己按跳即可。已经是登录态时返回 ``(session, "")``。
 
     Raises:
         AuthError: 账号密码错误或当前处于图形验证码风控态。
@@ -329,7 +327,7 @@ def login_for(
     match = re.search(r"lck=(context_[A-Za-z0-9_]+)&entityId=([^&]+)", entry.url)
     if not match:
         # 已经是登录态（目标系统直接返回）
-        return session
+        return session, ""
     lck, entity_id = match.group(1), unquote(match.group(2))
     referer = f"{IAM_BASE}/ac/"
 
@@ -395,20 +393,35 @@ def login_for(
     if not token:
         raise WestlakeError("IAM 认证成功但未返回 loginToken——协议可能已变化")
 
-    engine = session.post(
-        f"{IAM_BASE}/idp/authCenter/authnEngine?locale=zh-CN",
-        data={"loginToken": token},
-        headers={
-            "Referer": f"{IAM_BASE}/ac/",
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        timeout=DEFAULT_TIMEOUT,
-        allow_redirects=False,
-    )
+    engine = _run_engine(session, token)
     location = engine.headers.get("Location", "")
     if not location:
         match = re.search(r'locationValue\s*=\s*"([^"]+)"', engine.text or "")
         location = _html.unescape(match.group(1)) if match else ""
+    return session, location
+
+
+def login_for(
+    entity_url: str,
+    user: str,
+    password: str,
+    *,
+    session: requests.Session | None = None,
+) -> requests.Session:
+    """用统一认证登录任意接了 IAM 的系统（任务中心 / 门户 / …）。
+
+    流程与 SIS 相同，但 ``entityId`` 由目标系统自己的 OAuth 入口给出：
+    ``GET entity_url`` 跟随跳转落到 ``iam.../ac/#/index?lck=…&entityId=…``，
+    认证成功后把 authnEngine 给出的回跳地址跟完，目标系统即建立会话。
+
+    与 :func:`login` 的区别：不做 SIS 专用的 PS_TOKEN 交换，适合
+    infoplus（one.westlake）与门户（my.westlake）这类 OAuth 客户端。
+
+    Raises:
+        AuthError: 账号密码错误或当前处于图形验证码风控态。
+        WestlakeError: 网络/协议异常。
+    """
+    session, location = authenticate(entity_url, user, password, session=session)
     if location:
         session.get(location, timeout=DEFAULT_TIMEOUT, allow_redirects=True)
     return session

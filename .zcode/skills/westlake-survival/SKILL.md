@@ -64,6 +64,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | Canvas 课程/截止/待办/模块文件（网页） | WebUI `/canvas`；待办 `westlake canvas todo`，模块 `canvas modules <课程>` |
 | 招聘岗位（网页） | WebUI `/careers` |
 | 打印网点 / 我的打印任务 | `westlake pms stations` / `jobs`，网页 `/pms` |
+| 场馆场景/当日可约/我的预约（网页） | 网页 `/sport`（体育场馆与游泳；独立系统） |
 | 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`，网页 `/lib`（OPAC 需校园网/VPN） |
 | 我能预约哪些场地（分类） | `westlake booking types` |
 | 自习/研讨室有哪些、在哪层 | `westlake booking list --type 图书馆 [--keyword 研习仓]` |
@@ -71,7 +72,9 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 某房间某天的空闲时段 | `westlake booking slots "E12-302研讨室" --date 2026-10-27 [--duration 120]` |
 | 预约场地（写操作） | `westlake booking book "4楼研习仓A" --date … --start 19:00 --end 21:00 [--dry-run]` |
 | 我的预约 / 取消 | `westlake booking mine`；`westlake booking cancel <预约号> --reason …` |
-| 游泳/体育场馆为什么约不了 | `westlake booking sports`（列可见分类 + 体育类资源启用状态）；真实入口与卡点见 docs/sportvenue_notes.md |
+| 有哪些球场/游泳场次、哪天能约 | `westlake sport scenes` / `sport sites <场景> [--date]` / `sport days <场景> <场地> --start … --end` |
+| 我的场馆预约（进行中/历史） | `westlake sport mine [--history]` |
+| 游泳/体育场馆为什么约不了 | `westlake sport days 游泳次卡 游泳场次`（不可约时给服务端原话）+ `westlake booking sports`（确认预约中心确实没有体育类）；卡点见 docs/sportvenue_notes.md |
 | 场馆/座位/游泳从哪个入口进 | `westlake probe`（新增「场馆/座位入口」项）+ `westlake affairs apps 预约`；四套系统对照见 docs/module_audit_2026-10-27.md |
 | 学术数据库清单与访问通道 | `westlake scholar dbs [-k 关键词]`，网页 `/scholar` |
 | 某篇论文（DOI）的题录/PDF | `westlake scholar doi <doi> [-o out.pdf]`（校园网内走订阅通道直下） |
@@ -111,6 +114,7 @@ Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
 - **预约中心（`booking`）**：同一套统一密码，登录走预约中心自己的 OIDC（`booking.westlake.edu.cn/sso/oauth2`，隐式流取 access_token），`iam.login_for` 一步到位，无需另配令牌。**看到分类先别高兴**：接口对「没权限的分类」不报错、只返回空列表，判断能不能约要看 `booking types`（首页可见卡片）。
+- **体育场馆/游泳（`sport`）**：独立正元系统 `sportvenue.westlake.edu.cn`，同一套统一密码走 IAM CAS（`client_id=tycgyy`），首次运行自动登录；每个请求带 `appId/nonce/timeStamp/sign` 签名（前端公开定值，非账号凭据）。只读：场景、场地、逐日可约、我的预约；**不做预约/取消**（下单涉及次卡支付，未接）。
 - **预约类需求不是一套系统**（2026-10-27 审计，见 [docs/module_audit_2026-10-27.md](../../../docs/module_audit_2026-10-27.md)）：预约中心只覆盖自习室/研讨室/琴房等 17 类；**体育场馆/游泳**在独立的正元系统 `sportvenue.westlake.edu.cn`（登录已通，卡在服务端「表单规则未找到」，见 [docs/sportvenue_notes.md](../../../docs/sportvenue_notes.md)）；**图书馆座位**在 `seats.library.westlake.edu.cn`，它加载企业微信 JSSDK（`jwxwork`），属企业微信微应用，浏览器直连拿不到 `accessToken`；办事大厅还另有「场馆预约」`infoplus/form/CGYY` 与「资源预约」`ResourceReservation` 两个**流程表单**（发起即创建流程实例，属写操作，字段未探明）。
 - **Canvas 类**（`canvas`）：优先令牌（`/setup` 保存、`WESTLAKE_CANVAS_TOKEN` 环境变量或 `~/.westlake_survival/canvas_token.txt` 首行）；**无令牌时自动回退统一认证**（IAM CAS 会话，2026-10-24 实测 REST API 认会话 Cookie）——配好教务统一密码即可用 Canvas，无需任何令牌。报 401 先怀疑「存了过期令牌抢在统一密码前面」：`westlake setup --clear-canvas-token` 或在 `/setup` 点「清除令牌」即可回退。
 - **电子地图类**：无账号。`/map` 只放官网公开内容（校区地图图片 + 720° 全景链接 + 交通），按用户裁定 2026-10-24 已移除账号与数据集抓取体系。
@@ -229,6 +233,16 @@ westlake lib loans
 westlake pms jobs
 ```
 
+场馆（体育/游泳，统一密码 + 校园网；只读）：
+
+```bash
+westlake sport scenes                                   # 15 个场景（球场/次卡）
+westlake sport sites 游泳次卡 [--date 2026-10-28]        # 当日场地与可约状态
+westlake sport sites C16羽毛球场 --date 2026-10-28
+westlake sport days 游泳次卡 游泳场次 --start 2026-10-28 --end 2026-11-03
+westlake sport mine [--history]                          # 我的场馆预约
+```
+
 需 Canvas 访问（令牌或统一密码会话）：
 
 ```bash
@@ -283,6 +297,18 @@ for table, hhmm in transit().next_departures(limit=3): # 下一批班车
 ```
 
 ```python
+from westlake_survival import sportvenue  # 场馆：统一密码 + 校园网
+
+for scene in sportvenue.scenes():                       # 15 个场景
+    print(scene.name, scene.uuid)
+swim = sportvenue.find_scene("游泳")
+for site in sportvenue.sites(swim):                     # 当日场地（缺省明天）
+    print(site.name, site.bookable, site.reason)        # 不可约时给服务端原话
+for day in sportvenue.days(site, start="2026-10-28", end="2026-11-03"):
+    print(day.day, day.bookable, day.reason)
+```
+
+```python
 from westlake_survival.sis import get_schedule, grades  # 需凭据 + 校园网
 
 for s in get_schedule():
@@ -331,7 +357,7 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 56 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`，分享 `share_files`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 60 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`，分享 `share_files`，场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}
