@@ -212,6 +212,8 @@ westlake canvas submission --course 概率论 --assignment 作业3              
 
 `assignments` 里没有截止时间、提交类型为 `none` 的条目（ClassParticipation、Quiz 等）多为课堂记录，不一定需要动手；要确认就看 `canvas assignment-info` 的描述。
 
+课程资料**按需从 Canvas 现拉，不依赖任何本地镜像库**：不带 `--download` 的命令只读元数据、不写盘；给 `--download <目录>` 才落文件，且只下当前命中的那门课/那个作业/那个讨论。不要为了一次查询去同步整门课或整学期——单个课件通常几十 KB 到几 MB。老师另行通过 OneDrive/SharePoint 分享的讲义不属于 Canvas 文件区，本工具没有该通道，需要在浏览器里手动获取；也不要把它当成 Canvas 内容去搜。
+
 ## Python API 直用（需要结构化数据时）
 
 前提：用与 `westlake` 命令同一个解释器（`pip show westlake-survival` 可查安装位置）。直接 `import westlake_survival` 报 ModuleNotFoundError，通常只是没装进当前解释器，换到装了包的那个即可。
