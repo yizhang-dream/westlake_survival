@@ -300,7 +300,8 @@ class ShareBrowser:
         root = self.folder
         if subpath:
             root = root.rstrip("/") + "/" + subpath.strip("/")
-        url = self._list_url(root)
+        base_url = self._list_url(root)
+        url = base_url
         items: list[ShareItem] = []
         for _ in range(20):  # 分页上限，正常一页就够
             data = self._post_rows(url)
@@ -309,7 +310,7 @@ class ShareBrowser:
             next_href = (data.get("ListData") or {}).get("NextHref") or ""
             if not next_href:
                 break
-            url = _absolute_next(self.host, next_href)
+            url = _next_url(base_url, next_href)
         return items
 
     # -- 下载 ------------------------------------------------------------ #
@@ -362,10 +363,20 @@ def _row_to_item(row: dict) -> ShareItem:
     )
 
 
-def _absolute_next(host: str, href: str) -> str:
-    if href.startswith("http"):
-        return href
-    return f"https://{host}{href if href.startswith('/') else '/' + href}"
+def _next_url(base_url: str, next_href: str) -> str:
+    """把分页用的 ``NextHref`` 合并回列表接口地址。
+
+    SharePoint 返回的 ``NextHref`` 是相对查询串（``?Paged=TRUE&p_…&RootFolder=…``），
+    只含分页参数；必须与首次请求里的 ``@a1`` / ``TryNewExperienceSingle`` 合并后
+    再 POST 同一个 ``RenderListDataAsStream`` 路径，否则 400「缺少必需的查询字符串参数」，
+    拼到站点根则会拿回整页 HTML。
+    """
+    if next_href.startswith("http"):
+        return next_href
+    base = urllib.parse.urlsplit(base_url)
+    merged = dict(urllib.parse.parse_qsl(base.query, keep_blank_values=True))
+    merged.update(dict(urllib.parse.parse_qsl(next_href.lstrip("?"), keep_blank_values=True)))
+    return base._replace(query=urllib.parse.urlencode(merged)).geturl()
 
 
 # --------------------------------------------------------------------------- #
