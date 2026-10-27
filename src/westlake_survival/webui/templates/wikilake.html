@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}校园百科 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">校园百科（WikiLake）</h1>
+{% if error %}<div class="note">{{ error }}</div>{% endif %}
+<div class="stats">
+  <div class="stat"><div class="label">条目</div><div class="value" data-count="{{ total }}">{{ total }}</div></div>
+  <div class="stat"><div class="label">栏目</div><div class="value">{{ cats | length }}<small> 个</small></div></div>
+  <div class="stat"><div class="label">检索方式</div><div class="value" style="font-size:1rem">标题 / 正文</div></div>
+</div>
+
+<form method="get" action="/wiki" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.8rem 0 1rem">
+  <input type="search" name="q" value="{{ query }}" placeholder="搜条目，如：班车、音游社、培养方案"
+         style="flex:1;min-width:14rem;padding:.45rem .6rem;border-radius:.5rem;border:1px solid var(--border);background:transparent;color:inherit">
+  <label class="muted" style="font-size:.82rem;display:flex;gap:.3rem;align-items:center">
+    <input type="checkbox" name="deep" value="1"{% if deep %} checked{% endif %}> 检索正文（首次较慢）
+  </label>
+  <button class="btn" type="submit">搜索</button>
+</form>
+
+<div class="chip-cloud sec-nav">
+  <a class="chip" href="/wiki">全部 {{ total }}</a>
+  {% for c in cats %}<a class="chip{% if c == category %} active{% endif %}" href="/wiki?cat={{ c | urlencode }}">{{ c }}</a>{% endfor %}
+</div>
+
+{% if query %}
+  <h2 class="section">「{{ query }}」的检索结果{% if deep %}（含正文）{% endif %}</h2>
+  {% if results %}
+  <table class="data">
+    <thead><tr><th>条目</th><th>栏目</th><th>{{ '命中片段' if deep else '原文' }}</th></tr></thead>
+    <tbody>
+      {% for r in results %}
+      <tr>
+        <td><a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a></td>
+        <td class="muted">{{ r.category }}</td>
+        <td class="muted" style="font-size:.84rem">{{ r.snippet or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="callout mute"><span>没有命中。试试不打勾「检索正文」换关键词，或直接翻分类。</span></div>{% endif %}
+{% else %}
+  {% if refs %}
+  <table class="data">
+    <thead><tr><th>条目</th><th>栏目</th></tr></thead>
+    <tbody>
+      {% for ref in refs %}
+      <tr><td><a href="{{ ref.url }}" target="_blank" rel="noopener">{{ ref.title }}</a></td><td class="muted">{{ ref.category }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="callout mute"><span>该栏目没有条目。</span></div>{% endif %}
+{% endif %}
+
+<div class="callout">
+  <span>数据来自 <a href="{{ source_url }}" target="_blank" rel="noopener">WikiLake</a>（西湖大学学生自建校园百科，非官方），版权归其贡献者，本站只做只读检索与链接。人物类条目含真实姓名与照片，引用请自行判断。</span>
+</div>
+{% endblock %}
