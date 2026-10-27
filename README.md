@@ -15,4 +15,6 @@ SIS 与 Canvas 均可用统一身份认证密码（Canvas 也兼容令牌，网�
 
 **网络与代理**：本包所有 HTTP 会话默认**直连**（无视 `HTTP_PROXY/HTTPS_PROXY`）。校园站点经系统代理常会 502/超时，所以直连是缺省；外部脚本复用请走 `westlake_survival.discovery.direct_session()` 或自建会话时设 `trust_env=False`。
 
+社团简介补充数据见 [docs/clubwiki.md](docs/clubwiki.md)：40 条一句话介绍改写自学生自建百科 WikiLake（未声明许可，只存改写后的事实简介并逐条附原文链接，不含负责人信息与照片），随包内置、无凭据可读；`westlake aid orgs --wiki` 打印对照，`/sis` 有「社团简介」折叠块。
+
 参考 sustech_survival，无学校官方背书。[PolyForm Noncommercial 1.0.0](LICENSE)仅限非商业用途并保留署名。

@@ -255,6 +255,7 @@ westlake sis-evals list --pending
 westlake profile info                        # info|academic|extended
 westlake records dorm                        # 共 14 个子命令：dorm|leave|honors|volunteer|vol-history|practice|discipline|second-class|advisor|other-apps|appointments|registration|leaving-check|source-info
 westlake aid loans                           # 共 7 个子命令：loans|jobs|claim|outbound|exchange|orgs|activities
+westlake aid orgs --wiki                     # 社团目录 + 一句话简介（内置数据，改写自 WikiLake，见 docs/clubwiki.md）
 westlake lib search 数据结构 --page 1
 westlake lib loans
 westlake pms jobs

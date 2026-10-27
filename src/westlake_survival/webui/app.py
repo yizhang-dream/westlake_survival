@@ -676,6 +676,10 @@ def _sis_context() -> dict:
     每块独立降级，单块失败不影响整页。
     """
     context: dict = {"blocks": {}}
+    # 社团简介是随包内置的离线数据（改写自 WikiLake），无凭据也能读
+    from westlake_survival import clubwiki
+
+    context["club_wiki"] = clubwiki.catalog()
 
     def _sis_module(name: str):
         import importlib
@@ -825,8 +829,8 @@ def _sis_context() -> dict:
         "leaving": lambda: records.leaving_check(),
         "source": lambda: records.source_info_status(),
         # 社团与资助
-        "clubs": lambda: [c.to_dict() for c in aid.my_clubs()],
-        "orgs": lambda: [o.to_dict() for o in aid.student_orgs()],
+        "clubs": lambda: clubwiki.annotate([c.to_dict() for c in aid.my_clubs()]),
+        "orgs": lambda: clubwiki.annotate([o.to_dict() for o in aid.student_orgs()]),
         "activities": lambda: [a.to_dict() for a in aid.student_activities()],
         "aid": lambda: {
             "loans": [r.to_dict() for r in aid.loans()],

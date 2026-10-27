@@ -228,8 +228,8 @@ def test_sis_profile_blocks_full_render(server: str) -> None:
     for label, count in (("个人信息", "11 项"), ("学籍信息", "20 项"), ("扩展信息", "16 项")):
         assert label in html, label
         assert count in html, count
-    # 学籍关键字段上页面（导师/预计毕业/书院）
-    assert "Supervisor" in html and "Expected Graduation" in html
+    # 学籍关键字段上页面（导师/预计毕业/书院）；界面语言切中文后表头也是中文
+    assert "导师" in html and ("预计毕业" in html or "Expected Graduation" in html)
 
 
 def test_sis_all_blocks_render(server: str) -> None:
@@ -247,11 +247,13 @@ def test_sis_all_blocks_render(server: str) -> None:
         "我的社团",           # my_clubs
         "社团目录",           # student_orgs 目录
         "39 个",              # 目录计数徽标
+        "社团简介",           # clubwiki 离线简介（改写自 WikiLake，无凭据也渲染）
         "贷款 / 勤工助学 / 海外交流",  # aid 汇总块
         "anchor-nav",         # 吸顶锚点导航
         "grade-filter",       # 成绩表筛选器
     ):
         assert marker in html, marker
-    # 志愿总时长实数值（24 HOUR 拆为值+单位两段）与学期注册缴费提示句
-    assert ">24</span>" in html and "<small>HOUR</small>" in html
+    # 志愿总时长实数值（24 拆为值 + 单位两段；单位随界面语言是 HOUR / 小时）
+    assert "<span data-count=\"24\">24</span>" in html
+    assert "HOUR" in html or "小时" in html
     assert "currently not open" in html or "缴费" in html
