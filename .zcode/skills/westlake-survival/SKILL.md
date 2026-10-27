@@ -150,10 +150,10 @@ westlake affairs apps 预约   # 办事大厅 176 个应用；外链应用常指
 
 归类只有四种，结论里必须写明是哪一种：
 
-- **真做不了**：权限/网络/服务端缺失（例：sportvenue 表单规则未找到、OPAC 404、HPC 成果库断）。
-- **没建工具**：接口通、只是我们没写（例：自习室预约、就业服务网深列表、`eval` 学工平台）。
+- **真做不了**：权限/网络/服务端缺失（例：sportvenue 表单规则未找到、OPAC 整个 webapp 404、HPC 成果库断、SIS 选课车「您无权访问该页面」）。
+- **没建工具**：接口通、只是我们没写（例：自习室预约、`eval` 学工平台）。
 - **逆向没做完**：链路只通一半（例：图书馆座位需企业微信授权）。
-- **我判断错了**：旧结论过期或锚定单一系统（例：任务中心「登录失败」已不成立；选课组件实际已授权）。
+- **我判断错了**：旧结论过期或锚定单一系统（例：任务中心「登录失败」已不成立；~~选课组件实际已授权~~ 2026-10-27 推翻——组件页正文是「您无权访问该页面」，早期 probe 只认英文 `not authorized` 才误报已授权）。
 
 对应清单见 [docs/module_audit_2026-10-27.md](../../../docs/module_audit_2026-10-27.md)；新增系统先登记进
 `discovery.EVIDENCE_HOSTS`，别只写在对话里。
@@ -242,7 +242,7 @@ westlake sso login                           # 验证凭据是否有效
 westlake sis schedule
 westlake sis grades
 westlake sis exams
-westlake sis cart                             # 选课车（只读；空车打印明确空态）
+westlake sis cart                             # 选课车（只读；未授权时明确报「您无权访问该页面」）
 westlake sis ical --out schedule.ics
 westlake sis-evals list --pending
 westlake profile info                        # info|academic|extended

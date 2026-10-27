@@ -421,12 +421,13 @@ def deep(kind: str, page: int = 1) -> list[CareerItem]:
         for i, p in enumerate(paths)
     )
     items = _parse_deep(_unwrap_payloads(html))
-    if kind == "news":
-        # news 列表页的子导航（招聘指南/中心介绍…）也是 news/view/tag 形态，
-        # 会混进条目：有 aid 数字条目（真实列表项，带日期）时丢弃导航项。
-        aid_items = [i for i in items if i.item_id.isdigit()]
-        if aid_items:
-            items = aid_items
+    # 列表页子导航（招聘指南/中心介绍/联系方式…）与真实条目同为 view 链接形态，
+    # 四类列表都会混进来。判据用「数字 id」：真实条目 id 全是数字，导航项是
+    # tag 别名（zpxz/zxjs…）且无日期——campus/teachin 列表实测也不带日期，
+    # 所以不能按日期过滤。
+    numeric_items = [i for i in items if i.item_id.isdigit()]
+    if numeric_items:
+        items = numeric_items
     if not items:
         if "unzip(" not in html:
             raise ParseError(
@@ -591,6 +592,9 @@ def _parse_detail(parts: list[str], kind: str, item_id: str, url: str) -> "Caree
         elif scopes and re.search(r"<p\b", part, re.I):
             scopes.append(part)  # 压缩载荷里的正文段落片段
     html = "\n".join(parts)
+    # 正文优先取解压载荷段（第 2 段起是正文 HTML 片段，干净无站点壳）；
+    # mn 容器只在前者缺失时兜底，整页 html 是最后一档（会带导航与页脚）。
+    payload_body = [p for p in parts[1:] if re.search(r"<p\b|<br\s*/?>", p, re.I)]
     if not scopes:
         # 没有任何 mn 容器：站点对不存在的条目返回通用模板页（<title> 是
         # 站点名、正文全是导航壳，2026-10-27 实测）——不当作详情解析，返回
@@ -598,7 +602,7 @@ def _parse_detail(parts: list[str], kind: str, item_id: str, url: str) -> "Caree
         title_m = re.search(r"<title>([^<]*)</title>", html)
         if title_m and title_m.group(1).strip().startswith("西湖大学就业服务网"):
             return None
-        scope = html
+        scope = "\n".join(payload_body) if payload_body else html
     else:
         scope = "\n".join(scopes)
     scope = re.sub(r"<script\b.*?</script>", " ", scope, flags=re.S | re.I)
@@ -632,7 +636,10 @@ def _parse_detail(parts: list[str], kind: str, item_id: str, url: str) -> "Caree
     # 正文：容器内纯文本（导航壳已在 scope 之外；不做词级删改，避免误伤正文）
     text = _strip_tags(scope)
     text = re.sub(r"\s+", " ", text).strip()
-    if len(text) < 40:  # 没有可读正文（结构变化）
+    text = _trim_site_chrome(text)
+    # 站点对不存在/已下架的条目返回通用「数据不存在或已过期」页：
+    # 不能当成一条详情（否则纯数字 id 会串到错误类型上）。
+    if "数据不存在或已过期" in text or len(text) < 40:
         return None
     if len(text) > 6000:
         text = text[:6000] + "…"
@@ -642,9 +649,37 @@ def _parse_detail(parts: list[str], kind: str, item_id: str, url: str) -> "Caree
     )
 
 
-# --------------------------------------------------------------------------- #
-# CLI
-# --------------------------------------------------------------------------- #
+#: 详情正文的起点标记（站点模板：正文标题前有条目元信息栏）。
+_BODY_HEAD_MARKERS = (
+    "招聘公告详情", "招聘会详情", "宣讲会详情", "通知公告详情", "公告详情",
+)
+
+#: 详情正文的终点标记（页脚联系方式与版权块）。
+_BODY_TAIL_MARKERS = ("西湖大学就业工作联系", "Copyright ©", "Copyright@")
+
+
+def _trim_site_chrome(text: str) -> str:
+    """剥掉详情页正文前后的站点壳（顶部导航 + 页脚联系/版权）。
+
+    实测（2026-10-27 campus 详情）：正文前面挂着整站导航
+    （官网/学生事务部/招聘指南/中心介绍…），后面挂着地址电话与版权；
+    两者都在同一个 ``mn`` 容器里，所以只在文本层按锚点裁剪，不动 HTML 结构。
+    """
+    head = -1
+    head_marker = ""
+    for marker in _BODY_HEAD_MARKERS:
+        pos = text.rfind(marker)
+        if pos > head:
+            head, head_marker = pos, marker
+    if head >= 0:
+        text = text[head + len(head_marker) :]
+    tail = len(text)
+    for marker in _BODY_TAIL_MARKERS:
+        pos = text.find(marker)
+        if pos > 0:
+            tail = min(tail, pos)
+    text = text[:tail]
+    return re.sub(r"\s+", " ", text).strip()
 def _cli():
     import functools
 

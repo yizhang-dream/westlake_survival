@@ -1544,21 +1544,27 @@ OPAC_PROBE_URL = "http://172.16.10.223:8180/opac/"
 def _probe_sis_cart() -> tuple[str, str]:
     """探测 SIS 选课组件授权状态（登录态 GET）。
 
-    PeopleSoft 对未开放选课的角色返回「not authorized」正文，``fetch_page``
-    会把它翻成 :class:`ActionError`；此处把该情形判为「选课窗口未开」，其余
-    异常（校外 / 未登录等）交由外层收敛为「失败」。
+    PeopleSoft 对未开放选课的角色返回「not authorized」正文（中文界面是
+    「您无权访问该页面」），``fetch_page`` 会把它翻成 :class:`ActionError`；
+    此处把该情形判为「选课窗口未开」，其余异常（校外 / 未登录等）交由外层
+    收敛为「失败」。两种语言都要认——只认英文会把中文拒绝页判成「已授权」。
     """
     from westlake_survival.exceptions import ActionError
+    from westlake_survival.sis.cart import _UNAUTHORIZED_MARKERS
     from westlake_survival.sis.pages import fetch_page
+
+    def unauthorized(text: str) -> bool:
+        lowered = text.lower()
+        return any(marker.lower() in lowered for marker in _UNAUTHORIZED_MARKERS)
 
     try:
         body = fetch_page(SIS_SHOP_CART_COMPONENT)
     except ActionError as exc:
-        if "not authorized" in str(exc).lower():
-            return "选课窗口未开", "组件未授权（正文含 not authorized）"
+        if unauthorized(str(exc)):
+            return "选课窗口未开", "组件未授权（正文含无权访问/not authorized）"
         raise
-    if "not authorized" in body.lower():
-        return "选课窗口未开", "组件正文含 not authorized"
+    if unauthorized(body):
+        return "选课窗口未开", "组件正文含无权访问/not authorized"
     return "已授权（可开发选课功能！）", "组件页可正常访问"
 
 

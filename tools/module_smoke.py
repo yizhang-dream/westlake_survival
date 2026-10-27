@@ -61,7 +61,7 @@ COMMANDS: list[tuple[str, list[str], str]] = [
     ("careers", ["careers", "detail", "https://www.westlake.edu.cn/careers/OpenPositions/postdoctoral_fellow/bshsls/202508/t20250827_58224.html"], "岗位详情（样例 URL 会过期）"),
     ("career", ["career", "list", "--kind", "jobfair"], "就业服务网招聘会"),
     ("career", ["career", "deep", "--kind", "campus", "--page", "1"], "就业深列表（登录态）"),
-    ("career", ["career", "detail", "1129108"], "就业详情（样例 id 会过期）"),
+    ("career", ["career", "detail", "1129124"], "就业详情（样例 id 会过期，失效则换 deep 输出里的新 id）"),
     ("faculty", ["faculty", "--limit", "3"], "教师名录"),
     ("faculty", ["faculty", "detail", "https://www.westlake.edu.cn/faculty/jianhao-zhang.html"], "教师主页详情"),
     ("campus", ["campus", "dining", "--campus", "云谷"], "食堂"),
@@ -195,7 +195,8 @@ def _classify(output: str, code: int) -> tuple[str, str]:
     low = text.lower()
     first = next((line.strip() for line in text.splitlines() if line.strip()), "")
     if code != 0:
-        if any(k in text for k in ("未配置统一凭据", "登录失败", "凭据", "验证码", "未获得 PS_TOKEN")):
+        if any(k in text for k in ("未配置统一凭据", "登录失败", "凭据", "验证码", "未获得 PS_TOKEN",
+                                   "无权访问", "未授权", "not authorized")):
             return "AUTH", first[:90]
         if any(k in low for k in ("no such command", "no such option", "usage:")) or code == 2:
             return "MISSING", first[:90]
