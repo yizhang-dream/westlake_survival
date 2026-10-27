@@ -1,0 +1,211 @@
+{
+  "meta": {
+    "source": "WikiLake（西湖大学学生自建百科，非官方）",
+    "source_url": "https://wiki.mestlake.cc/clubs/",
+    "repo": "https://github.com/MestlakeVniversity/wikilake",
+    "fetched": "2026-10-27",
+    "license": "该站未声明许可证，内容版权归 WikiLake 贡献者；本文件仅存改写后的事实性简介并逐条保留原文链接，不含负责人姓名、联系方式与照片。"
+  },
+  "clubs": [
+    {
+      "name": "AI交叉科学社",
+      "summary": "以「AI 交叉科学」为主题的学术交流社团，做讨论、学习与前沿研究分享。",
+      "url": "https://wiki.mestlake.cc/clubs/AI%E4%BA%A4%E5%8F%89%E7%A7%91%E5%AD%A6%E7%A4%BE/"
+    },
+    {
+      "name": "WeLay飞盘社",
+      "summary": "推广飞盘运动，每周校内训练（技术、战术、实战），并与其他高校社团办友谊赛。",
+      "url": "https://wiki.mestlake.cc/clubs/WeLay%E9%A3%9E%E7%9B%98%E7%A4%BE/"
+    },
+    {
+      "name": "WeRock攀岩社",
+      "summary": "2025 年成立，做抱石、顶绳等系统训练，强调器材认证与风险管理。",
+      "url": "https://wiki.mestlake.cc/clubs/WeRock%E6%94%80%E5%B2%A9%E7%A4%BE/"
+    },
+    {
+      "name": "乒乓球社",
+      "summary": "面向各水平成员的乒乓交流平台，有队员与教练指导，办社内赛、校内联赛与校际对抗赛。",
+      "url": "https://wiki.mestlake.cc/clubs/%E4%B9%92%E4%B9%93%E7%90%83%E7%A4%BE/"
+    },
+    {
+      "name": "云心剧社",
+      "summary": "话剧创作与表演社团，通过观剧、演出与「模仿—反应—即兴」训练带人走近戏剧。",
+      "url": "https://wiki.mestlake.cc/clubs/%E4%BA%91%E5%BF%83%E5%89%A7%E7%A4%BE/"
+    },
+    {
+      "name": "创玩剧本社",
+      "summary": "以线下剧本推理游戏为主，兼做剧本创作与场景布置，下设活动部、内测部、创作部。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%88%9B%E7%8E%A9%E5%89%A7%E6%9C%AC%E7%A4%BE/"
+    },
+    {
+      "name": "动漫社",
+      "summary": "综合 ACGN 社团（站内称 NAL 动漫社），设宅舞、乐队、WOTA 艺、番剧、创作、游戏、日语、COS、手作等部门。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%8A%A8%E6%BC%AB%E7%A4%BE/"
+    },
+    {
+      "name": "博物社",
+      "summary": "2023 年创立，做植物、昆虫、鸟类、天文观星等户外科普与标本制作，是在杭高校绿色联盟成员。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%8D%9A%E7%89%A9%E7%A4%BE/"
+    },
+    {
+      "name": "口琴社",
+      "summary": "免费教复音、布鲁斯与半音阶口琴，办大师讲堂、音乐会与口琴乐队，可体验自制口琴。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%8F%A3%E7%90%B4%E7%A4%BE/"
+    },
+    {
+      "name": "合成生物学促进协会",
+      "summary": "为合成生物学项目提供导师、资源与规划支持，与西湖大学 iGEM 团队合作。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%90%88%E6%88%90%E7%94%9F%E7%89%A9%E5%AD%A6%E4%BF%83%E8%BF%9B%E5%8D%8F%E4%BC%9A/"
+    },
+    {
+      "name": "哲学暨人文社会科学社",
+      "summary": "以哲学为中心、跨经济/社会学/心理学/历史的学术小组，办讲座、讨论班与读书会。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%93%B2%E5%AD%A6%E6%9A%A8%E4%BA%BA%E6%96%87%E7%A4%BE%E4%BC%9A%E7%A7%91%E5%AD%A6%E7%A4%BE/"
+    },
+    {
+      "name": "图寻社",
+      "summary": "GeoGuessr 与地理探索社团，靠日常分享、组内竞赛与赛事备战练区域识别和线索推理。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%9B%BE%E5%AF%BB%E7%A4%BE/"
+    },
+    {
+      "name": "天文社",
+      "summary": "观星爱好者社团，组织夜间观测与天文科普。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%A4%A9%E6%96%87%E7%A4%BE/"
+    },
+    {
+      "name": "学生跑团",
+      "summary": "2023 级本科生发起的跑团，办月跑量挑战、环跑西湖联动与晨跑夜跑接龙。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%AD%A6%E7%94%9F%E8%B7%91%E5%9B%A2/"
+    },
+    {
+      "name": "心乐合唱团",
+      "summary": "校团委指导的校级合唱团，做歌唱训练与汇报音乐会，参加高校合唱交流展演。",
+      "url": "https://wiki.mestlake.cc/clubs/%E5%BF%83%E4%B9%90%E5%90%88%E5%94%B1%E5%9B%A2/"
+    },
+    {
+      "name": "手工社",
+      "summary": "每学期办主题手作小班（编绳、螺钿胸针、宋锦发卡、漆扇、钩织等），零基础友好、材料齐全。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%89%8B%E5%B7%A5%E7%A4%BE/"
+    },
+    {
+      "name": "排球社",
+      "summary": "推广校内排球，办比赛、做交流互学，并与其他院校排球协会联谊。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%8E%92%E7%90%83%E7%A4%BE/"
+    },
+    {
+      "name": "摄影社",
+      "summary": "在籍学生运营，做摄影基础培训、实地拍摄、审美提升与摄影展。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%91%84%E5%BD%B1%E7%A4%BE/"
+    },
+    {
+      "name": "播音主持与诵读艺术社",
+      "summary": "校团委业务指导下做普通话与语言表达训练、主持朗诵演讲实践。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%92%AD%E9%9F%B3%E4%B8%BB%E6%8C%81%E4%B8%8E%E8%AF%B5%E8%AF%BB%E8%89%BA%E6%9C%AF%E7%A4%BE/"
+    },
+    {
+      "name": "文学社",
+      "summary": "原环社，创作、交流与鉴赏旧体诗词、古文、新诗、小说、散文，办分享会。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%96%87%E5%AD%A6%E7%A4%BE/"
+    },
+    {
+      "name": "柒兔汉服社",
+      "summary": "非盈利的汉服与传统文化兴趣小组，以汉服、礼仪、民俗为起点做推广。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%9F%92%E5%85%94%E6%B1%89%E6%9C%8D%E7%A4%BE/"
+    },
+    {
+      "name": "棋牌电竞社",
+      "summary": "棋牌与电竞交流平台，传统棋牌到电子竞技都覆盖。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%A3%8B%E7%89%8C%E7%94%B5%E7%AB%9E%E7%A4%BE/"
+    },
+    {
+      "name": "水上运动社",
+      "summary": "皮划艇、桨板、赛艇、龙舟，组织西溪湿地出游与日常训练，无基础可上手。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%B0%B4%E4%B8%8A%E8%BF%90%E5%8A%A8%E7%A4%BE/"
+    },
+    {
+      "name": "游泳社",
+      "summary": "与云栖校区游泳健身机构合作提供每学期体验名额，云谷校区每周在校游泳馆活动，另有基础教学。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%B8%B8%E6%B3%B3%E7%A4%BE/"
+    },
+    {
+      "name": "湖心晴学生心理社",
+      "summary": "心理健康教育中心指导的朋辈互助社团，为同学提供心理支持服务。",
+      "url": "https://wiki.mestlake.cc/clubs/%E6%B9%96%E5%BF%83%E6%99%B4%E5%AD%A6%E7%94%9F%E5%BF%83%E7%90%86%E7%A4%BE/"
+    },
+    {
+      "name": "烘焙社",
+      "summary": "提供场地、工具与定期指导，做中西点与基础烹饪主题活动。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%83%98%E7%84%99%E7%A4%BE/"
+    },
+    {
+      "name": "琴筝社",
+      "summary": "古琴、古筝与中国古典音乐爱好者的交流与展示平台。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%90%B4%E7%AD%9D%E7%A4%BE/"
+    },
+    {
+      "name": "瑜伽社",
+      "summary": "定期组织瑜伽体式、冥想与唱诵练习。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%91%9C%E4%BC%BD%E7%A4%BE/"
+    },
+    {
+      "name": "电影沙龙社",
+      "summary": "观影与艺术鉴赏，丰富课余文化生活。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%94%B5%E5%BD%B1%E6%B2%99%E9%BE%99%E7%A4%BE/"
+    },
+    {
+      "name": "神经科学x计算社",
+      "summary": "探索神经科学、计算科学与 AI 的交叉，办讲座、工作坊并共建知识库。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%A5%9E%E7%BB%8F%E7%A7%91%E5%AD%A6x%E8%AE%A1%E7%AE%97%E7%A4%BE/"
+    },
+    {
+      "name": "篮球社",
+      "summary": "2025 年成立，定期训练（有专业教练）、校内比赛与校际交流赛。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%AF%AE%E7%90%83%E7%A4%BE/"
+    },
+    {
+      "name": "绘画设计社",
+      "summary": "办节日主题绘画活动与展览、绘画基础课，组织去美院与艺术展观摩。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%BB%98%E7%94%BB%E8%AE%BE%E8%AE%A1%E7%A4%BE/"
+    },
+    {
+      "name": "网球社",
+      "summary": "每周网球教学与训练，面向师生，零基础可参加。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%BD%91%E7%90%83%E7%A4%BE/"
+    },
+    {
+      "name": "羽毛球社",
+      "summary": "由五个院系与本科生书院的在读学生组成，推广羽毛球与校园体育文化。",
+      "url": "https://wiki.mestlake.cc/clubs/%E7%BE%BD%E6%AF%9B%E7%90%83%E7%A4%BE/"
+    },
+    {
+      "name": "舞蹈社",
+      "summary": "分中国舞部（古典舞、民族民间舞）与拉丁舞部（伦巴、恰恰、牛仔、桑巴）。",
+      "url": "https://wiki.mestlake.cc/clubs/%E8%88%9E%E8%B9%88%E7%A4%BE/"
+    },
+    {
+      "name": "街舞社",
+      "summary": "H.D. Crew，面向全校街舞爱好者，强调表达与包容。",
+      "url": "https://wiki.mestlake.cc/clubs/%E8%A1%97%E8%88%9E%E7%A4%BE/"
+    },
+    {
+      "name": "足球社",
+      "summary": "踢球、看球、聊球，每年办联赛与杯赛，大赛年组织校内观赛。",
+      "url": "https://wiki.mestlake.cc/clubs/%E8%B6%B3%E7%90%83%E7%A4%BE/"
+    },
+    {
+      "name": "音乐社",
+      "summary": "器乐、声乐与音乐鉴赏并重，办校内演出、日常排练与音乐沙龙。",
+      "url": "https://wiki.mestlake.cc/clubs/%E9%9F%B3%E4%B9%90%E7%A4%BE/"
+    },
+    {
+      "name": "音游社",
+      "summary": "音乐游戏玩家社团，校园内辨识度很高的「神秘组织」。",
+      "url": "https://wiki.mestlake.cc/clubs/%E9%9F%B3%E6%B8%B8%E7%A4%BE/"
+    },
+    {
+      "name": "骑行社",
+      "summary": "骑行兴趣社团，无门槛（没车可骑共享单车），有教练与入门知识分享。",
+      "url": "https://wiki.mestlake.cc/clubs/%E9%AA%91%E8%A1%8C%E7%A4%BE/"
+    }
+  ]
+}

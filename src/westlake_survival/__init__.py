@@ -100,6 +100,7 @@ _SUBMODULES = (
     "faculty",
     "campus",
     "contact",
+    "clubwiki",
     "webui",
     "mcp_server",
     "cli",

@@ -436,11 +436,29 @@
 {% if og is not none and not (og and og.error) %}
 <details class="fold" id="f-clubdir"><summary>社团目录<span class="chip">{{ og | length }} 个</span></summary>
   <div class="fold-body">
-    {% if og %}<div class="chip-cloud">{% for o in og %}<span class="chip{% if 'Outstanding' in o.name or 'Vibrant' in o.name %} star{% endif %}{% if '链接' in o.name or 'link' in o.name %} outlink{% endif %}">{{ o.name }}</span>{% endfor %}</div>
+    {% if og %}<div class="chip-cloud">{% for o in og %}<span class="chip{% if 'Outstanding' in o.name or 'Vibrant' in o.name %} star{% endif %}{% if '链接' in o.name or 'link' in o.name %} outlink{% endif %}"{% if o.wiki_summary %} title="{{ o.wiki_summary }}"{% endif %}>{{ o.name }}</span>{% endfor %}</div>
     {% else %}<div class="callout mute"><span>目录为空。</span></div>{% endif %}
   </div>
 </details>
 {% elif og and og.error %}<div class="note">社团目录不可用：{{ og.error }}</div>{% endif %}
+
+{# 社团简介：随包内置的离线数据（改写自 WikiLake），不依赖登录 #}
+{% set cw = club_wiki %}
+{% if cw and cw.clubs %}
+<details class="fold" id="f-clubwiki"><summary>社团简介<span class="chip">WikiLake · {{ cw.clubs | length }} 个</span></summary>
+  <div class="fold-body">
+    <div class="note">摘要改写自 <a href="{{ cw.meta.source_url }}" target="_blank" rel="noopener">WikiLake</a>（{{ cw.meta.source }}，{{ cw.meta.fetched }} 抓取）。原文版权归其贡献者，此处不含负责人信息与照片。</div>
+    <table class="data">
+      <thead><tr><th>社团</th><th>简介</th><th>原文</th></tr></thead>
+      <tbody>
+        {% for c in cw.clubs %}
+        <tr><td>{{ c.name }}</td><td>{{ c.summary }}</td><td><a href="{{ c.url }}" target="_blank" rel="noopener">WikiLake</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+{% endif %}
 
 {% set at = blocks.get('activities') %}
 {% if at is not none and not (at and at.error) %}

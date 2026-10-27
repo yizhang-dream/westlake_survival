@@ -204,6 +204,8 @@ _NO_DATA_MARKERS = (
     "当前还没有申请",
     "当前没有活动报名",
     "你还没有参与活动的记录",
+    # 2026-10-27 实测：还款页空态文案（「没有结果」而不是「没有数据」）
+    "当前查询没有结果",
 )
 
 #: PeopleSoft 网格数据行 id：``{grid_id}${group}_row_{row}``。
@@ -651,13 +653,17 @@ class OrgRecord:
 
     @classmethod
     def from_row(cls, row: dict) -> "OrgRecord":
-        """从 :func:`~westlake_survival.sis.pages.parse_fluid_grid` 的行字典构造。"""
+        """从 :func:`~westlake_survival.sis.pages.parse_fluid_grid` 的行字典构造。
+
+        表头随界面语言切换（2026-10-27 实测中文：学年 / 社团名称 / 负责人 /
+        发起截止时间 / 当前发起人总数），两种写法都认。
+        """
         return cls(
-            academic_year=_pick(row, "Academic Year"),
-            club_name=_pick(row, "Club Name"),
-            founder=_pick(row, "Founder"),
-            initiation_deadline=_pick(row, "Initiation Deadline"),
-            initiators=_pick(row, "Current Initiators Number"),
+            academic_year=_pick(row, "Academic Year", "学年"),
+            club_name=_pick(row, "Club Name", "社团名称"),
+            founder=_pick(row, "Founder", "负责人"),
+            initiation_deadline=_pick(row, "Initiation Deadline", "发起截止时间"),
+            initiators=_pick(row, "Current Initiators Number", "当前发起人总数"),
             raw=dict(row),
         )
 
@@ -1026,8 +1032,9 @@ def aid_exchange() -> None:
 
 
 @cli_group.command(name="orgs")
+@click.option("--wiki", "with_wiki", is_flag=True, help="附 WikiLake 社区简介（学生自建百科，摘要）。")
 @_handle_errors
-def aid_orgs() -> None:
+def aid_orgs(with_wiki: bool = False) -> None:
     """列出学生组织与社团目录（按分组类别）。"""
     items = student_orgs()
     _table(
@@ -1035,6 +1042,20 @@ def aid_orgs() -> None:
         ("类别", "社团/组织"),
         "没有学生组织数据。",
     )
+    from westlake_survival import clubwiki
+
+    matched = [row for row in clubwiki.annotate(items) if row.get("wiki_summary")]
+    if not matched:
+        return
+    if not with_wiki:
+        click.echo(f"提示：{len(matched)} 个社团有 WikiLake 社区简介，加 --wiki 查看。")
+        return
+    meta = clubwiki.catalog()["meta"]
+    click.echo(f"\nWikiLake 社区简介（{meta.get('source', '')}，摘要改写，版权归其贡献者）：")
+    for row in matched:
+        name = row.get("name") or row.get("club_name") or "—"
+        click.echo(f"- {name}：{row['wiki_summary']}")
+        click.echo(f"  原文：{row['wiki_url']}")
 
 
 @cli_group.command(name="activities")

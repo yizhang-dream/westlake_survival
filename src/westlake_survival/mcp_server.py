@@ -239,10 +239,11 @@ def _tool_sis_appointments(args: dict) -> Any:
 
 
 def _tool_sis_clubs(args: dict) -> Any:
-    """我的社团（学年 / 社团 / 发起人 / 人数）。"""
+    """我的社团（学年 / 社团 / 发起人 / 人数；命中时附 WikiLake 简介）。"""
+    from westlake_survival import clubwiki
     from westlake_survival.sis.aid import my_clubs
 
-    return [org.to_dict() for org in my_clubs()]
+    return clubwiki.annotate(my_clubs())
 
 
 def _tool_sis_second_class(args: dict) -> Any:
