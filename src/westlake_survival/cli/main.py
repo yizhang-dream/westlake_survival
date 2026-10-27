@@ -352,7 +352,7 @@ def sso_creds_status() -> None:
         click.echo(f"期望的配置文件路径：{path}")
         click.echo("设置方法：westlake sso creds set（密码输入隐藏）")
 
-    click.echo("来源清单（只报有 / 无，不回显凭据）：")
+    click.echo("来源清单（只报有 / 无，不回显密码）：")
     click.echo(f"  - 内存：{'有' if memory_ok else '无'}")
     click.echo(f"  - 环境变量 {creds_mod.ENV_VAR}：{'有' if env_ok else '无'}")
     if keyring_available:
@@ -361,14 +361,61 @@ def sso_creds_status() -> None:
         click.echo("  - keyring：不可用（未安装 [secure] extra 或 sso.creds 未提供接口）")
     click.echo(f"  - 配置文件 {path}：{'有' if file_ok else '无'}")
 
+    # 各来源的学号形态：只显示前 3 位 + 位数，用于发现「两处存了不同账号」。
+    sources = creds_mod.credential_sources()
+    configured = [s for s in sources if s["configured"]]
+    if configured:
+        click.echo("各来源学号（脱敏）：")
+        for item in configured:
+            click.echo(f"  - {item['name']}：{item['sid']}（{item['sid_len']} 位）")
+
+    conflicts = creds_mod.credential_conflicts()
+    if conflicts:
+        click.secho("⚠ 凭据来源不一致——默认只会读优先级最高的那份，其余永远不生效：", fg="yellow", bold=True)
+        for line in conflicts:
+            click.echo(f"  - {line}")
+        click.echo("修复：westlake sso creds sync-keyring（把配置文件的凭据写进钥匙串）")
+        click.echo("      或 westlake setup 重新录入一次（会同时更新生效来源）")
+
+
+@sso_creds.command(name="sync-keyring")
+@_handle_errors
+def sso_creds_sync_keyring() -> None:
+    """把配置文件里的凭据写进系统钥匙串（修「keyring 存着旧号」）。"""
+    from westlake_survival.sso import creds as creds_mod
+
+    ok, note = creds_mod.sync_file_to_keyring()
+    if not ok:
+        click.secho(f"未同步：{note}", fg="red", err=True)
+        raise SystemExit(1)
+    click.secho(note, fg="green")
+    remaining = creds_mod.credential_conflicts()
+    if remaining:
+        click.secho("仍有其他来源不一致：", fg="yellow")
+        for line in remaining:
+            click.echo(f"  - {line}")
+
 
 @sso_cmd.command(name="login")
 @_handle_errors
 def sso_login() -> None:
     """用已配置凭据尝试登录 SIS，验证凭据是否有效。"""
+    from westlake_survival.exceptions import AuthError
     from westlake_survival.sso import SISAuth
+    from westlake_survival.sso import creds as creds_mod
 
-    SISAuth().ensure()
+    try:
+        SISAuth().ensure()
+    except AuthError:
+        # 登录被拒时先排除「高优先级来源存着旧凭据」——这是最容易误判成
+        # 「密码真错了」的机器状态，且不修会一直错下去。
+        conflicts = creds_mod.credential_conflicts()
+        if conflicts:
+            click.secho("凭据来源不一致（优先排查这一项，再怀疑密码本身）：", fg="yellow", bold=True)
+            for line in conflicts:
+                click.echo(f"  - {line}")
+            click.echo("修复：westlake sso creds sync-keyring")
+        raise
     click.secho("登录成功：凭据有效，SIS 会话已建立。", fg="green")
 
 

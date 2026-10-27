@@ -84,6 +84,25 @@ def _persist(sid: str, password: str, *, use_keyring: bool = True) -> str:
     if use_keyring and keyring_available() and save_credentials_keyring(sid, password):
         return "系统钥匙串"
     path = write_credentials(sid, password)
+    # 只写文件而钥匙串里另有凭据时，默认读取仍会用钥匙串那份——必须说出来，
+    # 否则用户会以为改密码/重配已经生效，实际一直在用旧号（机器级长期错误）。
+    try:
+        from westlake_survival.sso import creds as creds_mod
+
+        conflicts = creds_mod.credential_conflicts()
+    except Exception:  # noqa: BLE001 - 诊断失败不影响落盘结果
+        conflicts = []
+    if conflicts:
+        import click
+
+        click.secho(
+            "⚠ 这次只写入了配置文件，但系统钥匙串里还有另一套凭据；"
+            "默认读取仍以钥匙串为准（本次配置不会生效）：",
+            fg="yellow",
+        )
+        for line in conflicts:
+            click.echo(f"  - {line}")
+        click.echo("修复：westlake sso creds sync-keyring")
     return str(path)
 
 
