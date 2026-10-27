@@ -1065,6 +1065,41 @@ def _mirrors_context() -> dict:
     return context
 
 
+def _wiki_context(query: str = "", category: str = "", deep: bool = False) -> dict:
+    """百科页：WikiLake（学生自建）目录与检索。
+
+    站点公开、无凭据；目录来自 sitemap 缓存，正文检索首次会抓全站（几秒）。
+    """
+    context: dict = {
+        "refs": [],
+        "results": [],
+        "query": query,
+        "category": category,
+        "deep": deep,
+        "cats": [],
+        "error": None,
+        "total": 0,
+        "source_url": "https://wiki.mestlake.cc",
+    }
+    module = _import_module("wikilake")
+    if module is None:
+        context["error"] = "wikilake 模块不可用"
+        return context
+    try:
+        refs = module.pages()
+        context["total"] = len(refs)
+        context["cats"] = sorted({ref.category for ref in refs})
+        if query.strip():
+            context["results"] = module.search(query.strip(), limit=20, deep=deep)
+        elif category:
+            context["refs"] = [ref for ref in refs if ref.category == category]
+        else:
+            context["refs"] = refs
+    except Exception as exc:  # noqa: BLE001 - 页面降级，不让整页 500
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    return context
+
+
 def _sport_context(day: str | None = None) -> dict:
     """场馆页：场景 × 当日场地可约状态 + 我的预约（独立正元系统）。
 
@@ -2094,6 +2129,17 @@ def create_app() -> Flask:
     @app.route("/mirrors")
     def mirrors_page():
         return render_template("mirrors.html", **_mirrors_context())
+
+    @app.route("/wiki")
+    def wiki_page():
+        return render_template(
+            "wikilake.html",
+            **_wiki_context(
+                query=request.args.get("q", ""),
+                category=request.args.get("cat", "").strip(),
+                deep=request.args.get("deep") in {"1", "true", "on"},
+            ),
+        )
 
     @app.route("/lib")
     def lib_page():

@@ -739,6 +739,34 @@ def _tool_site_search(args: dict) -> Any:
     }
 
 
+def _tool_wiki_search(args: dict) -> Any:
+    """WikiLake 校园百科（学生自建）检索：标题默认，deep 时连正文。"""
+    from westlake_survival.wikilake import search
+
+    query = _opt_str(args, "query")
+    if not query:
+        raise ValueError("参数 query 不能为空")
+    return search(
+        query,
+        limit=_opt_int(args, "limit", 10, minimum=1) or 10,
+        deep=bool(args.get("deep")),
+    )
+
+
+def _tool_wiki_page(args: dict) -> Any:
+    """WikiLake 单页正文（条目名 / 路径 / URL）。"""
+    from westlake_survival.exceptions import WestlakeError
+    from westlake_survival.wikilake import page
+
+    name = _opt_str(args, "name")
+    if not name:
+        raise ValueError("参数 name 不能为空")
+    try:
+        return page(name)
+    except WestlakeError as exc:
+        raise ValueError(str(exc)) from exc
+
+
 def _tool_faculty_search(args: dict) -> Any:
     """教师名录检索（按学院 / 关键词）。"""
     from westlake_survival.faculty import members
@@ -1326,6 +1354,28 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "取某个子域的栏目与条目（通用挖掘）。",
         "inputSchema": _schema({"host": _str_param("子域短名，如 career / its / officialweb-test。")}),
         "handler": _tool_hosts_content,
+    },
+    {
+        "name": "wiki_search",
+        "description": "WikiLake 校园百科（学生自建，非官方）检索；deep=true 时连正文一起搜（首次抓全站，几秒）。",
+        "inputSchema": _schema(
+            {
+                "query": _str_param("检索词。"),
+                "deep": {"type": "boolean", "description": "是否检索正文，默认 false。"},
+                "limit": _int_param("返回条数，默认 10。", minimum=1, maximum=50),
+            },
+            required=["query"],
+        ),
+        "handler": _tool_wiki_search,
+    },
+    {
+        "name": "wiki_page",
+        "description": "WikiLake 单页正文（条目名 / 路径 / 完整 URL）。",
+        "inputSchema": _schema(
+            {"name": _str_param("条目名（如 音游社）、路径（clubs/音游社）或完整 URL。")},
+            required=["name"],
+        ),
+        "handler": _tool_wiki_page,
     },
     {
         "name": "site_content",

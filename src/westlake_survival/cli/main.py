@@ -54,6 +54,7 @@ from westlake_survival.news import cli_group as news_cmd
 from westlake_survival.program import cli_group as program_cmd
 from westlake_survival.research import cli_group as research_cmd
 from westlake_survival.search import cli_group as search_cmd
+from westlake_survival.wikilake import cli_group as wiki_cmd
 from westlake_survival.setup_cmd import setup_cmd
 from westlake_survival.sharepoint import cli_group as share_cmd
 from westlake_survival.sis.aid import cli_group as aid_cmd
@@ -1930,6 +1931,7 @@ for _group in (
     institute_cmd,
     schools_cmd,
     sites_cmd,
+    wiki_cmd,
     vpn_cmd,
     todo_cmd,
     portal_cmd,

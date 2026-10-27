@@ -256,6 +256,9 @@ westlake profile info                        # info|academic|extended
 westlake records dorm                        # 共 14 个子命令：dorm|leave|honors|volunteer|vol-history|practice|discipline|second-class|advisor|other-apps|appointments|registration|leaving-check|source-info
 westlake aid loans                           # 共 7 个子命令：loans|jobs|claim|outbound|exchange|orgs|activities
 westlake aid orgs --wiki                     # 社团目录 + 一句话简介（内置数据，改写自 WikiLake，见 docs/clubwiki.md）
+westlake wiki list --cat clubs               # WikiLake 校园百科（学生自建）：目录 / search 关键词 [--deep] / page 条目名，见 docs/wikilake.md
+westlake wiki search 班车
+westlake wiki page 音游社
 westlake lib search 数据结构 --page 1
 westlake lib loans
 westlake pms jobs
@@ -402,7 +405,7 @@ for course in c.list_courses():                                   # 扫描当前
 
 ## MCP 备选通道
 
-本包自带零依赖 stdio MCP 服务器，暴露 63 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，就业 `career_latest`/`career_deep`/`career_detail`，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`，分享 `share_files`，场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
+本包自带零依赖 stdio MCP 服务器，暴露 65 个工具（学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类，就业 `career_latest`/`career_deep`/`career_detail`，校历班车 `calendar_today`/`calendar_week`/`transit_next`，内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`，百科 `wiki_search`/`wiki_page`（学生自建 WikiLake，只读），培养 `program_*` 六个，校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`，学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`，作业与课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`，分享 `share_files`，场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`）。写操作（提交作业、回帖、回私信）只在 CLI 提供，MCP 侧保留 `canvas_submit` 一个写工具；所有写入都要显式确认。客户端配置：
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}

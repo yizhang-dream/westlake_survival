@@ -245,6 +245,9 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
     "培养方案": ("program", "课程体系", "学分"),
     "选课": ("program", "course", "课程目录"),
     "学籍": ("profile", "academic", "records"),
+    "百科": ("wiki", "wikilake", "词条", "社团简介"),
+    "词条": ("wiki", "wikilake", "百科"),
+    "社团": ("wiki", "aid", "orgs", "clubs"),
 }
 
 
