@@ -110,7 +110,15 @@ Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 **凭据是本机状态，不跨端同步**（2026-10-26 查明）：四级来源全在本机本用户
 （内存 / 环境变量 / 钥匙串 / 配置文件）。换机器、换系统用户、换 `WESTLAKE_HOME`
 或换 Python 环境（一边装了 `keyring`、一边没装）都要各自配一次；`westlake sso creds status`
-只报来源有无，可用来判断「到底存在哪」。
+报来源有无 + 各来源学号（脱敏），可用来判断「到底存在哪」。
+
+**多来源不一致是本项目最容易误诊的机器状态**（2026-10-27 实案）：读取优先级是
+内存 > 环境变量 > keyring > 配置文件，**高优先级那份存了别的账号/旧密码时，低优先级
+那份永远读不到**，外在表现就是「密码明明是对的却一直报用户名或密码错误」。新版
+`sso creds status` 会直接列出各来源学号并告警；`westlake sso creds sync-keyring`
+把配置文件的凭据写进钥匙串即可修好。登录失败且存在不一致时，`sso login` 会先提示
+这项、再提示密码本身——**别急着反复试密码**（会累积 IAM 失败计数触发图形验证码，
+14h+ 不复位）。
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
@@ -122,7 +130,8 @@ Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 - **电子地图类**：无账号。`/map` 只放官网公开内容（校区地图图片 + 720° 全景链接 + 交通），按用户裁定 2026-10-24 已移除账号与数据集抓取体系。
 - **无凭据照常可用**（官网公开数据，校外可直连）：`calendar` / `transit` / `context` / `digest` / `search` / `news` / `program` / `research` / `events` / `careers` / `faculty` / `campus` / `map` / `contact` / `pms stations` / `probe` / `cache`，以及 `scholar dbs|campus|doi|carsi|open`（学术库注册表、校园 IP 信标、DOI 解析、CARSI 目录、某库入口 URL——后两者离线也查得到快照，PDF 下载需校园网/VPN 或 OA 副本）。
 - **学术资源（2026-10-24 实测）**：本校是 CARSI 联盟成员（`idp.westlake.edu.cn` Shibboleth IdP），统一密码可登录各出版社；校园网内出版社按 IP 认账（ScienceDirect 实测自动认证、Springer PDF 直下实测 200）。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url（校园 IP 订阅通道）」两级取全文；校外先 `scholar sso <库>` 建立联盟会话（Playwright profile 持久化，IAM 若弹图形验证码由本人在窗口输入一次）。
-- 快速自检：`westlake sso creds status` 只报四个来源的「有 / 无」，**绝不回显密码**。
+- 快速自检：`westlake sso creds status` 报四个来源的「有 / 无」与各来源学号（脱敏），
+  发现两处存了不同账号会直接告警；**绝不回显密码**。修法 `westlake sso creds sync-keyring`。
 
 ## 卡点判断：先归因，再谈能不能做（2026-10-27 复盘）
 
