@@ -231,7 +231,13 @@ def _keyring_lookup(creds_mod) -> tuple[str, str] | None:
 
 
 def _keyring_state(creds_mod) -> tuple[bool, bool]:
-    """返回 ``(keyring 中是否有凭据, keyring 是否可用)``。"""
+    """返回 ``(keyring 中是否有凭据, keyring 是否可用)``。
+
+    ``WESTLAKE_NO_KEYRING`` 生效时读取路径完全不看钥匙串，这里也如实报「无」，
+    否则状态页会显示一个实际用不上的来源。
+    """
+    if os.environ.get("WESTLAKE_NO_KEYRING"):
+        return False, False
     if not _keyring_available(creds_mod):
         return False, False
     return (_keyring_lookup(creds_mod) is not None), True
@@ -251,12 +257,11 @@ def _keyring_state(creds_mod) -> tuple[bool, bool]:
 def sso_creds_set(
     sid: str | None, password: str | None, use_keyring: bool | None
 ) -> None:
-    """写入凭据：keyring 可用时优先写入钥匙串，否则写配置文件。
+    """写入凭据：keyring 可用时写入钥匙串，否则写配置文件（只会存在一份）。
 
     缺省参数时会提示输入学号与密码（密码输入隐藏且需二次确认）。
     keyring 需要可选依赖：``pip install 'westlake_survival[secure]'``。
     """
-    from westlake_survival.sso import cred_path
     from westlake_survival.sso import creds as creds_mod
 
     if not sid:
@@ -264,38 +269,16 @@ def sso_creds_set(
     if not password:
         password = click.prompt("密码", hide_input=True, confirmation_prompt=True)
 
-    if use_keyring is not False and _keyring_available(creds_mod):
-        writer = _keyring_writer(creds_mod)
-        try:
-            result = writer(sid, password)
-        except Exception as exc:  # noqa: BLE001 - 写钥匙串失败退回文件路径
-            result = False
-            click.secho(
-                f"警告：写入 keyring 失败（{exc.__class__.__name__}），回退到配置文件。",
-                fg="yellow",
-                err=True,
-            )
-        # 写入函数可能返回 None（视为成功）或 False（钥匙串后端不可用，
-        # 如 sso.creds 的 save_credentials_keyring 契约）；False 时退回文件。
-        if result is not False:
-            click.secho("凭据已写入 keyring（系统钥匙串）。", fg="green")
-            click.echo("提示：keyring 优先于明文配置文件；如需写文件请用 --no-keyring。")
-            return
-        click.secho("警告：keyring 后端不可用，回退到配置文件。", fg="yellow", err=True)
-    elif use_keyring:
-        click.secho(
-            "警告：keyring 不可用（未安装 [secure] extra 或 sso.creds 未提供接口），"
-            "回退到配置文件。",
-            fg="yellow",
-            err=True,
-        )
-
-    from westlake_survival.sso import write_credentials
-
-    target = write_credentials(sid, password)
-    click.secho(f"凭据已写入：{target}", fg="green")
-    if cred_path().exists():
-        click.echo("提示：明文配置文件安全性低于 keyring，可用 --keyring 尝试写入钥匙串。")
+    stored = creds_mod.persist_credentials(
+        sid, password, use_keyring=use_keyring is not False
+    )
+    if stored == "系统钥匙串":
+        click.secho("凭据已写入 keyring（系统钥匙串）。", fg="green")
+        click.echo("提示：已删除明文 credentials.txt，凭据只保留一份。")
+    else:
+        click.secho(f"凭据已写入：{stored}", fg="green")
+        if use_keyring is not False:
+            click.echo("提示：keyring 不可用或写入失败，已回退到明文文件（仍是唯一一份）。")
 
 
 @sso_creds.command(name="show")
@@ -355,67 +338,24 @@ def sso_creds_status() -> None:
     click.echo("来源清单（只报有 / 无，不回显密码）：")
     click.echo(f"  - 内存：{'有' if memory_ok else '无'}")
     click.echo(f"  - 环境变量 {creds_mod.ENV_VAR}：{'有' if env_ok else '无'}")
-    if keyring_available:
+    if os.environ.get("WESTLAKE_NO_KEYRING"):
+        click.echo("  - keyring：已忽略（WESTLAKE_NO_KEYRING 生效，读写都不碰钥匙串）")
+    elif keyring_available:
         click.echo(f"  - keyring：{'有' if keyring_ok else '无'}")
     else:
         click.echo("  - keyring：不可用（未安装 [secure] extra 或 sso.creds 未提供接口）")
     click.echo(f"  - 配置文件 {path}：{'有' if file_ok else '无'}")
-
-    # 各来源的学号形态：只显示前 3 位 + 位数，用于发现「两处存了不同账号」。
-    sources = creds_mod.credential_sources()
-    configured = [s for s in sources if s["configured"]]
-    if configured:
-        click.echo("各来源学号（脱敏）：")
-        for item in configured:
-            click.echo(f"  - {item['name']}：{item['sid']}（{item['sid_len']} 位）")
-
-    conflicts = creds_mod.credential_conflicts()
-    if conflicts:
-        click.secho("⚠ 凭据来源不一致——默认只会读优先级最高的那份，其余永远不生效：", fg="yellow", bold=True)
-        for line in conflicts:
-            click.echo(f"  - {line}")
-        click.echo("修复：westlake sso creds sync-keyring（把配置文件的凭据写进钥匙串）")
-        click.echo("      或 westlake setup 重新录入一次（会同时更新生效来源）")
-
-
-@sso_creds.command(name="sync-keyring")
-@_handle_errors
-def sso_creds_sync_keyring() -> None:
-    """把配置文件里的凭据写进系统钥匙串（修「keyring 存着旧号」）。"""
-    from westlake_survival.sso import creds as creds_mod
-
-    ok, note = creds_mod.sync_file_to_keyring()
-    if not ok:
-        click.secho(f"未同步：{note}", fg="red", err=True)
-        raise SystemExit(1)
-    click.secho(note, fg="green")
-    remaining = creds_mod.credential_conflicts()
-    if remaining:
-        click.secho("仍有其他来源不一致：", fg="yellow")
-        for line in remaining:
-            click.echo(f"  - {line}")
+    if not (memory_ok or env_ok or keyring_ok or file_ok):
+        click.echo("设置方法：westlake setup（或网页 /setup）")
 
 
 @sso_cmd.command(name="login")
 @_handle_errors
 def sso_login() -> None:
     """用已配置凭据尝试登录 SIS，验证凭据是否有效。"""
-    from westlake_survival.exceptions import AuthError
     from westlake_survival.sso import SISAuth
-    from westlake_survival.sso import creds as creds_mod
 
-    try:
-        SISAuth().ensure()
-    except AuthError:
-        # 登录被拒时先排除「高优先级来源存着旧凭据」——这是最容易误判成
-        # 「密码真错了」的机器状态，且不修会一直错下去。
-        conflicts = creds_mod.credential_conflicts()
-        if conflicts:
-            click.secho("凭据来源不一致（优先排查这一项，再怀疑密码本身）：", fg="yellow", bold=True)
-            for line in conflicts:
-                click.echo(f"  - {line}")
-            click.echo("修复：westlake sso creds sync-keyring")
-        raise
+    SISAuth().ensure()
     click.secho("登录成功：凭据有效，SIS 会话已建立。", fg="green")
 
 

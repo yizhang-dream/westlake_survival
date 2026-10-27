@@ -217,131 +217,42 @@ def write_credentials(sid: str, password: str) -> Path:
     return path
 
 
-def _read_file_credentials() -> tuple[str, str] | None:
-    """读配置文件里的 ``(sid, password)``；不存在或不可解析时返回 ``None``。"""
-    path = cred_path()
-    if not path.exists():
-        return None
+def _delete_file_store() -> None:
+    """删除明文凭据文件（切换存储时清掉旧的，保证只剩一份）。"""
     try:
-        return _parse(path.read_text(encoding="utf-8"), str(path))
-    except (OSError, AuthError):
-        return None
+        cred_path().unlink(missing_ok=True)
+    except OSError:  # pragma: no cover - 依赖文件系统状态
+        pass
 
 
-def mask_sid(sid: str) -> str:
-    """脱敏学号：保留前 3 位与长度，其余打星。凭据项一律用它展示。"""
-    if len(sid) <= 3:
-        return "*" * len(sid)
-    return sid[:3] + "*" * (len(sid) - 3)
+def persist_credentials(sid: str, password: str, *, use_keyring: bool = True) -> str:
+    """**唯一的凭据落盘入口**：只留一份持久存储，并清掉另一种。
 
+    设计理由（2026-10-27 事故）：曾经 keyring 与明文文件可以同时存在，而读取
+    优先级让 keyring 静默覆盖文件——keyring 里存了旧账号时，文件里正确的那份
+    **永远读不到**，外在表现是「密码明明对却一直报密码错」，且会长期如此。
+    根治办法不是加比对告警，而是不允许两份同时存在。
 
-def credential_sources() -> list[dict]:
-    """列出各凭据来源的「是否已配置 / 学号形态」，用于状态展示与冲突排查。
+    - 写钥匙串成功：删除 ``credentials.txt``（钥匙串加密存储，优先用）。
+    - 只能用文件（keyring 不可用 / ``WESTLAKE_NO_KEYRING=1`` 隔离）：只写文件，
+      **不碰系统钥匙串**（测试与自动化不得改动真实凭据，这是既定铁律）。
 
-    **只吐学号（脱敏前的原值仅在内部比较用）与密码是否为空，绝不返回密码**。
-    每项含 ``name`` / ``configured`` / ``sid``（脱敏）/ ``sid_raw`` / ``password``。
-
-    为什么需要它：读取优先级是「内存 > 环境变量 > keyring > 配置文件」，高优先级
-    来源一旦存了别的账号，低优先级那份永远读不到，而 ``status`` 又只报有/无——
-    于是一台机器可以长期用错凭据登录并误报「密码错误」。
+    :returns: 存放位置描述。
     """
-    sources: list[dict] = []
-
-    memory = _MEMORY
-    sources.append(
-        {
-            "name": "内存",
-            "configured": bool(memory.get("sid") and memory.get("password")),
-            "sid_raw": memory.get("sid") or "",
-            "password": memory.get("password") or "",
-        }
-    )
-
-    env = os.environ.get(ENV_VAR) or ""
-    env_pair = _parse(env, f"环境变量 {ENV_VAR}") if env.strip() else None
-    sources.append(
-        {
-            "name": f"环境变量 {ENV_VAR}",
-            "configured": env_pair is not None,
-            "sid_raw": env_pair[0] if env_pair else "",
-            "password": env_pair[1] if env_pair else "",
-        }
-    )
-
-    kr = read_credentials_keyring() if keyring_available() else None
-    sources.append(
-        {
-            "name": "keyring",
-            "configured": kr is not None,
-            "sid_raw": kr[0] if kr else "",
-            "password": kr[1] if kr else "",
-        }
-    )
-
-    file_pair = _read_file_credentials()
-    sources.append(
-        {
-            "name": "配置文件",
-            "configured": file_pair is not None,
-            "sid_raw": file_pair[0] if file_pair else "",
-            "password": file_pair[1] if file_pair else "",
-        }
-    )
-
-    for item in sources:
-        raw = item.pop("sid_raw")
-        item["sid"] = mask_sid(raw) if raw else ""
-        item["sid_len"] = len(raw)
-        item["password_len"] = len(item.pop("password"))
-    return sources
-
-
-def credential_conflicts() -> list[str]:
-    """比对各已配置来源，返回人类可读的不一致描述（空列表 = 一致或只有一个来源）。
-
-    判定只看两件事：**学号是否相同**、**密码是否相同**。不同来源存着不同账号，
-    或者同一账号存着不同密码，都算冲突——这正是「明明改了密码却一直报密码错」
-    的根源：优先级高的那份是旧的，永远不会被低优先级的新凭据覆盖。
-    """
-    sources = [s for s in credential_sources() if s["configured"]]
-    if len(sources) < 2:
-        return []
-
-    # 以生效来源（列表顺序即优先级）为基准
-    base = sources[0]
-    conflicts: list[str] = []
-    for other in sources[1:]:
-        if other["sid"] != base["sid"]:
-            conflicts.append(
-                f"{other['name']} 存的是另一个账号（学号 {other['sid']}，"
-                f"{other['sid_len']} 位），与生效来源 {base['name']}（{base['sid']}，"
-                f"{base['sid_len']} 位）不同"
-            )
-        elif other["password_len"] != base["password_len"]:
-            conflicts.append(
-                f"{other['name']} 与生效来源 {base['name']} 学号相同但密码不同"
-                "（长度不一致）——多半是一处改过密码、另一处没跟上"
-            )
-    return conflicts
-
-
-def sync_file_to_keyring() -> tuple[bool, str]:
-    """把配置文件里的凭据复制进系统钥匙串，让最高优先级的可用来源变正确。
-
-    用于「keyring 存了旧账号/旧密码，配置文件才是对的」这种场景：修好之后
-    默认读取路径（keyring 优先）就恢复正常，不必每次加 ``WESTLAKE_NO_KEYRING=1``。
-
-    :returns: ``(成功与否, 说明)``。学号密码都不回显。
-    """
-    pair = _read_file_credentials()
-    if pair is None:
-        return False, f"配置文件不存在或不可解析：{cred_path()}"
-    if not keyring_available():
-        return False, "keyring 不可用（未安装 keyring 库）"
-    sid, password = pair
-    if not save_credentials_keyring(sid, password):
-        return False, "写入 keyring 失败（后端拒绝或不可写）"
-    return True, f"已把配置文件的凭据（学号 {mask_sid(sid)}）写入系统钥匙串"
+    isolated = bool(os.environ.get("WESTLAKE_NO_KEYRING"))
+    # 只有真实配置目录 + 非隔离模式才允许改系统钥匙串；临时 WESTLAKE_HOME
+    # （测试、试跑）一律只写文件，绝不碰本机真实凭据。
+    real_home = os.environ.get("WESTLAKE_HOME") is None
+    if use_keyring and not isolated:
+        if keyring_available() and save_credentials_keyring(sid, password):
+            _delete_file_store()
+            return "系统钥匙串"
+    path = write_credentials(sid, password)
+    if not isolated and real_home:
+        # 切到明文文件时清掉钥匙串里的旧条目：否则读取仍以钥匙串为准，
+        # 「刚配好的凭据不生效」。
+        delete_credentials_keyring()
+    return str(path)
 
 
 __all__ = [
@@ -352,13 +263,10 @@ __all__ = [
     "cred_clear",
     "read_credentials",
     "write_credentials",
+    "persist_credentials",
     "cred_path",
     "keyring_available",
     "save_credentials_keyring",
     "read_credentials_keyring",
     "delete_credentials_keyring",
-    "credential_sources",
-    "credential_conflicts",
-    "sync_file_to_keyring",
-    "mask_sid",
 ]
