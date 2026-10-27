@@ -26,7 +26,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from westlake_survival.exceptions import ParseError
+from westlake_survival.exceptions import ActionError, ParseError
 from westlake_survival.sis import pages
 
 __all__ = [
@@ -123,6 +123,25 @@ def _grid_container_id(name: str) -> str:
     return name[len("win0div"):] if name.startswith("win0div") else name
 
 
+#: 未授权页的正文标记。PeopleSoft 按界面语言给英文或中文文案，
+#: 只认英文会把「您无权访问该页面」当成正常空页（数据静默变空）。
+_UNAUTHORIZED_MARKERS = ("not authorized", "您无权访问", "无权访问该页面", "you are not authorized")
+
+
+def _assert_page_authorized(html: str) -> None:
+    """页面若为「未授权」拒绝页则抛 ActionError，避免报成结构变化。
+
+    这类页 HTTP 200、无网格、正文一句话，前面的解析器只会给出「找不到网格」
+    这种误导性结论；调用方需要知道是权限而不是解析问题。
+    """
+    lowered = html.lower()
+    if any(marker.lower() in lowered for marker in _UNAUTHORIZED_MARKERS):
+        raise ActionError(
+            "选课车组件未授权（页面正文：您无权访问该页面）——该角色当前没有"
+            "选课车权限（选课窗口未开或未开放本角色）"
+        )
+
+
 def _cart_rows(html: str) -> list[dict]:
     """定位选课车网格并解析为行字典列表。
 
@@ -133,6 +152,7 @@ def _cart_rows(html: str) -> list[dict]:
     2. 整页无任何数据行时：恰好一个网格容器（空表或连表头都没渲染）→
        空购物车；多个容器或无任何容器 → 抛错列出，绝不猜。
     """
+    _assert_page_authorized(html)
     discovered = list(dict.fromkeys(_GRID_ROW_RE.findall(html)))
     discovered += [
         _grid_container_id(g)
