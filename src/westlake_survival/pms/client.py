@@ -244,6 +244,9 @@ class PMSClient:
         self.base_url = (base_url or resolve_base_url()).rstrip("/")
         self._user: dict[str, Any] | None = None
         self._session_id: str | None = None
+        # 自动重登的失败缓存：登录被服务端拒绝（密码错误）后记住原因，
+        # 后续会话过期不再反复撞密码（防风控）；显式 login() 成功即清除。
+        self._auto_login_blocked: str | None = None
 
     # -- 小工具 ---------------------------------------------------------
     @property
@@ -324,8 +327,13 @@ class PMSClient:
         files: Any = None,
         timeout: float | None = None,
         context: str | None = None,
+        _allow_relogin: bool = True,
     ) -> Any:
-        """发一次请求并返回解信封后的 ``result``。"""
+        """发一次请求并返回解信封后的 ``result``。
+
+        会话过期（``code == 4``）时自动重登一次并重试；登录被拒
+        （密码错误等）则带原因抛出，并缓存失败、不再重试。
+        """
         label = context or f"{method} {path}"
         try:
             response = self._session.request(
@@ -350,7 +358,35 @@ class PMSClient:
         payload = self._json(response, label)
         if isinstance(payload, Mapping) and payload.get("SessionId"):
             self._session_id = payload.get("SessionId")
-        return self._result(payload, label)
+        try:
+            return self._result(payload, label)
+        except SessionExpired:
+            if not _allow_relogin or self._auto_login_blocked:
+                raise
+        try:
+            self.login()
+        except (InvalidCredentials, AuthError) as exc:
+            raise type(exc)(f"{label} 需要登录，自动登录失败：{exc}") from exc
+        # upload 等 multipart 请求的文件句柄已被读过一次，重试前回卷。
+        for item in ((files or {}) if isinstance(files, Mapping) else {}).values():
+            handle = item[1] if isinstance(item, tuple) and len(item) > 1 else None
+            seek = getattr(handle, "seek", None)
+            if callable(seek):
+                try:
+                    seek(0)
+                except Exception:  # noqa: BLE001 - 回卷失败只能原样重试
+                    pass
+        return self._send(
+            method,
+            path,
+            params=params,
+            json_body=json_body,
+            data=data,
+            files=files,
+            timeout=timeout,
+            context=context,
+            _allow_relogin=False,
+        )
 
     def _send_raw(
         self, method: str, path: str, **kwargs: Any
@@ -458,9 +494,14 @@ class PMSClient:
         )
         code = payload.get("code")
         if code != CODE_OK:
-            raise InvalidCredentials(
+            reason = (
                 f"登录失败（code={code}）：{payload.get('message') or '账号或密码错误'}"
+                f"（打印系统账号可能与统一身份密码不同）"
             )
+            self._auto_login_blocked = reason
+            self._user = None
+            raise InvalidCredentials(reason)
+        self._auto_login_blocked = None
         result = payload.get("result")
         self._user = dict(result) if isinstance(result, Mapping) else {}
         return self._user
@@ -476,10 +517,16 @@ class PMSClient:
         return self._user
 
     def ensure_logged_in(self) -> dict[str, Any]:
-        """已登录返回用户信息；否则自动走一次 :meth:`login`。"""
+        """已登录返回用户信息；否则自动走一次 :meth:`login`。
+
+        之前登录被服务端拒绝（密码错误）时直接抛缓存的失败原因，
+        不再反复尝试（防风控）；重建客户端或显式 :meth:`login` 成功可清除。
+        """
         user = self.check()
         if user is not None:
             return user
+        if self._auto_login_blocked:
+            raise InvalidCredentials(self._auto_login_blocked)
         return self.login()
 
     def logout(self) -> None:

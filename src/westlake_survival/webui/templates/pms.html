@@ -37,7 +37,7 @@
   </tr>{% endfor %}</tbody>
 </table>
 {% elif jobs_error %}
-<div class="note">打印任务不可用：{{ jobs_error }}（需打印系统账号与校园网/VPN）</div>
+<div class="note">打印任务不可用：{{ jobs_error }}</div>
 {% else %}
 <div class="callout mute"><span>当前无打印任务。</span></div>
 {% endif %}

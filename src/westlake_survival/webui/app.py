@@ -1290,8 +1290,9 @@ def _pms_context() -> dict:
     try:
         context["stations"] = [
             {
-                "name": station.name, "campus": station.campus,
-                "position": station.position or station.room_name,
+                "name": station.name,
+                "campus": station.campus_display,
+                "position": station.position_display,
                 "status": station.status_text or ("空闲" if station.is_idle else ""),
                 "papers": station.papers,
             }
@@ -1299,28 +1300,45 @@ def _pms_context() -> dict:
         ]
     except Exception as exc:
         context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    # 任务/统计需要登录：先显式登录一次，失败按原因分型提示
+    # （客户端会缓存「密码错误」类失败，不会每次刷新都撞密码）。
+    from westlake_survival.exceptions import AuthError, InvalidCredentials
+
+    login_error: str | None = None
     try:
-        context["jobs"] = [
-            {
-                "name": job.name, "status": job.status_text or "—",
-                "pages": job.pages, "copies": job.copies,
-                "created": f"{job.created_date or ''} {job.created_time or ''}".strip(),
-            }
-            for job in client.list_print_jobs()
-        ]
-    except Exception as exc:
-        context["jobs_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
-    try:
-        kind_names = {1: "打印", 2: "复印", 3: "扫描"}
-        context["usage"] = [
-            {
-                "kind": kind_names.get(item.type, str(item.type)),
-                "times": item.times, "pages": item.pages, "cost": round(item.cost, 2),
-            }
-            for item in client.usage_stat()
-        ]
-    except Exception as exc:
-        context["usage_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+        client.ensure_logged_in()
+    except InvalidCredentials as exc:
+        login_error = f"{exc}"[:160] or "打印系统账号或密码不对"
+    except AuthError as exc:
+        login_error = f"未配置可用的文印系统凭据，无法自动登录：{exc}"[:160]
+    except Exception as exc:  # noqa: BLE001 - 网络等一次性故障不缓存，下次刷新重试
+        login_error = f"{exc.__class__.__name__}: {exc}"[:120]
+    if login_error is None:
+        try:
+            context["jobs"] = [
+                {
+                    "name": job.name, "status": job.status_text or "—",
+                    "pages": job.pages, "copies": job.copies,
+                    "created": f"{job.created_date or ''} {job.created_time or ''}".strip(),
+                }
+                for job in client.list_print_jobs()
+            ]
+        except Exception as exc:
+            context["jobs_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+        try:
+            kind_names = {1: "打印", 2: "复印", 3: "扫描"}
+            context["usage"] = [
+                {
+                    "kind": kind_names.get(item.type, str(item.type)),
+                    "times": item.times, "pages": item.pages, "cost": round(item.cost, 2),
+                }
+                for item in client.usage_stat()
+            ]
+        except Exception as exc:
+            context["usage_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
+    else:
+        context["jobs_error"] = login_error
+        context["usage_error"] = login_error
     return context
 
 
