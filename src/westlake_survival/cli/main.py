@@ -1960,6 +1960,18 @@ def _webui_already_running(port: int) -> bool:
     return "西湖生存手册" in body
 
 
+def _open_browser(url: str) -> None:
+    """开浏览器；无桌面环境（常见于 Linux 服务器）打不开时给手动访问提示。"""
+    import webbrowser
+
+    try:
+        ok = webbrowser.open(url)
+    except Exception:  # noqa: BLE001 - 无 DISPLAY 等环境异常同样按打不开处理
+        ok = False
+    if not ok:
+        click.echo(f"未找到可用的图形浏览器（无桌面环境常见），请手动访问：{url}")
+
+
 @click.command(name="go", help="一步启动：起 WebUI 并自动打开浏览器（用户入口）。")
 @click.option("--port", default=2018, show_default=True, help="本地端口。")
 @click.option("--no-browser", is_flag=True, help="只启动服务，不打开浏览器（Agent/无桌面环境用）。")
@@ -1973,14 +1985,13 @@ def go_cmd(port: int, no_browser: bool) -> None:
     服务，直接把浏览器指过去——否则第二个进程绑不上端口，浏览器只会开到死页。
     """
     import threading
-    import webbrowser
 
     url = _webui_entry_url(port)
     if _webui_already_running(port):
         click.echo(f"西湖生存手册 · 已在运行：{url}")
         if not no_browser:
             click.echo("浏览器将打开这个地址；服务由已运行的实例提供。")
-            webbrowser.open(url)
+            _open_browser(url)
         return
     if not no_browser:
         # 服务就绪后再开浏览器：最多等 15 秒，避免直接命中连接失败页。
@@ -1999,7 +2010,7 @@ def go_cmd(port: int, no_browser: bool) -> None:
                     break
                 except Exception:
                     time.sleep(0.4)
-            webbrowser.open(url)
+            _open_browser(url)
 
         threading.Thread(target=_open_when_ready, daemon=True).start()
     click.echo(f"西湖生存手册 · Web 界面：{url}")

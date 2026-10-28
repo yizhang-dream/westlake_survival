@@ -43,15 +43,10 @@ _OPTIONAL = (
         "起不了网页（`westlake` 默认就是开网页「设置」）",
     ),
     (
-        "keyring",
-        "钥匙串（secure）",
-        "在仓库目录运行：pip install -e '.[secure]'",
-        "凭据退回明文文件存，能用但不加密",
-    ),
-    (
         "playwright",
         "浏览器链路（browser）",
-        "在仓库目录运行：pip install -e '.[browser]'，然后 playwright install chromium",
+        "在仓库目录运行：pip install -e '.[browser]'，然后 playwright install chromium"
+        "；Linux 无桌面环境缺系统库时再补 playwright install-deps chromium",
         "`westlake share` 读不了 OneDrive/SharePoint 分享；hosts/sites 渲染深挖与 scholar 数据库 SSO 退化为无浏览器路径",
     ),
 )
@@ -136,6 +131,45 @@ def _check_optionals() -> list[Check]:
     return checks
 
 
+def _check_keyring() -> Check:
+    """keyring 装了不等于能用：无桌面/D-Bus 的 Linux 上没有任何可用后端。
+
+    只 ``find_spec`` 会把「已安装但运行时必失败」误报成 ✔；真实取一次后端，
+    落在 fail/null 兜底上就如实降级为 warn（凭据退回明文文件存）。
+    """
+    if not _spec("keyring"):
+        return Check(
+            key="keyring",
+            name="钥匙串（secure）",
+            status="missing",
+            detail="缺 keyring：凭据退回明文文件存，能用但不加密",
+            fix="在仓库目录运行：pip install -e '.[secure]'",
+        )
+    try:
+        import keyring
+
+        backend = keyring.get_keyring()
+        mod = type(backend).__module__
+    except Exception as exc:  # noqa: BLE001 - 取后端失败也是一种不可用
+        return Check(
+            key="keyring",
+            name="钥匙串（secure）",
+            status="warn",
+            detail=f"keyring 已安装但取后端失败（{exc.__class__.__name__}）：凭据退回明文文件存",
+            fix="",
+        )
+    if ".fail" in mod or ".null" in mod:
+        return Check(
+            key="keyring",
+            name="钥匙串（secure）",
+            status="warn",
+            detail="keyring 已安装但无可用后端（Linux 无桌面钥匙串/D-Bus 服务时常见）：凭据退回明文文件存",
+            fix="无桌面环境可接受此降级；桌面会话安装 gnome-keyring 可启用加密存储",
+        )
+    return Check(key="keyring", name="钥匙串（secure）", status="ok",
+                 detail=f"已安装（{type(backend).__name__}）")
+
+
 def _check_credentials() -> Check:
     try:
         from westlake_survival.sso import read_credentials
@@ -147,7 +181,7 @@ def _check_credentials() -> Check:
     except Exception:
         detail = "未配置：课表/成绩/作业/图书馆这些要登录的功能用不了，公开功能照常"
         status = "warn"
-        fix = "由本人在网页「设置」页填一次：运行 `westlake`（或双击 start.bat / start.command）；Agent 不得代填"
+        fix = "由本人在网页「设置」页填一次：运行 `westlake`（或启动脚本 start.bat / start.command / start.sh）；Agent 不得代填"
     return Check(key="credentials", name="校园账号", status=status, detail=detail, fix=fix)
 
 
@@ -193,6 +227,7 @@ def run_checks(*, network: bool = True) -> list[Check]:
     """跑全部检查。``network=False`` 时跳过联网探测（离线/脚本用）。"""
     checks = [_check_python(), _check_package(), _check_command()]
     checks.extend(_check_optionals())
+    checks.append(_check_keyring())
     checks.append(_check_credentials())
     checks.append(_check_canvas_token())
     if network:

@@ -12,7 +12,7 @@ Agent 拿到本 skill 的第一件事，是判断「这台机器上的环境对�
 | 包本体 | 可导入 + 版本 + 路径 | 跑不起来时本命令根本不会执行 |
 | 命令 `westlake` | 在 PATH 上且与当前解释器同一环境 | `warn`：不在 PATH（用 `python -m`）/ 不是同一环境（两个环境各装一份） |
 | Web 界面（基础依赖） | flask 已装 | `missing`：`pip install -e .`（缺它通常是旧包或 `--no-deps` 装的） |
-| 钥匙串 `[secure]` | keyring 已装 | `missing`：`pip install -e '.[secure]'`（降级为明文文件） |
+| 钥匙串 `[secure]` | keyring 已装且取到真实后端（detail 带后端名） | `missing`：`pip install -e '.[secure]'`（降级为明文文件）；`warn`：已装但无可用后端（无桌面/D-Bus 的 Linux 常见，凭据退明文文件，可接受） |
 | 分享 `share` | playwright 已装 | `missing`：`pip install playwright && playwright install chromium` |
 | 校园账号 | 有凭据（只报来源） | `warn`：让**本人**在网页「设置」页填一次，Agent 不代填 |
 | Canvas 令牌 | 有或走统一密码 | 信息项，不影响可用性 |

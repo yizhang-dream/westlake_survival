@@ -12,7 +12,7 @@
 | 已经配过账号 | 落地页是仪表盘 `/` |
 | 直接访问 `/` 且未配置 | 302 到 `/setup` |
 | 只想看公开功能 | `/setup` 上的「先看看公开功能」→ `/?skip=1`（校历/班车/新闻/地图都不需要账号） |
-| 双击启动 | `start.bat`（Windows）/ `start.command`（macOS）：找 Python（两脚本都拦 <3.10）→ 缺依赖就 `pip install -e '.[webui]'`（macOS 遇 Homebrew/系统 Python 的 externally-managed 限制时自动落到仓库内 `.venv` 安装，此后优先复用）→ 起服务 |
+| 双击启动 | `start.bat`（Windows）/ `start.command`（macOS）/ `start.sh`（Linux，桌面也可双击）：找 Python（三脚本都拦 <3.10）→ 缺依赖就 `pip install -e '.[webui]'`（遇 Homebrew/Debian 系 Python 的 externally-managed 限制时自动落到仓库内 `.venv` 安装，此后优先复用）→ 起服务 |
 | 终端装完即用 | `pip install -e .` 之后直接 `westlake`：Flask 自 2026-10-28 起是**基础依赖**，装完就有前端，不再需要 `[webui]` extra |
 | 重复启动 | 同一端口已有本网页在跑 → 不再起第二个服务，直接把浏览器指过去（`westlake go` 打印「已在运行」） |
 | 脚本 / 自动化 | `westlake --help`，或设 `WESTLAKE_NO_WEBUI=1` 让裸命令只打印帮助 |
@@ -32,11 +32,11 @@
   `?skip=1` 放行。
 - `templates/setup.html`：未配置时显示「第 1 步」引导 + 跳过链接；保存后给「进首页」按钮。
 - `templates/base.html`：引导横幅在设置页自身不再重复出现。
-- `start.bat` / `start.command`：双击入口。`.bat` 刻意只写 ASCII——cmd 按本地代码页
+- `start.bat` / `start.command` / `start.sh`：双击/终端入口。`.bat` 刻意只写 ASCII——cmd 按本地代码页
   逐行解析批处理，UTF-8 中文会把命令行拆坏（实测过一版直接报「不是内部或外部命令」）。
-  `.command` 与 `.bat` 同一底线：拦 <3.10 的解释器；Homebrew/系统 Python 带
+  `.command` / `.sh` 与 `.bat` 同一底线：拦 <3.10 的解释器；Homebrew/Debian 系 Python 带
   `EXTERNALLY-MANAGED` 标记（pip 拒绝全局安装）时先建仓库内 `.venv` 再装，后续
-  双击优先复用 `.venv/bin/python`（macOS 跨平台补齐，2026-10-28）。
+  优先复用 `.venv/bin/python`（macOS/Linux 跨平台补齐，2026-10-28）。
 
 ## 验收（端到端，2026-10-28）
 

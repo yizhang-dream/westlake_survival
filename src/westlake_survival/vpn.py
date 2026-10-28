@@ -96,7 +96,7 @@ def resources() -> list[dict]:
     service"（假阴性，不能当资源接口）；EasyConnect 隧道建立后系统路由
     表会出现经 Sangfor 虚拟网卡（下一跳 172.20.*）的 /32 主机路由——
     那才是本账号真实拿到的资源清单。Windows 用 PowerShell、macOS 用
-    netstat 读路由表；其余平台返回空。
+    netstat、Linux 用 ip route 读路由表；其余平台返回空。
     """
     import sys
 
@@ -104,6 +104,8 @@ def resources() -> list[dict]:
         rows = _routes_windows()
     elif sys.platform == "darwin":
         rows = _routes_macos()
+    elif sys.platform.startswith("linux"):
+        rows = _routes_linux()
     else:
         rows = []
     return sorted(rows, key=lambda r: r["title"])
@@ -181,6 +183,49 @@ def _routes_macos() -> list[dict]:
     except (OSError, subprocess.TimeoutExpired):
         return []
     return _parse_netstat_routes(out)
+
+
+def _parse_ip_routes(text: str) -> list[dict]:
+    """解析 Linux ``ip -4 route show`` 输出里的 Sangfor 主机路由。
+
+    行形如 ``172.16.10.223 via 172.20.131.1 dev tun0``：取网关 172.20.* 的
+    主机路由（无掩码即 /32），与 Windows/macOS 两侧同构。docker 网段等
+    本地链路路由没有 ``via`` 网关，自然落选。
+    """
+    rows: list[dict] = []
+    for line in text.splitlines():
+        parts = line.split()
+        if not parts or parts[0] == "default":
+            continue
+        dest = parts[0]
+        if "/" in dest and not dest.endswith("/32"):
+            continue
+        try:
+            via = parts[parts.index("via") + 1]
+        except (ValueError, IndexError):
+            continue
+        if not via.startswith("172.20."):
+            continue
+        rows.append({
+            "title": dest if dest.endswith("/32") else f"{dest}/32",
+            "url": f"http://{dest.split('/')[0]}/",
+            "raw": {"nexthop": via},
+        })
+    return rows
+
+
+def _routes_linux() -> list[dict]:
+    """Linux：iproute2 读路由表（Sangfor 隧道建立后网关落在 172.20.*）。"""
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["ip", "-4", "route", "show"],
+            capture_output=True, text=True, timeout=15,
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    return _parse_ip_routes(out)
 
 
 def open_login(wait_seconds: int = 300) -> dict:
