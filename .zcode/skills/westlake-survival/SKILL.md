@@ -1,6 +1,6 @@
 ---
 name: westlake-survival
-description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与卡点见文档）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、93 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
+description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表（SIS 与教学系统 AMS 两套）、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与卡点见文档）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、93 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
 ---
 
 # 西湖大学生存手册（westlake-survival）
@@ -23,6 +23,8 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | **环境不对 / 装了却用不了 / 缺依赖** | **`westlake doctor`**（解释器、依赖、账号、网络逐项体检 + 修复命令） |
 | **不知道这需求归哪条命令 / 这 skill 能干什么** | **`westlake find <需求关键词>`**（搜 CLI/MCP/网页/学术库/服务注册表，口语可命中） |
 | 今天几号 / 第几周 / 什么学期 / 今日校历 | `westlake calendar today` |
+| **教学系统的课表 / 教学周次**（AMS，与 SIS 课表是两套） | `westlake ams schedule`（默认本周，`--start/--end` 指定区间） / `westlake ams status` |
+| 学籍信息 / 学生选择导师 / **选课** / 我的课表 入口 | `westlake ams menus`（只读，给的是系统内链接；写操作进系统做） |
 | 本学期第 N 周的起止日期 | `westlake calendar week <N>` |
 | 校历事件（开学、假期、考试周） | `westlake calendar events` |
 | 下一班校车 / 某校区班车时刻表 | `westlake transit next` / `westlake transit table` |
@@ -134,6 +136,7 @@ Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
 - **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
+- **教学系统 AMS（`ams.westlake.edu.cn`）**：走 **IAM 统一认证**（同一套统一密码，`iam.login_for('https://ams.westlake.edu.cn/sso/login')`）；经典 CAS 不接这个 service（返回 Application Not Authorized），别套 Canvas 那套。会话缓存 8 小时（`~/.westlake_survival/ams_cookies.json`），页面层另加 2 分钟缓存。只读：课表/周次/菜单/通知；选课与学籍修改一律进系统做。详见 [docs/ams.md](../../../docs/ams.md)。
 - **图书馆（2026-10-28 系统迁移，暂不可用）**：老阿法迪 OPAC `/opac/*` 整体下线（连根都 404），学校换成「阿法迪云 eLibrary」（内网 `172.16.10.223:8180/page/login.jsp`，**平台自有账号**；公网别名 `opac.westlake.edu.cn` 只剩首页快照、不反代 `/page/`）。`westlake lib search|loans` 会直接说明现状并退出、**不再尝试已失效的 CAS 登录**（反复失败有锁号风险）；WebUI 的「图书馆」页已按用户要求下线，别再去找这个页面。查书/借阅请让用户直接访问图书馆网站；接新平台需本人浏览器登录一次后重探接口，见 [docs/library_migration_2026-10-28.md](../../../docs/library_migration_2026-10-28.md)。
 - **预约中心（`booking`）**：同一套统一密码，登录走预约中心自己的 OIDC（`booking.westlake.edu.cn/sso/oauth2`，隐式流取 access_token），`iam.login_for` 一步到位，无需另配令牌。**看到分类先别高兴**：接口对「没权限的分类」不报错、只返回空列表，判断能不能约要看 `booking types`（首页可见卡片）。
 - **体育场馆/游泳（`sport`）**：独立正元系统 `sportvenue.westlake.edu.cn`，同一套统一密码走 IAM CAS（`client_id=tycgyy`），首次运行自动登录；每个请求带 `appId/nonce/timeStamp/sign` 签名（前端公开定值，非账号凭据）。只读：场景、场地、逐日可约、我的预约；**不做预约/取消**（下单涉及次卡支付，未接）。
@@ -273,6 +276,9 @@ westlake aid orgs --wiki                     # 社团目录 + 一句话简介（
 westlake wiki list --cat clubs               # WikiLake 校园百科（学生自建）：目录 / search 关键词 [--deep] / page 条目名，见 docs/wikilake.md
 westlake wiki search 班车
 westlake wiki page 音游社
+westlake ams status                        # 教学系统：学期/周次 + 今天的课
+westlake ams schedule --json               # 本周课程（去重后）结构化输出
+westlake ams menus                         # 学籍/选导师/选课/我的课表 入口
 westlake lib search 数据结构 --page 1    # 2026-10-28 起系统迁移，暂不可用（会说明现状并退出）
 westlake lib loans                        # 同上；不再尝试已失效的 CAS 登录
 westlake pms jobs

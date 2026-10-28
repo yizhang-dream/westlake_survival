@@ -1234,6 +1234,36 @@ def _reachable(url: str, timeout: float = 3.0) -> bool:
         return False
 
 
+def _ams_context() -> dict:
+    """教学系统页（只读）：学期周次 + 今日/本周课程 + 服务入口 + 通知。
+
+    IAM 统一认证登录，会话缓存 8 小时（``~/.westlake_survival/ams_cookies.json``），
+    页面层再加 2 分钟磁盘缓存，避免每次刷新都去网关取数。
+    """
+    context: dict = {
+        "overview": {}, "today": [], "week": [], "menus": [], "notices": [], "error": None,
+    }
+    module = _import_module("ams")
+    if module is None:
+        context["error"] = "ams 模块不可用"
+        return context
+
+    def _load() -> dict:
+        return {
+            "overview": module.overview(),
+            "today": module.today(),
+            "week": module.this_week(),
+            "menus": [m for m in module.menus() if m.get("href")],
+            "notices": module.notices(),
+        }
+
+    try:
+        context.update(_cached_json("ams/dashboard.json", 120.0, _load) or {})
+    except Exception as exc:  # noqa: BLE001 - 单页失败不影响其他页
+        context["error"] = f"{exc.__class__.__name__}: {exc}"[:160]
+    return context
+
+
 def _pms_context() -> dict:
     """自助文印页：网点列表 + 我的打印任务 + 用量统计（需校园网/VPN）。"""
     context: dict = {
@@ -2092,6 +2122,10 @@ def create_app() -> Flask:
                 deep=request.args.get("deep") in {"1", "true", "on"},
             ),
         )
+
+    @app.route("/ams")
+    def ams_page():
+        return render_template("ams.html", **_ams_context())
 
     @app.route("/pms")
     def pms_page():

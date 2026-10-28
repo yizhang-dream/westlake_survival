@@ -1285,6 +1285,128 @@ def sis_ical(out: Path) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# ams —— 教学系统（西湖大学 AMS，IAM 统一认证）
+# --------------------------------------------------------------------------- #
+@click.group(name="ams", help="教学系统（AMS）：课表 / 学期周次 / 学籍与选课入口。")
+def ams_cmd() -> None:
+    """西湖大学教学系统（ams.westlake.edu.cn），全部只读。"""
+
+
+def _echo_ams_schedule(rows: list[dict]) -> None:
+    if not rows:
+        click.echo("该区间没有课程安排。")
+        return
+    _print_table(
+        [(r["date"], f"{r['start']}-{r['end']}", r["title"], r["address"]) for r in rows],
+        ("日期", "时间", "课程", "地点"),
+    )
+
+
+@ams_cmd.command(name="status")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+@_handle_errors
+def ams_status(as_json: bool) -> None:
+    """学期 / 教学周次 + 今天的课。"""
+    from westlake_survival import ams
+
+    info = ams.overview()
+    rows = ams.today()
+    if as_json:
+        click.echo(json.dumps({"overview": info, "today": rows}, ensure_ascii=False, indent=2))
+        return
+    click.echo(
+        f"{info.get('semester') or '—'} 第 {info.get('week') or '—'} 周"
+        f"（{'在教学周内' if info.get('in_semester') else '不在教学周'}）"
+    )
+    click.echo("今天：")
+    _echo_ams_schedule(rows)
+
+
+@ams_cmd.command(name="schedule")
+@click.option("--start", default=None, help="起始日期 YYYY-MM-DD（默认本周一）。")
+@click.option("--end", default=None, help="结束日期 YYYY-MM-DD（默认本周日）。")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+@_handle_errors
+def ams_schedule(start: str | None, end: str | None, as_json: bool) -> None:
+    """课程表（默认本周）。"""
+    from datetime import date, timedelta
+
+    from westlake_survival import ams
+
+    if start or end:
+        begin = date.fromisoformat(start) if start else date.fromisoformat(end)
+        finish = date.fromisoformat(end) if end else begin
+        rows = ams.schedule(begin, finish)
+    else:
+        now = date.today()
+        monday = now - timedelta(days=now.weekday())
+        rows = ams.schedule(monday, monday + timedelta(days=6))
+    if as_json:
+        click.echo(json.dumps(rows, ensure_ascii=False, indent=2))
+        return
+    _echo_ams_schedule(rows)
+
+
+@ams_cmd.command(name="today")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+@_handle_errors
+def ams_today(as_json: bool) -> None:
+    """今天的课。"""
+    from westlake_survival import ams
+
+    rows = ams.today()
+    if as_json:
+        click.echo(json.dumps(rows, ensure_ascii=False, indent=2))
+        return
+    _echo_ams_schedule(rows)
+
+
+@ams_cmd.command(name="menus")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+@_handle_errors
+def ams_menus(as_json: bool) -> None:
+    """服务入口（学籍 / 学术导师 / 选课 / 我的课表 …）。"""
+    from westlake_survival import ams
+
+    items = [m for m in ams.menus() if m["href"]]
+    if as_json:
+        click.echo(json.dumps(items, ensure_ascii=False, indent=2))
+        return
+    if not items:
+        click.echo("没有可跳转的服务入口。")
+        return
+    _print_table([(m["code"], m["name"], m["href"]) for m in items], ("编号", "服务", "链接"))
+
+
+@ams_cmd.command(name="notices")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON。")
+@_handle_errors
+def ams_notices(as_json: bool) -> None:
+    """教学系统通知。"""
+    from westlake_survival import ams
+
+    rows = ams.notices()
+    if as_json:
+        click.echo(json.dumps(rows, ensure_ascii=False, indent=2))
+        return
+    if not rows:
+        click.echo("暂无通知。")
+        return
+    _print_table([(r["date"], "未读" if r["unread"] else "", r["title"]) for r in rows],
+                 ("时间", "状态", "标题"))
+
+
+@ams_cmd.command(name="login")
+@_handle_errors
+def ams_login() -> None:
+    """强制重新登录（缓存会话失效时用）。"""
+    from westlake_survival import ams
+
+    ams.login(force=True)
+    click.secho("教学系统会话已建立（缓存 8 小时）。", fg="green")
+
+
+# --------------------------------------------------------------------------- #
 # lib —— 图书馆
 # --------------------------------------------------------------------------- #
 @click.group(name="lib", help="图书馆：书目检索与个人借阅。")
@@ -1965,6 +2087,7 @@ def _first_run_configured() -> bool:
 for _group in (
     go_cmd,
     doctor_cmd,
+    ams_cmd,
     find_cmd,
     setup_cmd,
     sso_cmd,
