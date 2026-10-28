@@ -28,8 +28,10 @@ from flask import (
     Flask,
     Response,
     jsonify,
+    redirect,
     render_template,
     request,
+    url_for,
 )
 
 #: 默认端口：2018 = 西湖大学建校年。
@@ -1834,6 +1836,10 @@ def create_app() -> Flask:
     # -- 首页：context 快照仪表盘 ---------------------------------------- #
     @app.route("/")
     def index():
+        # 第一次打开就把人送到「设置」：账号配置是启动后的第一件事。
+        # 只想看公开功能（校历/班车/新闻/地图）的走 ?skip=1，或设置页的「先逛逛」。
+        if not _creds_summary()["sis"] and request.args.get("skip") != "1":
+            return redirect(url_for("setup_page"))
         try:
             # 单次构造 VERBOSE 快照：一次 I/O 拿全所有档位字段（terse 的日期 /
             # 周次、normal 的最近事件 / 下班车、verbose 的天气 / AQI / 作业），
