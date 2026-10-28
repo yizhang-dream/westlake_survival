@@ -16,6 +16,7 @@ import importlib
 import json
 import logging
 import os
+import threading
 import time as _time_mod
 
 from westlake_survival.discovery import SERVICE_REGISTRY
@@ -1808,6 +1809,78 @@ def _program_context():
 
 
 # --------------------------------------------------------------------------- #
+# 仪表盘提速：慢取数移出请求路径（2026-10-28 实测：context verbose 冷构造约
+# 5.3s、门户个人卡片要完整登录门户 14.6s 且每次都重新登录——串行挡在 ``/``
+# 上就是仪表盘冷启动 18s+ 的主因）。两招：进程内短缓存 + 门户后台线程刷新。
+# --------------------------------------------------------------------------- #
+_CONTEXT_CACHE_TTL = 600.0
+_context_cache: dict[str, tuple[float, dict | None]] = {}
+
+
+def _context_data_cached(level: str = "verbose") -> dict | None:
+    """:func:`_context_data` 的进程内短缓存（仪表盘 ``verbose`` 档专用接缝）。"""
+    hit = _context_cache.get(level)
+    if hit and _time_mod.time() - hit[0] < _CONTEXT_CACHE_TTL:
+        return hit[1]
+    data = _context_data(level)
+    if data is not None:
+        _context_cache[level] = (_time_mod.time(), data)
+    return data
+
+
+_PORTAL_CARDS_TTL = 900.0
+_portal_lock = threading.Lock()
+_portal_cards_cache: dict = {"ts": 0.0, "data": None, "fetching": False}
+
+
+def _portal_cards_refresh() -> None:
+    """登门户取个人卡片，成功才更新缓存（失败保留旧值，等下一轮）。"""
+    portal_mod = _import_module("portal")
+    if portal_mod is None:
+        return
+    try:
+        cards = portal_mod.fetch_cards()
+        data = {
+            "unread_email": cards.unread_email,
+            "borrowed_books": cards.borrowed_books,
+            "todo_pending": cards.todo_pending,
+            "todo_started": cards.todo_started,
+            "todo_done": cards.todo_done,
+        }
+    except Exception:  # noqa: BLE001 - 登录失败/会话过期等，保留旧缓存
+        return
+    with _portal_lock:
+        _portal_cards_cache.update(ts=_time_mod.time(), data=data)
+
+
+def _portal_cards_snapshot() -> tuple[dict | None, bool]:
+    """读门户卡片缓存；过期且有凭据时起后台线程刷新，绝不阻塞当前请求。
+
+    返回 ``(缓存数据或 None, 是否新鲜)``。同一时刻至多一个刷新线程，
+    避免反复撞 IAM 登录（并发审计：同账号最多 2 路登录）。
+    """
+    if not _creds_summary()["sis"]:
+        return None, False
+    with _portal_lock:
+        fresh = _time_mod.time() - _portal_cards_cache["ts"] < _PORTAL_CARDS_TTL
+        data = _portal_cards_cache["data"]
+        need_fetch = not fresh and not _portal_cards_cache["fetching"]
+        if need_fetch:
+            _portal_cards_cache["fetching"] = True
+    if need_fetch:
+
+        def _wrap() -> None:
+            try:
+                _portal_cards_refresh()
+            finally:
+                with _portal_lock:
+                    _portal_cards_cache["fetching"] = False
+
+        threading.Thread(target=_wrap, daemon=True, name="portal-cards").start()
+    return data, fresh
+
+
+# --------------------------------------------------------------------------- #
 # 应用工厂
 # --------------------------------------------------------------------------- #
 def create_app() -> Flask:
@@ -1828,6 +1901,12 @@ def create_app() -> Flask:
         return {"creds": creds, "needs_setup": not creds["sis"]}
 
     # -- 首页：context 快照仪表盘 ---------------------------------------- #
+    @app.route("/api/portal-cards")
+    def api_portal_cards():
+        """门户个人卡片：缓存值 + 后台刷新，绝不阻塞；前端轮询到 ready 填充。"""
+        cards, fresh = _portal_cards_snapshot()
+        return {"ready": bool(cards), "fresh": fresh, "cards": cards}
+
     @app.route("/")
     def index():
         # 第一次打开就把人送到「设置」：账号配置是启动后的第一件事。
@@ -1838,24 +1917,14 @@ def create_app() -> Flask:
             # 单次构造 VERBOSE 快照：一次 I/O 拿全所有档位字段（terse 的日期 /
             # 周次、normal 的最近事件 / 下班车、verbose 的天气 / AQI / 作业），
             # 避免重复构造与重复加载校历 / 班车。verbose 字段无数据时模板显示
-            # 「—」。
-            data = _context_data("verbose")
-            # 门户个人卡片（未读邮件/在借/待办）——失败静默降级
-            portal_cards = {}
-            portal_mod = _import_module("portal")
-            if portal_mod is not None:
-                try:
-                    cards = portal_mod.fetch_cards()
-                    portal_cards = {
-                        "unread_email": cards.unread_email,
-                        "borrowed_books": cards.borrowed_books,
-                        "todo_pending": cards.todo_pending,
-                        "todo_started": cards.todo_started,
-                        "todo_done": cards.todo_done,
-                    }
-                except Exception:
-                    portal_cards = {}
-            data.setdefault("extras", {})["portal"] = portal_cards
+            # 「—」。进程内再缓存 10 分钟：冷构造约 5s，别让每次刷新都重付。
+            data = _context_data_cached("verbose")
+            # 门户个人卡片要完整登录门户（实测 14.6s）：只读缓存，页面先出，
+            # 数值由 /api/portal-cards 异步填充（后台线程负责刷新）。
+            portal_cards, _portal_fresh = _portal_cards_snapshot()
+            extras = data.setdefault("extras", {})
+            extras["portal"] = portal_cards or {}
+            extras["portal_loading"] = portal_cards is None
         except Exception as exc:
             # Context 内部已优雅降级，这里兜住任何意外，转成中文错误页。
             return (
