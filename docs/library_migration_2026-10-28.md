@@ -34,9 +34,9 @@
 ## 这次改了什么
 
 - `lib/opac.py` 新增 `detect_backend()`：探一次老 OPAC `/opac/` 是否还在、新平台 `/page/login.jsp` 是否在线（结果缓存 10 分钟），模块文档记录本次实测。
-- `/lib` 页：检测到老 OPAC 下线就显示一段说明（系统已迁移、新平台用自有账号、本工具尚未接新接口），三块空态改成「暂不可用（见上方说明）」，不再假装「当前无借阅记录」。**不再发起 CAS 登录**。
-- CLI：`westlake lib search` / `lib loans` 先过 `_lib_backend_guard()`，打印同一段说明并退出 1。
+- CLI：`westlake lib search` / `lib loans` 先过 `_lib_backend_guard()`，打印同一段说明并退出 1，**不再发起 CAS 登录**。
 - `tools/module_smoke.py`：新增 `MIGRATED` 状态（输出含「系统已迁移」），不算 FAIL，不列入「需要处理」。
+- **2026-10-28 晚按用户要求下线 WebUI 的「图书馆」页**（本人在新平台登录未成功，功能短期无望）：删除 `/lib` 路由、`lib.html` 模板、导航项与 `capabilities.py` 的页面清单条目。页面上线过的那版（迁移说明 + 三块「暂不可用」）已随删除一并退役；`lib/opac.py` 与 `westlake lib` 两条 CLI 保留，等接上新平台可直接复用。
 
 ## 要真正接上新平台，还缺什么
 

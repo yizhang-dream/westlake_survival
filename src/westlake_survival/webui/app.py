@@ -1234,79 +1234,6 @@ def _reachable(url: str, timeout: float = 3.0) -> bool:
         return False
 
 
-def _lib_context(query: str = "") -> dict:
-    """图书馆页：书目检索 + 我的借阅 + 新书。
-
-    2026-10-28 实测：老阿法迪 OPAC（``/opac/*``）整体下线，学校换成「阿法迪云
-    eLibrary」新平台（``/page/login.jsp``，平台自有账号）。老接口全 404 时直接
-    说明现状并跳过取数——尤其不能对已下线的 CAS 回调反复发起登录（有锁号风险）。
-    """
-    context: dict = {
-        "query": query, "books": [], "loans": [], "new_books": [],
-        "error": None, "loans_error": None, "new_error": None, "notice": None,
-    }
-    module = _import_module("lib")
-    if module is None:
-        context["error"] = "lib 模块不可用"
-        return context
-    opac = getattr(module, "OPAC_BASE", None)
-    if not opac:
-        try:
-            from westlake_survival.lib.opac import OPAC_BASE as opac
-        except Exception:
-            opac = "http://172.16.10.223:8180/opac"
-    try:
-        from westlake_survival.lib.opac import detect_backend
-
-        backend = detect_backend()
-    except Exception:
-        backend = None
-    if backend and not backend.get("opac_alive"):
-        context["notice"] = (
-            "图书馆系统已迁移：老的 OPAC 检索 / 新书 / CAS 借阅接口整体下线"
-            f"（{backend.get('detail', '')}）。"
-            "新平台是「阿法迪云 eLibrary」，登录改成平台自有账号，本工具还没接新接口，"
-            "所以这里暂时没有数据；查书与借阅请直接访问图书馆网站。"
-        )
-        return context
-    if not _reachable(opac):
-        message = "OPAC 仅校园网/VPN 内可达，请先连接学校 VPN"
-        context["error"] = message
-        context["loans_error"] = message
-        context["new_error"] = message
-        return context
-    if query:
-        try:
-            context["books"] = [
-                {
-                    "title": b.title, "author": b.author, "call_no": b.call_no,
-                    "location": b.location, "year": b.publish_year,
-                    "status": b.holding_status, "url": b.detail_url,
-                }
-                for b in module.search(query)
-            ]
-        except Exception as exc:
-            context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
-    try:
-        context["loans"] = [
-            {
-                "title": loan.title, "due": loan.due_date, "renewable": loan.renewable,
-                "location": loan.location, "barcode": loan.barcode,
-            }
-            for loan in module.my_loans()
-        ]
-    except Exception as exc:
-        context["loans_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
-    try:
-        context["new_books"] = [
-            {"title": b.title, "author": b.author, "url": b.detail_url}
-            for b in module.new_books(limit=12)
-        ]
-    except Exception as exc:
-        context["new_error"] = f"{exc.__class__.__name__}: {exc}"[:120]
-    return context
-
-
 def _pms_context() -> dict:
     """自助文印页：网点列表 + 我的打印任务 + 用量统计（需校园网/VPN）。"""
     context: dict = {
@@ -2165,10 +2092,6 @@ def create_app() -> Flask:
                 deep=request.args.get("deep") in {"1", "true", "on"},
             ),
         )
-
-    @app.route("/lib")
-    def lib_page():
-        return render_template("lib.html", **_lib_context(request.args.get("q", "").strip()))
 
     @app.route("/pms")
     def pms_page():
