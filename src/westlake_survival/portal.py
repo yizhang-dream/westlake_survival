@@ -1,11 +1,19 @@
 """门户个人卡片：未读邮件 / 在借图书 / 待办计数 / AI 助手入口。
 
-数据通道（2026-10-24 实测）
+数据通道（2026-10-24 实测，2026-10-28 修订）
 ==========================
-my 门户首页的个人卡片数值（未读邮件、在借图书、我的待办 0/2/1）是前端
+my 门户首页的个人卡片数值（未读邮件、在借图书、我的待办）是前端
 渲染产物，``GeRenKaPianController`` 系列接口返回的是标签配置而非数值。
 可靠做法：复用 taskcenter 持久化浏览器会话打开门户，直接从渲染后的
 DOM 抽取数值——所见即所得，不怕接口换形态。
+
+DOM 结构（2026-10-28 实测，修复未读邮件恒为邻卡数值的错位 bug）：
+- 个人四卡（今日日程/未读邮件/在借图书/一卡通余额）在
+  ``.carditembox`` 里，每个数值两个 ``p``（真值/脱敏 ``**`` 各一，
+  靠 inline ``display`` 切换），且**数值行在标签行之前**；一卡通余额
+  默认脱敏显示 ``**``。
+- 我的待办三行（待办理/已发起/已处理）才是标签在前、数值在后。
+直连 ``GeRenKaPianController`` 接口不带上下文时 tags 为空，走 DOM。
 
 AI 助手：``mainPortal/getAiChatbotLink`` 返回 chatbot.westlake.edu.cn
 的聊天直链。
@@ -64,25 +72,64 @@ def _ensure_portal(page, sid: str, password: str) -> None:
         raise AuthError("门户登录失败（统一密码可能不对）")
 
 
+def _card_dom(page) -> dict[str, str]:
+    """结构化抽取个人四卡：``.carditembox`` 内可见数值 + ``p[title]`` 标签。"""
+    try:
+        page.wait_for_selector(".carditembox p[title]", timeout=15000)
+    except Exception:
+        pass  # 卡片区加载慢或缺席时退回行文本解析
+    try:
+        pairs = page.evaluate(
+            """() => {
+                const out = {};
+                for (const box of document.querySelectorAll('.carditembox')) {
+                    const label = box.querySelector('p[title]')?.getAttribute('title') || '';
+                    for (const p of box.querySelectorAll('p')) {
+                        if (p.className.includes('reportCount') && p.style.display !== 'none') {
+                            out[label] = p.textContent.trim();
+                        }
+                    }
+                }
+                return out;
+            }"""
+        )
+        return {str(k): str(v) for k, v in pairs.items()}
+    except Exception:
+        return {}
+
+
 def fetch_cards() -> PortalCards:
-    """取门户个人卡片数值（渲染后 DOM 抽取）。"""
+    """取门户个人卡片数值（结构化 DOM 优先，行文本兜底）。
+
+    个人四卡 DOM 顺序是「数值在前、标签在后」（一卡通余额脱敏显示
+    ``**``）；待办三行才是「标签在前、数值在后」。旧版对四卡也按
+    「标签后取值」解析，抓到的是下一张卡的数字（未读邮件显示 0
+    实为在借图书的 0，2026-10-28 修复）。
+    """
     cm, context, page, sid, password = _logged_in_page()
     try:
         _ensure_portal(page, sid, password)
+        dom = _card_dom(page)
         text = page.inner_text("body")
         lines = [line.strip() for line in text.split("\n") if line.strip()]
 
-        def value_after(label: str, offset: int = 1) -> str:
+        def value_after(label: str) -> str:
             for index, line in enumerate(lines):
-                if line == label and index + offset < len(lines):
-                    candidate = lines[index + offset]
-                    if re.fullmatch(r"[\d,.*]+", candidate):
-                        return candidate
+                if line == label and index + 1 < len(lines) \
+                        and re.fullmatch(r"\d[\d,]*(?:\.\d+)?", lines[index + 1]):
+                    return lines[index + 1]
+            return ""
+
+        def value_before(label: str) -> str:
+            for index, line in enumerate(lines):
+                if line == label and index > 0 \
+                        and re.fullmatch(r"\d[\d,]*(?:\.\d+)?", lines[index - 1]):
+                    return lines[index - 1]
             return ""
 
         return PortalCards(
-            unread_email=value_after("未读邮件"),
-            borrowed_books=value_after("在借图书"),
+            unread_email=dom.get("未读邮件") or value_before("未读邮件"),
+            borrowed_books=dom.get("在借图书") or value_before("在借图书"),
             todo_pending=value_after("待办理"),
             todo_started=value_after("已发起"),
             todo_done=value_after("已处理"),
