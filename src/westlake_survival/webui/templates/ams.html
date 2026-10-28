@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}教学 · 西湖生存手册{% endblock %}
+{% block content %}
+<h1 class="page">教学系统</h1>
+
+{% if error %}
+<div class="note">教学系统取数失败：{{ error }}（统一认证 + 校园网/VPN；先在「设置」页配好账号）</div>
+{% else %}
+
+<div class="stats">
+  <div class="stat"><div class="label">学期</div><div class="value" style="font-size:1.05rem">{{ overview.semester or '—' }}</div></div>
+  <div class="stat"><div class="label">教学周</div><div class="value">{{ overview.week or '—' }}<small> 周</small></div></div>
+  <div class="stat"><div class="label">今日课程</div><div class="value">{{ today | length }}<small> 节</small></div></div>
+  <div class="stat"><div class="label">本周课程</div><div class="value">{{ week | length }}<small> 节</small></div></div>
+</div>
+
+<section id="ams-today" class="reveal">
+<h2 class="section">今天</h2>
+{% if today %}
+<table class="data">
+  <thead><tr><th>时间</th><th>课程</th><th>地点</th></tr></thead>
+  <tbody>{% for r in today %}<tr>
+    <td class="time">{{ r.start }}–{{ r.end }}</td><td>{{ r.title }}</td><td>{{ r.address or '—' }}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<div class="callout mute"><span>今天没有课。</span></div>
+{% endif %}
+</section>
+
+<section id="ams-week" class="reveal">
+<h2 class="section">本周</h2>
+{% if week %}
+<table class="data">
+  <thead><tr><th>日期</th><th>时间</th><th>课程</th><th>地点</th></tr></thead>
+  <tbody>{% for r in week %}<tr>
+    <td>{{ r.date }}</td><td class="time">{{ r.start }}–{{ r.end }}</td>
+    <td>{{ r.title }}</td><td>{{ r.address or '—' }}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<div class="callout mute"><span>本周没有排课。</span></div>
+{% endif %}
+</section>
+
+<section id="ams-menus" class="reveal">
+<h2 class="section">服务入口</h2>
+{% if menus %}
+<table class="data">
+  <thead><tr><th>编号</th><th>服务</th><th>打开</th></tr></thead>
+  <tbody>{% for m in menus %}<tr>
+    <td>{{ m.code }}</td><td>{{ m.name }}</td>
+    <td><a href="{{ m.href }}" target="_blank" rel="noopener">进入 →</a></td>
+  </tr>{% endfor %}</tbody>
+</table>
+<div class="callout mute" style="margin-top:.6rem"><span>学籍信息、学生选择导师、选课、我的课表都在教学系统里；本页只读，写操作请进系统操作。</span></div>
+{% else %}
+<div class="callout mute"><span>没有可跳转的服务入口。</span></div>
+{% endif %}
+</section>
+
+<section id="ams-notices" class="reveal">
+<h2 class="section">通知</h2>
+{% if notices %}
+<table class="data">
+  <thead><tr><th>时间</th><th>状态</th><th>标题</th></tr></thead>
+  <tbody>{% for n in notices %}<tr>
+    <td class="time">{{ n.date or '—' }}</td>
+    <td>{% if n.unread %}<span class="chip warn">未读</span>{% else %}<span class="chip plain">已读</span>{% endif %}</td>
+    <td>{% if n.url %}<a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.title }}</a>{% else %}{{ n.title }}{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<div class="callout mute"><span>暂无通知。</span></div>
+{% endif %}
+</section>
+
+{% endif %}
+{% endblock %}
