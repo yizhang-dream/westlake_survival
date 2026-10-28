@@ -1,0 +1,214 @@
+"""环境自检：解释器 / 包 / 命令 / 可选依赖 / 凭据 / 网络，缺什么给一条能直接抄的修复命令。
+
+用途
+====
+Agent 拿到本 skill 的第一件事是 ``westlake doctor``：全绿就直接干活；有 MISSING
+就照「修复」列的原文执行，不用去读 README 猜。人也可以跑，输出是给人看的。
+
+判定口径
+========
+* 只报「有 / 无」与路径，**绝不回显学号、密码、令牌**；
+* ``missing`` = 缺了就干不了对应的事；``warn`` = 能降级但值得知道；
+* 退出码：有任何 ``missing`` 返回 1，否则 0（便于脚本/Agent 判断）。
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import os
+import shutil
+import sys
+from dataclasses import asdict, dataclass, field
+
+__all__ = ["Check", "run_checks", "as_dict", "has_missing"]
+
+
+@dataclass
+class Check:
+    """一项检查结果。``status`` 取 ok / warn / missing。"""
+
+    key: str
+    name: str
+    status: str
+    detail: str
+    fix: str = ""
+
+
+#: 可选依赖 → （展示名，装它的命令，缺了会影响什么）。
+_OPTIONAL = (
+    (
+        "flask",
+        "Web 界面（webui）",
+        "在仓库目录运行：pip install -e '.[webui]'",
+        "起不了网页（`westlake` 默认就是开网页）",
+    ),
+    (
+        "keyring",
+        "钥匙串（secure）",
+        "在仓库目录运行：pip install -e '.[secure]'",
+        "凭据退回明文文件存，能用但不加密",
+    ),
+    (
+        "playwright",
+        "分享讲义（share）",
+        "pip install playwright 然后 playwright install chromium",
+        "`westlake share` 读不了 OneDrive/SharePoint 分享",
+    ),
+)
+
+#: 公开站点：判断「这台机器能不能直连校园网之外的世界」。
+_PUBLIC_PROBE = "https://www.westlake.edu.cn/"
+
+
+def _spec(name: str) -> bool:
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def _check_python() -> Check:
+    ok = sys.version_info >= (3, 10)
+    version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    return Check(
+        key="python",
+        name="解释器",
+        status="ok" if ok else "missing",
+        detail=f"Python {version} @ {sys.executable}",
+        fix="" if ok else "装 Python 3.10+，再在仓库目录 pip install -e '.[webui]'",
+    )
+
+
+def _check_package() -> Check:
+    from westlake_survival._version import __version__
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return Check(
+        key="package",
+        name="包本体",
+        status="ok",
+        detail=f"westlake_survival {__version__}（{root}）",
+    )
+
+
+def _check_command() -> Check:
+    """``westlake`` 是否在 PATH 上，以及它是否指向当前这个解释器。
+
+    两个环境各装一份是最常见的「明明装了却用不了」：命令跑的是 A 环境，
+    Agent 用 B 环境的 ``python`` 写脚本，两边看到的包与凭据都不一样。
+    """
+    exe = shutil.which("westlake")
+    if not exe:
+        return Check(
+            key="command",
+            name="命令 westlake",
+            status="warn",
+            detail="不在 PATH 上；可用 python -m westlake_survival 等效调用",
+            fix="在仓库目录 pip install -e '.[webui]'（或把 Scripts/bin 目录加进 PATH）",
+        )
+    same = os.path.normcase(os.path.dirname(os.path.abspath(exe))) == os.path.normcase(
+        os.path.dirname(os.path.abspath(sys.executable))
+    )
+    if same:
+        return Check(key="command", name="命令 westlake", status="ok", detail=exe)
+    return Check(
+        key="command",
+        name="命令 westlake",
+        status="warn",
+        detail=f"{exe}（与当前解释器 {sys.executable} 不是同一个环境）",
+        fix="统一解释器：用 python -m westlake_survival 调用，或把包装进同一个环境",
+    )
+
+
+def _check_optionals() -> list[Check]:
+    checks: list[Check] = []
+    for module, name, fix, impact in _OPTIONAL:
+        present = _spec(module)
+        checks.append(
+            Check(
+                key=module,
+                name=name,
+                status="ok" if present else "missing",
+                detail="已安装" if present else f"缺 {module}：{impact}",
+                fix="" if present else fix,
+            )
+        )
+    return checks
+
+
+def _check_credentials() -> Check:
+    try:
+        from westlake_survival.sso import read_credentials
+
+        read_credentials()
+        detail = "已配置（来源有，不回显）"
+        status = "ok"
+        fix = ""
+    except Exception:
+        detail = "未配置：课表/成绩/作业/图书馆这些要登录的功能用不了，公开功能照常"
+        status = "warn"
+        fix = "由本人在网页「设置」页填一次：运行 `westlake`（或双击 start.bat）；Agent 不得代填"
+    return Check(key="credentials", name="校园账号", status=status, detail=detail, fix=fix)
+
+
+def _check_canvas_token() -> Check:
+    from westlake_survival.canvas.client import TOKEN_ENV_VAR
+
+    env = bool(os.environ.get(TOKEN_ENV_VAR))
+    return Check(
+        key="canvas_token",
+        name="Canvas 令牌（选填）",
+        status="ok",
+        detail="有环境变量令牌" if env else "无独立令牌，走统一密码（IAM CAS 会话）",
+    )
+
+
+def _check_network() -> Check:
+    """直连探一次公开站点：排除代理劫持与「根本连不上网」。"""
+    import requests
+
+    session = requests.Session()
+    session.trust_env = False  # 全库默认直连，与业务口径一致
+    try:
+        resp = session.get(_PUBLIC_PROBE, timeout=5)
+        ok = resp.status_code < 500
+        return Check(
+            key="network",
+            name="网络（直连）",
+            status="ok" if ok else "warn",
+            detail=f"{_PUBLIC_PROBE} → HTTP {resp.status_code}",
+            fix="" if ok else "检查网络；校园内网服务还需校园网或 VPN",
+        )
+    except Exception as exc:  # noqa: BLE001 - 任何失败都只影响这一项
+        return Check(
+            key="network",
+            name="网络（直连）",
+            status="warn",
+            detail=f"{_PUBLIC_PROBE} 连不上（{exc.__class__.__name__}）",
+            fix="先确认能上网；校外访问教务/Canvas 要连 VPN（`westlake vpn status`）",
+        )
+
+
+def run_checks(*, network: bool = True) -> list[Check]:
+    """跑全部检查。``network=False`` 时跳过联网探测（离线/脚本用）。"""
+    checks = [_check_python(), _check_package(), _check_command()]
+    checks.extend(_check_optionals())
+    checks.append(_check_credentials())
+    checks.append(_check_canvas_token())
+    if network:
+        checks.append(_check_network())
+    return checks
+
+
+def has_missing(checks: list[Check]) -> bool:
+    return any(c.status == "missing" for c in checks)
+
+
+def as_dict(checks: list[Check]) -> dict:
+    """结构化输出（给 Agent / 脚本）：不返回任何凭据内容。"""
+    return {
+        "ok": not has_missing(checks),
+        "missing": [c.key for c in checks if c.status == "missing"],
+        "warn": [c.key for c in checks if c.status == "warn"],
+        "checks": [asdict(c) for c in checks],
+    }

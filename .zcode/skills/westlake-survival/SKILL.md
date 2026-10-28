@@ -7,11 +7,21 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 
 把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：本技能以查询与导出为主；写操作仅限五条，且都必须凭用户当轮明确指令执行——`canvas submit` 交作业、`canvas reply` 讨论回帖、`canvas send` 回私信、`booking book` 预约场地、`booking cancel` 取消预约（见下）；不做选课、抢课等其他写操作。
 
+## 环境自检（Agent 接手第一步）
+
+先跑 `westlake doctor`（命令不在 PATH 就用 `python -m westlake_survival doctor`，`--json` 便于判断）。它检查解释器版本、包本体、命令与解释器是否同一个环境、可选依赖（flask / keyring / playwright）、账号有无、直连网络，每一项缺失都给一条可直接抄的修复命令；全绿再干活，退出码 0=可用、1=有缺失。
+
+- **缺什么就装什么**，命令都写在输出的「修复」列里，通常是 `pip install -e '.[webui]'` / `'.[secure]'` / `playwright install chromium`。这些只装 Python 依赖，不碰系统凭据，可以直接执行。
+- **解释器必须一致**：`westlake` 命令、`python -m westlake_survival`、以及你自己写的 Python 脚本要用同一个解释器，否则「明明装了却 import 不到」。doctor 报「不是同一个环境」时，改用 `python -m westlake_survival` 调用即可对齐。
+- **账号不由 Agent 填**：doctor 报「校园账号 未配置」时，请用户本人跑 `westlake`（或双击 `start.bat`）在网页「设置」页填一次；不要索取、不要代填、不要写凭据文件。做隔离测试用临时 `WESTLAKE_HOME` + `WESTLAKE_NO_KEYRING=1`。
+- **网络**：库层默认直连（无视 `HTTP_PROXY/HTTPS_PROXY`）；校外访问教务/Canvas 需 VPN，先 `westlake vpn status` 看状态。
+
 ## 能力地图：哪类问题用哪条命令
 
 | 用户想问 | 命令 |
-| **不知道这需求归哪条命令 / 这 skill 能干什么** | **`westlake find <需求关键词>`**（搜 CLI/MCP/网页/学术库/服务注册表，口语可命中） |
 | --- | --- |
+| **环境不对 / 装了却用不了 / 缺依赖** | **`westlake doctor`**（解释器、依赖、账号、网络逐项体检 + 修复命令） |
+| **不知道这需求归哪条命令 / 这 skill 能干什么** | **`westlake find <需求关键词>`**（搜 CLI/MCP/网页/学术库/服务注册表，口语可命中） |
 | 今天几号 / 第几周 / 什么学期 / 今日校历 | `westlake calendar today` |
 | 本学期第 N 周的起止日期 | `westlake calendar week <N>` |
 | 校历事件（开学、假期、考试周） | `westlake calendar events` |

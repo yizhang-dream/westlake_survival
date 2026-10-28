@@ -19,6 +19,7 @@ API（多数 I/O 子命令都要能被离线测试，故模块在函数体内惰
 from __future__ import annotations
 
 import functools
+import json
 import os
 from datetime import date
 from pathlib import Path
@@ -1817,6 +1818,35 @@ def go_cmd(port: int, no_browser: bool) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# doctor —— 环境自检（Agent 拿到 skill 的第一步）
+# --------------------------------------------------------------------------- #
+@click.command(name="doctor", help="环境自检：解释器/依赖/凭据/网络，缺什么给修复命令。")
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON（给 Agent / 脚本）。")
+@click.option("--offline", is_flag=True, help="跳过联网探测。")
+def doctor_cmd(as_json: bool, offline: bool) -> None:
+    """全绿就干活；有 ✘ 就照「修复」列抄，不用读 README 猜。"""
+    from westlake_survival import doctor
+
+    checks = doctor.run_checks(network=not offline)
+    if as_json:
+        click.echo(json.dumps(doctor.as_dict(checks), ensure_ascii=False, indent=2))
+    else:
+        marks = {"ok": "✔", "warn": "!", "missing": "✘"}
+        click.echo("环境自检（westlake doctor）")
+        for item in checks:
+            click.echo(f"  {marks.get(item.status, '?')} {item.name}：{item.detail}")
+            if item.fix:
+                click.echo(f"      修复：{item.fix}")
+        missing = [item for item in checks if item.status == "missing"]
+        click.echo("")
+        if missing:
+            click.echo(f"结论：{len(missing)} 项缺失，按上面的「修复」逐条执行后重跑本命令。")
+        else:
+            click.echo("结论：环境可用。需要账号的功能，去网页「设置」页填一次即可。")
+    raise SystemExit(1 if doctor.has_missing(checks) else 0)
+
+
+# --------------------------------------------------------------------------- #
 # 运行时自发现：westlake find <需求关键词>
 # --------------------------------------------------------------------------- #
 @click.command(name="find", help="按需求找能力：搜 CLI / MCP / 网页 / 学术库 / 服务注册表。")
@@ -1906,6 +1936,7 @@ def _first_run_configured() -> bool:
 
 for _group in (
     go_cmd,
+    doctor_cmd,
     find_cmd,
     setup_cmd,
     sso_cmd,
