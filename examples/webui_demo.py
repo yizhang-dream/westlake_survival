@@ -4,7 +4,7 @@
     在本地起一个 Flask 服务，用浏览器查看课表 / 班车 / Canvas 截止 / 每日快照。
 
 前置条件
-    - 已装 webui 依赖：``pip install -e ".[webui]"``。
+    - 已装本包：``pip install -e .``（Flask 是基础依赖，无需 ``[webui]`` extra）。
     - 数据源凭据按需配置（Canvas / SIS 相关页面需要）。
 
 运行::
@@ -39,7 +39,7 @@ def main() -> int:
         return 0
     except Exception as exc:  # 兜底：依赖缺失 / 端口占用
         print(f"启动 Web UI 失败：{exc.__class__.__name__}: {exc}", file=sys.stderr)
-        print('提示：请先安装 webui 依赖——pip install -e ".[webui]"', file=sys.stderr)
+        print('提示：请先装本包——pip install -e .（Flask 已随基础依赖安装）', file=sys.stderr)
         return 1
     return 0
 

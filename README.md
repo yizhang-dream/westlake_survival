@@ -9,17 +9,19 @@
 终端里等价的做法（启动的第一件事就是打开这个网页）：
 
 ```bash
-pip install -e '.[webui]'   # 开发/跑测试再装 '.[test]'
+pip install -e .            # Flask 已是基础依赖，装完即有前端；开发/跑测试再装 '.[test]'
 westlake                    # 起网页并打开浏览器；首次直达「设置」，之后直达仪表盘
 westlake --help
 westlake calendar today     # 公开功能无需账号
 ```
 
+端口上已经有本网页在跑时（比如双击了两次 `start.bat`），`westlake` 不再起第二个服务，直接把浏览器指过去。
+
 脚本或自动化里不想被浏览器打断，用 `westlake --help` 或设 `WESTLAKE_NO_WEBUI=1`。启动行为与首次配置的完整契约见 [docs/first_run.md](docs/first_run.md)。
 
 环境不对（装了却用不了、缺依赖、命令和解释器不是同一个环境）先跑 `westlake doctor`：逐项体检解释器/依赖/账号/网络，缺什么给一条能直接抄的修复命令，`--json` 给 Agent 判断；有缺失时退出码 1。见 [docs/doctor.md](docs/doctor.md)。
 
-[使用技能](.zcode/skills/westlake-survival/SKILL.md)（ZCode 项目级技能，须放在 `.zcode/skills/` 才会被发现）与 examples/ 提供操作入口；[打印接口](src/westlake_survival/pms/api_notes.md)保留特定限制。Web 功能需 `[webui]` 额外依赖（上面快速开始已包含；`/capabilities` 一页列出 CLI+MCP+WebUI 全部能力，`/api/capabilities` 给 JSON），钥匙串需 `[secure]`。服务与数据范围：sso/sis 身份教务（课表/成绩/考试/评教/第二课堂成绩单/学业导师），ams 教学系统（课表/教学周次/学籍与选课入口，IAM 统一认证），canvas 课程与作业（含作业详情/题目附件/评分细则/课程文件下载/讨论区与公告/收件箱，以及提交作业、回帖、回私信三类写操作），lib/pms 借阅打印（图书馆 2026-10-28 系统迁移到「阿法迪云 eLibrary」，`lib` 暂不可用：WebUI 该页已下线，CLI 会直接说明现状，见 [docs/library_migration_2026-10-28.md](docs/library_migration_2026-10-28.md)），booking 预约中心（17 类场地：自习室/研讨室/琴房/活动用房等，分类与资源、逐日可约状态、逐格空闲校验、我的预约，以及预约/取消两类写操作；体育场馆与图书馆座位是另外的系统，对照见 [docs/module_audit_2026-10-27.md](docs/module_audit_2026-10-27.md)），sport 体育场馆/游泳（独立正元系统 sportvenue，只读：场景/场地/逐日可约/我的预约），one/my 任务中心（待办/进行中/已处理/抄送/应用）与门户服务目录（`affairs portal` 2026-10-27 实测服务端接口疑似变化、暂报错），portal 门户个人卡片（未读邮件/在借图书/待办计数）与 AI 助手入口，scholar 学术资源（订阅数据库注册表、CARSI 联盟 SSO、校园 IP 信标、DOI→PDF 全文获取），program 本科培养方案（主站专业页：学分要求+课程表；通识课程目录；招生网：培养理念/课程体系），transit/calendar/ical/context 班车日历和快照，map 校区地图/全景/到校交通（全公开），share OneDrive/SharePoint 分享讲义（链接为「组织内任何人可查看」时免账号，需 `playwright` 与 `playwright install chromium`）。
+[使用技能](.zcode/skills/westlake-survival/SKILL.md)（ZCode 项目级技能，须放在 `.zcode/skills/` 才会被发现）与 examples/ 提供操作入口；[打印接口](src/westlake_survival/pms/api_notes.md)保留特定限制。Web 界面随基础依赖装好（Flask 必需，`[webui]` extra 只为旧命令兼容保留；`/capabilities` 一页列出 CLI+MCP+WebUI 全部能力，`/api/capabilities` 给 JSON），钥匙串需 `[secure]`。服务与数据范围：sso/sis 身份教务（课表/成绩/考试/评教/第二课堂成绩单/学业导师），ams 教学系统（课表/教学周次/学籍与选课入口，IAM 统一认证），canvas 课程与作业（含作业详情/题目附件/评分细则/课程文件下载/讨论区与公告/收件箱，以及提交作业、回帖、回私信三类写操作），lib/pms 借阅打印（图书馆 2026-10-28 系统迁移到「阿法迪云 eLibrary」，`lib` 暂不可用：WebUI 该页已下线，CLI 会直接说明现状，见 [docs/library_migration_2026-10-28.md](docs/library_migration_2026-10-28.md)），booking 预约中心（17 类场地：自习室/研讨室/琴房/活动用房等，分类与资源、逐日可约状态、逐格空闲校验、我的预约，以及预约/取消两类写操作；体育场馆与图书馆座位是另外的系统，对照见 [docs/module_audit_2026-10-27.md](docs/module_audit_2026-10-27.md)），sport 体育场馆/游泳（独立正元系统 sportvenue，只读：场景/场地/逐日可约/我的预约），one/my 任务中心（待办/进行中/已处理/抄送/应用）与门户服务目录（`affairs portal` 2026-10-27 实测服务端接口疑似变化、暂报错），portal 门户个人卡片（未读邮件/在借图书/待办计数）与 AI 助手入口，scholar 学术资源（订阅数据库注册表、CARSI 联盟 SSO、校园 IP 信标、DOI→PDF 全文获取），program 本科培养方案（主站专业页：学分要求+课程表；通识课程目录；招生网：培养理念/课程体系），transit/calendar/ical/context 班车日历和快照，map 校区地图/全景/到校交通（全公开），share OneDrive/SharePoint 分享讲义（链接为「组织内任何人可查看」时免账号，需 `playwright` 与 `playwright install chromium`）。
 
 SIS 与 Canvas 均可用统一身份认证密码（Canvas 也兼容令牌，网页「设置」可另存或清除令牌），需校园网/VPN；统一密码登录用 RSA 加密，`cryptography` 已列入基础依赖。授权与凭据见 [AGENTS](AGENTS.md)。凭据是本机状态（内存 / 环境变量 / 钥匙串 / 配置文件），不跨机器或系统用户同步。`westlake sso creds status` 只查来源。src/test 的 pytest 默认排除 live；在线状态以实际服务为准。端到端冒烟（不属 pytest）：`python tools/module_smoke.py [模块…] [--json out.json]` 把全部只读 CLI 命令真跑一遍出体检表（OK/EMPTY/AUTH/FAIL/MISSING），`python tools/webui_smoke.py [--verbose]` 进程内起真实 Flask 服务逐页 GET 断言 200（有失败则退出码 1）。
 

@@ -13,6 +13,8 @@
 | 直接访问 `/` 且未配置 | 302 到 `/setup` |
 | 只想看公开功能 | `/setup` 上的「先看看公开功能」→ `/?skip=1`（校历/班车/新闻/地图都不需要账号） |
 | 双击启动 | `start.bat`（Windows）/ `start.command`（macOS）：找 Python → 缺依赖就 `pip install -e '.[webui]'` → 起服务 |
+| 终端装完即用 | `pip install -e .` 之后直接 `westlake`：Flask 自 2026-10-28 起是**基础依赖**，装完就有前端，不再需要 `[webui]` extra |
+| 重复启动 | 同一端口已有本网页在跑 → 不再起第二个服务，直接把浏览器指过去（`westlake go` 打印「已在运行」） |
 | 脚本 / 自动化 | `westlake --help`，或设 `WESTLAKE_NO_WEBUI=1` 让裸命令只打印帮助 |
 
 保存后：页面当场给出每个服务的结果，并区分「已验证并保存 / 未验证已保存」，
@@ -22,8 +24,10 @@
 ## 实现位置
 
 - `src/westlake_survival/cli/main.py`：`cli()` 裸命令 → `go_cmd`；`_webui_entry_url()`
-  按「有没有凭据」决定落地页；缺 Flask 的报错改成「在仓库目录 `pip install -e '.[webui]'`」
-  （本包未发布到 PyPI，旧文案指向一个不存在的包）。
+  按「有没有凭据」决定落地页；`_webui_probe_url()` 用 `/setup` 做就绪探针（仪表盘
+  要现拉数据，实测冷启动 18 秒，拿它当探针会让浏览器白等）；`_webui_already_running()`
+  按页面品牌串认出已在跑的实例；缺 Flask 的报错给出 `pip install -e .` / `pip install flask`。
+- `pyproject.toml`：Flask 进基础依赖（`[webui]` extra 保留只为旧命令照常工作）。
 - `src/westlake_survival/webui/app.py`：`/` 未配置时 `redirect(url_for("setup_page"))`，
   `?skip=1` 放行。
 - `templates/setup.html`：未配置时显示「第 1 步」引导 + 跳过链接；保存后给「进首页」按钮。
@@ -41,6 +45,10 @@
 | 已配置机器 | `westlake go --no-browser --port 2402` | 日志给出 `.../`；`GET /` → 200（不跳转）；`/setup` 200 |
 | 双击脚本 | `WESTLAKE_NO_WEBUI=1 cmd /c start.bat`（正常 Windows PATH） | 跳过安装、进入应用；PATH 里只有 msys Python 时给出「no pip」提示；PATH 无 Python 时给出安装指引 |
 | 全站页面 | `python tools/webui_smoke.py` | `{"pages": 32, "failed": []}` |
+| 装完即用（2026-10-28 复核） | `pip install -e .` → `python -c "importlib.metadata.requires(...)"` | 依赖表含 `flask>=3.0`（基础依赖），无需 `[webui]` |
+| 首次启动复核 | `WESTLAKE_HOME=/tmp/wl-firstrun WESTLAKE_NO_KEYRING=1 westlake go --no-browser --port 2401` | 日志 `Web 界面：http://127.0.0.1:2401/setup`；`GET /` → 302 → `/setup`；`/setup` 200 含「第 1 步」；`/?skip=1` 200 |
+| 重复启动 | 2018 上已有实例时再跑 `westlake go --no-browser --port 2018` | 0.7s 打印「已在运行：…/」并以 0 退出，不起第二个服务 |
+| 已配置机器 | `GET http://127.0.0.1:2018/` / `/setup` | 200 / 200（首页冷启动约 18s，故探针改用 `/setup`） |
 
 ## 已知
 

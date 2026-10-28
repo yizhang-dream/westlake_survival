@@ -30,6 +30,9 @@ def _install_fake_keyring(
     monkeypatch.setattr(creds_mod, "keyring_available", lambda: available, raising=False)
     monkeypatch.setattr(creds_mod, "save_credentials_keyring", write, raising=False)
     monkeypatch.setattr(creds_mod, "read_credentials_keyring", read, raising=False)
+    # 夹具把配置根放在临时目录，默认按沙箱处理（不碰钥匙串）；这些用例要验证
+    # 钥匙串分支本身，故显式放开——写入的是上面的假实现，不接触真实后端。
+    monkeypatch.setattr(creds_mod, "keyring_isolated", lambda: False, raising=False)
     return box
 
 

@@ -5,7 +5,9 @@
 
 系统钥匙串（Windows Credential Manager、macOS Keychain、Linux Secret Service
 等）通过可选的第三方 ``keyring`` 库访问。未安装 ``keyring`` 时本模块行为与
-此前完全一致（钥匙串一级整体跳过）。
+此前完全一致（钥匙串一级整体跳过）。设 ``WESTLAKE_NO_KEYRING=1`` 或把
+``WESTLAKE_HOME`` 指向别处（沙箱/试跑）时钥匙串读写一起跳过，见
+:func:`keyring_isolated`。
 """
 
 from __future__ import annotations
@@ -34,7 +36,8 @@ KEYRING_SID_KEY = "__westlake__"
 _MEMORY: dict[str, str] = {}
 
 _GUIDE = (
-    "未找到可用凭据。请任选一种方式提供（优先级从高到低）：\n"
+    "未找到可用凭据。最快的方式：运行 `westlake`（不带参数）打开网页「设置」页填一次。\n"
+    "也可以按下面任选一种（优先级从高到低）：\n"
     "  1) 进程内：westlake_survival.sso.cred_set(sid, password)\n"
     f"  2) 环境变量：export {ENV_VAR}='学号:密码'\n"
     "  3) 系统钥匙串：westlake_survival.sso.save_credentials_keyring(sid, password)\n"
@@ -69,6 +72,23 @@ def cred_clear() -> None:
 # 存密码外，另存一条保留项 ``(KEYRING_SERVICE, KEYRING_SID_KEY) -> sid`` 作为
 # 指针，读取时先取指针再取密码。``keyring`` 是可选依赖：所有函数都惰性导入，
 # 任何导入/调用异常一律按「不可用」处理，绝不向调用方抛出。
+
+
+def keyring_isolated() -> bool:
+    """系统钥匙串是否隔离：隔离时读不读、写不写本机真实凭据。
+
+    两种情形都算隔离：
+
+    * ``WESTLAKE_NO_KEYRING=1``：显式关闭（测试、自动化）；
+    * ``WESTLAKE_HOME`` 被重定向：配置根不在默认位置，说明这是沙箱/试跑目录。
+      钥匙串条目是**整机一份、不随 ``WESTLAKE_HOME`` 走**，所以从临时目录
+      写进去会污染真实登录——2026-10-28 实测：一条单测用临时 home 写入假账号
+      ``20210000`` 后，真实登录先读到假凭据，长期报「密码错误」，且状态页
+      还显示「钥匙串里有凭据」。隔离是唯一可靠的做法。
+    """
+    if os.environ.get("WESTLAKE_NO_KEYRING"):
+        return True
+    return os.environ.get("WESTLAKE_HOME") is not None
 
 
 def keyring_available() -> bool:
@@ -183,8 +203,9 @@ def read_credentials() -> tuple[str, str]:
     if env and env.strip():
         return _parse(env, f"环境变量 {ENV_VAR}")
 
-    if os.environ.get("WESTLAKE_NO_KEYRING"):
-        # 测试/自动化隔离：完全无视系统钥匙串（读也不读），保证用例与真实凭据互不可见。
+    if keyring_isolated():
+        # 隔离模式（测试/自动化/临时配置目录）：完全无视系统钥匙串，
+        # 保证沙箱里的读写与真实凭据互不可见。
         keyring_creds = None
     else:
         keyring_creds = read_credentials_keyring()
@@ -234,23 +255,21 @@ def persist_credentials(sid: str, password: str, *, use_keyring: bool = True) ->
     根治办法不是加比对告警，而是不允许两份同时存在。
 
     - 写钥匙串成功：删除 ``credentials.txt``（钥匙串加密存储，优先用）。
-    - 只能用文件（keyring 不可用 / ``WESTLAKE_NO_KEYRING=1`` 隔离）：只写文件，
-      **不碰系统钥匙串**（测试与自动化不得改动真实凭据，这是既定铁律）。
+    - 隔离模式（``WESTLAKE_NO_KEYRING=1`` 或 ``WESTLAKE_HOME`` 重定向）：只写
+      配置文件，**不碰系统钥匙串**。测试、自动化与临时目录试跑一律走这条。
 
     :returns: 存放位置描述。
     """
-    isolated = bool(os.environ.get("WESTLAKE_NO_KEYRING"))
-    # 只有真实配置目录 + 非隔离模式才允许改系统钥匙串；临时 WESTLAKE_HOME
-    # （测试、试跑）一律只写文件，绝不碰本机真实凭据。
-    real_home = os.environ.get("WESTLAKE_HOME") is None
+    isolated = keyring_isolated()
     if use_keyring and not isolated:
         if keyring_available() and save_credentials_keyring(sid, password):
             _delete_file_store()
             return "系统钥匙串"
     path = write_credentials(sid, password)
-    if not isolated and real_home:
+    if not isolated:
         # 切到明文文件时清掉钥匙串里的旧条目：否则读取仍以钥匙串为准，
-        # 「刚配好的凭据不生效」。
+        # 「刚配好的凭据不生效」。隔离模式下钥匙串里的是本机真实账号，
+        # 绝不能被沙箱里的这次写入删掉。
         delete_credentials_keyring()
     return str(path)
 
@@ -266,6 +285,7 @@ __all__ = [
     "persist_credentials",
     "cred_path",
     "keyring_available",
+    "keyring_isolated",
     "save_credentials_keyring",
     "read_credentials_keyring",
     "delete_credentials_keyring",
