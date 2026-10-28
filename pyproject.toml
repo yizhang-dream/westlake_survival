@@ -32,9 +32,13 @@ dependencies = [
     # 统一身份认证（IAM）用 RSA 加密密码；缺了它会退回 PeopleSoft 本地登录
     # 并显示成「用户名或密码错误」，新设备装完即不可用，故列为必需依赖。
     "cryptography>=42",
+    # 前端是默认入口（裸 `westlake`/双击脚本都直接开网页「设置」），
+    # 所以 Flask 也是必需依赖：装完即可用，不留「装了却打不开页面」的缺口。
+    "flask>=3.0",
 ]
 
 [project.optional-dependencies]
+# 兼容旧装法：Flask 已在必需依赖里，这里重复列出只为让 `pip install -e '.[webui]'` 照常工作。
 webui = ["flask>=3.0"]
 test = ["pytest>=8.0"]
 secure = ["keyring>=25"]
@@ -59,6 +63,7 @@ testpaths = ["src/test"]
 pythonpath = ["src"]
 markers = [
     "live: tests requiring campus network and/or a valid session (excluded by default)",
+    "e2e: 端到端用例（真实进程/真实链路），验证口径以它为准",
 ]
 addopts = "-m 'not live' --strict-markers"
 

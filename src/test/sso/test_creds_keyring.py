@@ -55,6 +55,9 @@ class FakeKeyring(types.ModuleType):
 def install_fake_keyring(monkeypatch, **kwargs) -> FakeKeyring:
     fake = FakeKeyring(**kwargs)
     monkeypatch.setitem(sys.modules, "keyring", fake)
+    # 用例的配置根都在临时目录（conftest 的 autouse 夹具），默认会被
+    # ``keyring_isolated()`` 判为沙箱而整体跳过；这里显式放开，才走得到钥匙串分支。
+    monkeypatch.setattr(creds, "keyring_isolated", lambda: False)
     return fake
 
 

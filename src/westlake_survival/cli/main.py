@@ -235,10 +235,11 @@ def _keyring_lookup(creds_mod) -> tuple[str, str] | None:
 def _keyring_state(creds_mod) -> tuple[bool, bool]:
     """返回 ``(keyring 中是否有凭据, keyring 是否可用)``。
 
-    ``WESTLAKE_NO_KEYRING`` 生效时读取路径完全不看钥匙串，这里也如实报「无」，
-    否则状态页会显示一个实际用不上的来源。
+    隔离模式（``WESTLAKE_NO_KEYRING=1`` 或 ``WESTLAKE_HOME`` 重定向）下读取路径
+    完全不看钥匙串，这里也如实报「无」，否则状态页会显示一个实际用不上的来源。
     """
-    if os.environ.get("WESTLAKE_NO_KEYRING"):
+    isolated = getattr(creds_mod, "keyring_isolated", None)
+    if isolated is not None and isolated():
         return False, False
     if not _keyring_available(creds_mod):
         return False, False
@@ -280,7 +281,13 @@ def sso_creds_set(
     else:
         click.secho(f"凭据已写入：{stored}", fg="green")
         if use_keyring is not False:
-            click.echo("提示：keyring 不可用或写入失败，已回退到明文文件（仍是唯一一份）。")
+            if os.environ.get("WESTLAKE_HOME"):
+                click.echo(
+                    "提示：WESTLAKE_HOME 已重定向（沙箱/试跑），只写配置文件，"
+                    "不碰本机真实钥匙串。"
+                )
+            else:
+                click.echo("提示：keyring 不可用或写入失败，已回退到明文文件（仍是唯一一份）。")
 
 
 @sso_creds.command(name="show")
@@ -342,6 +349,10 @@ def sso_creds_status() -> None:
     click.echo(f"  - 环境变量 {creds_mod.ENV_VAR}：{'有' if env_ok else '无'}")
     if os.environ.get("WESTLAKE_NO_KEYRING"):
         click.echo("  - keyring：已忽略（WESTLAKE_NO_KEYRING 生效，读写都不碰钥匙串）")
+    elif os.environ.get("WESTLAKE_HOME"):
+        click.echo(
+            "  - keyring：已忽略（WESTLAKE_HOME 指向非默认配置目录，沙箱内读写都不碰钥匙串）"
+        )
     elif keyring_available:
         click.echo(f"  - keyring：{'有' if keyring_ok else '无'}")
     else:
@@ -1893,7 +1904,7 @@ def cache_clear(module: str | None) -> None:
 # --------------------------------------------------------------------------- #
 # webui —— 本地 Web 界面
 # --------------------------------------------------------------------------- #
-@click.group(name="webui", help="本地 Web 界面（Flask，需 [webui] 可选依赖）。")
+@click.group(name="webui", help="本地 Web 界面（Flask，基础依赖随包安装）。")
 def webui_cmd() -> None:
     """本地 Web 界面命令。"""
 
@@ -1905,10 +1916,12 @@ def webui_serve(host: str, port: int) -> None:
     """启动本地 Web 界面（默认 http://127.0.0.1:2018/）。"""
     try:
         from westlake_survival.webui import run
-    except ImportError as exc:  # Flask 是可选依赖
+    except ImportError as exc:  # Flask 已是基础依赖，缺它说明装的是旧包或 --no-deps
         click.secho(
-            "错误：缺少 Web 界面依赖（Flask）。本包未发布到 PyPI，"
-            "请在仓库目录运行：pip install -e '.[webui]'",
+            "错误：缺少 Web 界面依赖（Flask）。从 2026.10.28 起它随基础依赖一起装，"
+            "缺了通常是旧包或用了 --no-deps。修复（任选一条）：\n"
+            "  pip install -e .          # 在仓库目录重装\n"
+            "  pip install flask         # 只补这一个依赖",
             fg="red",
             err=True,
         )
@@ -1926,6 +1939,27 @@ def _webui_entry_url(port: int) -> str:
     return f"http://127.0.0.1:{port}/{suffix}"
 
 
+def _webui_probe_url(port: int) -> str:
+    """就绪/存活探测用的轻量地址。
+
+    不用落地页 ``/``：仪表盘要现拉各服务数据（本机实测冷启动 18 秒），拿它当
+    探针会让「等服务就绪再开浏览器」白等十几秒。``/setup`` 是纯模板渲染（3ms）。
+    """
+    return f"http://127.0.0.1:{port}/setup"
+
+
+def _webui_already_running(port: int) -> bool:
+    """本机同一端口上是否已经有这个网页在跑（按页面里的品牌串认人）。"""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(_webui_probe_url(port), timeout=2) as resp:
+            body = resp.read(8192).decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001 - 连不上就是没在跑
+        return False
+    return "西湖生存手册" in body
+
+
 @click.command(name="go", help="一步启动：起 WebUI 并自动打开浏览器（用户入口）。")
 @click.option("--port", default=2018, show_default=True, help="本地端口。")
 @click.option("--no-browser", is_flag=True, help="只启动服务，不打开浏览器（Agent/无桌面环境用）。")
@@ -1934,13 +1968,24 @@ def go_cmd(port: int, no_browser: bool) -> None:
 
     浏览器落地页就是用户该去的地方：首次启动（本机还没有账号）直达「设置」
     页填一次学号密码，之后每次直达仪表盘。终端侧的 ``westlake setup`` 留给 Agent。
+
+    端口上已经有同一个网页在跑时（重复双击 start.bat 的常见情形）不再起第二个
+    服务，直接把浏览器指过去——否则第二个进程绑不上端口，浏览器只会开到死页。
     """
     import threading
     import webbrowser
 
     url = _webui_entry_url(port)
+    if _webui_already_running(port):
+        click.echo(f"西湖生存手册 · 已在运行：{url}")
+        if not no_browser:
+            click.echo("浏览器将打开这个地址；服务由已运行的实例提供。")
+            webbrowser.open(url)
+        return
     if not no_browser:
         # 服务就绪后再开浏览器：最多等 15 秒，避免直接命中连接失败页。
+        probe = _webui_probe_url(port)
+
         def _open_when_ready() -> None:
             import time
 
@@ -1949,7 +1994,7 @@ def go_cmd(port: int, no_browser: bool) -> None:
                 try:
                     import urllib.request
 
-                    with urllib.request.urlopen(url, timeout=1):
+                    with urllib.request.urlopen(probe, timeout=1):
                         pass
                     break
                 except Exception:

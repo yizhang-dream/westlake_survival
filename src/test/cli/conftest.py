@@ -22,8 +22,15 @@ def runner() -> CliRunner:
 
 @pytest.fixture
 def isolated_home(monkeypatch, tmp_path):
-    """把配置根目录重定位到临时目录，并清掉凭据/token 相关环境变量。"""
+    """把配置根目录重定位到临时目录，并清掉凭据/token 相关环境变量。
+
+    ``WESTLAKE_NO_KEYRING`` 一起钉住：本机真装着 keyring 时，用例若走到缺省
+    分支会把假账号写进**真实系统钥匙串**，之后真实登录先读到假凭据、长期报
+    「密码错误」（2026-10-28 踩过）。隔离后读写都不碰钥匙串；需要观察 keyring
+    分支的用例在自己那里显式放开（见 ``test_cli_creds_keyring`` 的打桩）。
+    """
     monkeypatch.setenv("WESTLAKE_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("WESTLAKE_NO_KEYRING", "1")
     monkeypatch.delenv("WESTLAKE_CREDENTIALS", raising=False)
     monkeypatch.delenv("WESTLAKE_CANVAS_TOKEN", raising=False)
     cred_clear()

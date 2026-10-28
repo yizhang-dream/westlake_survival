@@ -38,9 +38,9 @@ class Check:
 _OPTIONAL = (
     (
         "flask",
-        "Web 界面（webui）",
-        "在仓库目录运行：pip install -e '.[webui]'",
-        "起不了网页（`westlake` 默认就是开网页）",
+        "Web 界面（基础依赖）",
+        "在仓库目录运行：pip install -e .（缺它通常是旧包或 --no-deps 装的）",
+        "起不了网页（`westlake` 默认就是开网页「设置」）",
     ),
     (
         "keyring",
@@ -75,7 +75,7 @@ def _check_python() -> Check:
         name="解释器",
         status="ok" if ok else "missing",
         detail=f"Python {version} @ {sys.executable}",
-        fix="" if ok else "装 Python 3.10+，再在仓库目录 pip install -e '.[webui]'",
+        fix="" if ok else "装 Python 3.10+，再在仓库目录 pip install -e .",
     )
 
 
@@ -104,7 +104,7 @@ def _check_command() -> Check:
             name="命令 westlake",
             status="warn",
             detail="不在 PATH 上；可用 python -m westlake_survival 等效调用",
-            fix="在仓库目录 pip install -e '.[webui]'（或把 Scripts/bin 目录加进 PATH）",
+            fix="在仓库目录 pip install -e .（或把 Scripts/bin 目录加进 PATH）",
         )
     same = os.path.normcase(os.path.dirname(os.path.abspath(exe))) == os.path.normcase(
         os.path.dirname(os.path.abspath(sys.executable))
