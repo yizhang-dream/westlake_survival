@@ -76,7 +76,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 招聘岗位（网页） | WebUI `/careers` |
 | 打印网点 / 我的打印任务 | `westlake pms stations` / `jobs`，网页 `/pms` |
 | 场馆场景/当日可约/我的预约（网页） | 网页 `/sport`（体育场馆与游泳；独立系统） |
-| 图书馆书目 / 我的借阅 | `westlake lib search <关键词>` / `loans`，网页 `/lib`（OPAC 需校园网/VPN） |
+| 图书馆书目 / 我的借阅 | **暂不可用**（2026-10-28 系统迁移，见下方「图书馆」条）；`westlake lib search <关键词>` / `loans` 会直接说明现状，网页 `/lib` 同理 |
 | 我能预约哪些场地（分类） | `westlake booking types` |
 | 自习/研讨室有哪些、在哪层 | `westlake booking list --type 图书馆 [--keyword 研习仓]` |
 | 某房间哪天能约 | `westlake booking days "E12-302研讨室" --start 2026-10-27 --end 2026-11-02` |
@@ -133,7 +133,8 @@ Agent 侧：`westlake setup`（同一套验证与落盘，参数见 --help）。
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
-- **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `lib loans` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
+- **SIS 类**（`sis` / `sis-evals` / `profile` / `records` / `aid` / `pms jobs`）：需先 `westlake sso creds set` 写入学号密码，且**只在校园网/VPN 内可达**。
+- **图书馆（2026-10-28 系统迁移，暂不可用）**：老阿法迪 OPAC `/opac/*` 整体下线（连根都 404），学校换成「阿法迪云 eLibrary」（内网 `172.16.10.223:8180/page/login.jsp`，**平台自有账号**；公网别名 `opac.westlake.edu.cn` 只剩首页快照、不反代 `/page/`）。`westlake lib search|loans` 与网页 `/lib` 会直接说明现状并退出，**不再尝试已失效的 CAS 登录**（反复失败有锁号风险）。查书/借阅请让用户直接访问图书馆网站；接新平台需本人浏览器登录一次后重探接口，见 [docs/library_migration_2026-10-28.md](../../../docs/library_migration_2026-10-28.md)。
 - **预约中心（`booking`）**：同一套统一密码，登录走预约中心自己的 OIDC（`booking.westlake.edu.cn/sso/oauth2`，隐式流取 access_token），`iam.login_for` 一步到位，无需另配令牌。**看到分类先别高兴**：接口对「没权限的分类」不报错、只返回空列表，判断能不能约要看 `booking types`（首页可见卡片）。
 - **体育场馆/游泳（`sport`）**：独立正元系统 `sportvenue.westlake.edu.cn`，同一套统一密码走 IAM CAS（`client_id=tycgyy`），首次运行自动登录；每个请求带 `appId/nonce/timeStamp/sign` 签名（前端公开定值，非账号凭据）。只读：场景、场地、逐日可约、我的预约；**不做预约/取消**（下单涉及次卡支付，未接）。
 - **预约类需求不是一套系统**（2026-10-27 审计，见 [docs/module_audit_2026-10-27.md](../../../docs/module_audit_2026-10-27.md)）：预约中心只覆盖自习室/研讨室/琴房等 17 类；**体育场馆/游泳**在独立的正元系统 `sportvenue.westlake.edu.cn`（登录已通，卡在服务端「表单规则未找到」，见 [docs/sportvenue_notes.md](../../../docs/sportvenue_notes.md)）；**图书馆座位**在 `seats.library.westlake.edu.cn`，它加载企业微信 JSSDK（`jwxwork`），属企业微信微应用，浏览器直连拿不到 `accessToken`；办事大厅还另有「场馆预约」`infoplus/form/CGYY` 与「资源预约」`ResourceReservation` 两个**流程表单**（发起即创建流程实例，属写操作，字段未探明）。
@@ -272,8 +273,8 @@ westlake aid orgs --wiki                     # 社团目录 + 一句话简介（
 westlake wiki list --cat clubs               # WikiLake 校园百科（学生自建）：目录 / search 关键词 [--deep] / page 条目名，见 docs/wikilake.md
 westlake wiki search 班车
 westlake wiki page 音游社
-westlake lib search 数据结构 --page 1
-westlake lib loans
+westlake lib search 数据结构 --page 1    # 2026-10-28 起系统迁移，暂不可用（会说明现状并退出）
+westlake lib loans                        # 同上；不再尝试已失效的 CAS 登录
 westlake pms jobs
 ```
 

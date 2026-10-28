@@ -17,6 +17,7 @@
 ``OK``      正常返回且有内容
 ``EMPTY``   正常返回但空——**空是合法结果，也可能是没权限**，需人工判断
 ``AUTH``    缺凭据/登录失败
+``MIGRATED``服务端系统换掉了、本工具尚未接新接口（不是 bug，不列入待处理）
 ``FAIL``    其他错误（含超时、解析异常）
 ``MISSING`` 命令不存在（文档承诺了但没实现）
 
@@ -198,6 +199,8 @@ def _classify(output: str, code: int) -> tuple[str, str]:
     low = text.lower()
     first = next((line.strip() for line in text.splitlines() if line.strip()), "")
     if code != 0:
+        if "系统已迁移" in text:
+            return "MIGRATED", first[:90]
         if any(k in text for k in ("未配置统一凭据", "登录失败", "凭据", "验证码", "未获得 PS_TOKEN",
                                    "无权访问", "未授权", "not authorized")):
             return "AUTH", first[:90]

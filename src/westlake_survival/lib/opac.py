@@ -13,6 +13,17 @@
   带认证会话（:class:`westlake_survival.sso.LibAuth`）。
 
 公开（无鉴权）检索走 HTML 路线；带认证会话时可改走 JSON 路线。
+
+**2026-10-28 复测：老 OPAC 已整体下线，学校换了新平台。** 服务器根
+``172.16.10.223:8180/`` 302 到 ``/page/login.jsp``——标题「阿法迪云智能图书管理
+平台 eLibrary System」，表单字段 ``account`` / ``password``（平台自有账号，页面无
+CAS/SSO 字样）。``/opac/`` 上下文连根都 404，检索、新书、CAS 回调
+``/opac/cas/casLogin.do`` 一并失效；公网别名 ``opac.westlake.edu.cn`` 只剩首页静态
+快照，不反代 ``/page/``（该路径 404）。资源门户 ``catalog.lib.westlake.edu.cn`` 的
+JSON 接口同时收紧为全部要登录（``{"code":"UNAUTHORIZED","message":"需要先登录"}``，
+此前记录的「tenantRule 匿名可用」已不成立）。故本模块目前**取不到真实数据**：
+:func:`detect_backend` 供页面判断形态并直接说明现状，不要对已下线的 CAS 回调反复
+登录（失败重试有锁号风险）。接新平台需要一次浏览器登录后重新探接口。
 """
 
 from __future__ import annotations
@@ -53,6 +64,19 @@ SEARCH_PATH = "/booklist.jsp"
 
 #: 新书推荐列表（站点菜单 ``newbooklist.jsp?target=2``）。
 NEW_BOOKS_PATH = "/newbooklist.jsp"
+
+#: 新平台（2026-10-28 实测）：服务器根 302 → 该登录页，标题「阿法迪云智能图书管理平台
+#: eLibrary System」，表单字段 ``account`` / ``password``（平台自有账号，页面无 CAS/SSO
+#: 字样）。老 ``/opac`` 上下文已整体下线——连 ``/opac/`` 根都是 404，检索、新书、CAS
+#: 回调 ``/opac/cas/casLogin.do`` 一并失效；公网别名 ``opac.westlake.edu.cn`` 只剩首页
+#: 静态快照，不反代 ``/page/``（该路径在公网别名下 404）。
+NEW_PLATFORM_LOGIN = os.environ.get(
+    "WESTLAKE_LIB_NEW_LOGIN", "http://172.16.10.223:8180/page/login.jsp"
+)
+
+#: 后端形态探测结果缓存时长（秒）：页面每次渲染都探一次太浪费。
+_BACKEND_TTL = 600.0
+_backend_cache: dict[str, Any] = {"at": 0.0, "state": None}
 
 #: 检索类型 -> OPAC ``searchtype`` 取值（站点下拉框实测）。
 _KIND_MAP = {
@@ -113,6 +137,47 @@ _ALL_LABELS = tuple(
 def _session():
     """创建默认 HTTP 会话（测试可注入自定义 session）。"""
     return http_session()
+
+
+def detect_backend(timeout: float = 4.0, *, force: bool = False) -> dict:
+    """探测图书馆后端形态（结果缓存 10 分钟）。
+
+    返回 ``{"opac_alive": bool, "new_platform": bool, "detail": str}``：
+
+    * ``opac_alive``——老 OPAC 上下文 ``/opac/`` 是否还在（404 即已下线）；
+    * ``new_platform``——新平台登录页是否在线（``/page/login.jsp``）。
+
+    页面据此决定「照常抓」还是「直接说明系统已迁移」，避免对已下线的
+    CAS 回调反复发起登录（失败重试有锁号风险）。
+    """
+    import time
+
+    if not force and _backend_cache["state"] is not None:
+        if time.time() - _backend_cache["at"] < _BACKEND_TTL:
+            return _backend_cache["state"]
+
+    state = {"opac_alive": False, "new_platform": False, "detail": ""}
+    session = _session()
+    try:
+        resp = session.get(OPAC_BASE + "/", timeout=timeout, allow_redirects=False)
+        state["opac_alive"] = resp.status_code != 404
+        state["detail"] = f"老 OPAC /opac/ → HTTP {resp.status_code}"
+    except Exception as exc:  # noqa: BLE001 - 探测失败只影响提示文案
+        state["detail"] = f"老 OPAC 探测失败（{exc.__class__.__name__}）"
+    if not state["opac_alive"]:
+        try:
+            resp = session.get(NEW_PLATFORM_LOGIN, timeout=timeout)
+            state["new_platform"] = resp.status_code == 200 and "eLibrary" in resp.text
+            state["detail"] += (
+                f"；新平台 /page/login.jsp → HTTP {resp.status_code}"
+                f"{'（eLibrary）' if state['new_platform'] else ''}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            state["detail"] += f"；新平台探测失败（{exc.__class__.__name__}）"
+
+    _backend_cache["state"] = state
+    _backend_cache["at"] = time.time()
+    return state
 
 
 def _decode_html(response: Any) -> str:
