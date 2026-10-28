@@ -35,6 +35,9 @@ dependencies = [
     # 前端是默认入口（裸 `westlake`/双击脚本都直接开网页「设置」），
     # 所以 Flask 也是必需依赖：装完即可用，不留「装了却打不开页面」的缺口。
     "flask>=3.0",
+    # discovery/hosts/vpn 直接 import urllib3（关 InsecureRequestWarning 等），
+    # 虽随 requests 传递安装，直接导入就显式声明，不靠传递巧合。
+    "urllib3>=1.26",
 ]
 
 [project.optional-dependencies]
@@ -42,6 +45,10 @@ dependencies = [
 webui = ["flask>=3.0"]
 test = ["pytest>=8.0"]
 secure = ["keyring>=25"]
+# 浏览器链路（share 读 OneDrive/SharePoint 分享、hosts/sites 渲染深挖、scholar 数据库 SSO）。
+# 各使用点都有 ImportError 守卫：缺了优雅降级或给出安装指引，不拖垮装机。
+# 装完还要 `playwright install chromium` 下载浏览器本体。
+browser = ["playwright>=1.40"]
 # 兼容旧装法：cryptography 已在必需依赖里，这里重复列出只为让旧命令照常工作。
 crypto = ["cryptography>=42"]
 

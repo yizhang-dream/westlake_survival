@@ -50,9 +50,9 @@ _OPTIONAL = (
     ),
     (
         "playwright",
-        "分享讲义（share）",
-        "pip install playwright 然后 playwright install chromium",
-        "`westlake share` 读不了 OneDrive/SharePoint 分享",
+        "浏览器链路（browser）",
+        "在仓库目录运行：pip install -e '.[browser]'，然后 playwright install chromium",
+        "`westlake share` 读不了 OneDrive/SharePoint 分享；hosts/sites 渲染深挖与 scholar 数据库 SSO 退化为无浏览器路径",
     ),
 )
 
