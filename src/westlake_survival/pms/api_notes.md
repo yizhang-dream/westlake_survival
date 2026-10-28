@@ -96,9 +96,9 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | `public_key()` | `...AuthController/PublicKey` | GET/POST | `/api/client/Auth/PublicKey` | — | `result.publicKey`(RSA SPKI b64), `result.nonceStr` | ✅ 匿名实测 200 |
 | `auth_token()` | `...AuthController/GetAuthToken` | GET/POST | `/api/client/Auth/GetAuthToken` | — | 顶层 `szToken`,`szAuthType`,`szInfo`,`szStaSessionId` | ✅ 匿名实测 200 |
-| `login()` | `...AuthController/Login` | POST | `/api/client/Auth/Login` | body `{szLogonName, szPassword, szToken}` | `result` = 用户信息（`UNIACCOUNT`） | ⚠️ 路由实测存在（空 body 报错），成功响应未验证（无账号） |
+| `login()` | `...AuthController/Login` | POST | `/api/client/Auth/Login` | body `{szLogonName, szPassword, szToken}` | `result` = 用户信息（`UNIACCOUNT`） | ✅ 2026-10-28 实测：学号+统一密码登录成功（code=0，28 字段用户信息）；失败 code≠0 → `InvalidCredentials` |
 | `check()` | `...AuthController/Check` | GET/POST | `/api/client/Auth/Check` | — | `code`,`message`,`result`(用户信息),`SessionId` | ⚠️ 匿名返回 `code=4` |
-| `ensure_logged_in()` | （Check + Login 组合） | — | — | — | — | — |
+| `ensure_logged_in()` | （Check + Login 组合） | — | — | — | — | ✅ 2026-10-28 实测：`PrintJob/Get`/`Report/Stat` 会话过期时自动重登后成功取数 |
 | `logout()` | `...AuthController/Logout` | GET/POST | `/api/client/Auth/Logout` | — | `code`,`result`(回跳地址) | ⚠️ 路由按同构短名，未验证 |
 | `user_info()` | `...AuthController/GetUserInfo` | GET/POST | `/api/client/Auth/GetUserInfo` | `szLogonName`(可选) | `result` = 用户信息（原始 dict） | ⚠️ 匿名 `code=4` |
 | `change_password()` | `...AuthController/ChgPassword` | POST | `/api/client/Auth/ChgPassword` | body `ChgPasswordReq`（字段名**文档未给**，按 `szLogonName/szOldPassword/szNewPassword` 推断） | `BaseResponse` | ⚠️ 字段推断，未验证 |

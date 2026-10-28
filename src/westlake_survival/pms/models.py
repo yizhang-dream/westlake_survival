@@ -150,6 +150,12 @@ STATION_FUNC_COLOR = 0x08
 #: ``dwPaperID`` 取值与纸型名的映射（实测 A3=8, A4=9；其余按服务端名为准）。
 PAPER_ID_NAMES = {8: "A3", 9: "A4"}
 
+#: 网点名里的校区前缀与颜色后缀（实测 ``szCampus``/``szRoomName``/
+#: ``szPosition`` 均为空串，校区/位置信息只编码在 ``szName`` 里，
+#: 形如「云栖图书馆彩色」→ 校区「云栖」、位置「图书馆」）。
+_CAMPUS_PREFIXES = ("云栖", "云谷")
+_COLOR_SUFFIXES = ("彩色", "黑白")
+
 #: ``dwStatus`` 位图：设备状态。
 STATION_STATUS_DISABLED = 0
 STATION_STATUS_IDLE = 0x01
@@ -263,6 +269,35 @@ class Station:
             memo=_as_str(obj.get("szMemo")),
             raw=dict(obj),
         )
+
+    @property
+    def campus_display(self) -> str | None:
+        """校区：``szCampus`` 非空直接用；否则从网点名前缀（云栖/云谷）提取。"""
+        if self.campus:
+            return self.campus
+        name = self.name or ""
+        for prefix in _CAMPUS_PREFIXES:
+            if name.startswith(prefix):
+                return prefix
+        return None
+
+    @property
+    def position_display(self) -> str | None:
+        """位置：``szPosition``/``szRoomName`` 非空直接用；否则从网点名剥掉
+        校区前缀与颜色后缀得到（「云栖图书馆彩色」→「图书馆」）。
+        网点名不含已知校区前缀时返回 ``None``（不拿全名冒充位置）。
+        """
+        if self.position or self.room_name:
+            return self.position or self.room_name
+        name = self.name or ""
+        for prefix in _CAMPUS_PREFIXES:
+            if name.startswith(prefix):
+                rest = name[len(prefix) :]
+                for suffix in _COLOR_SUFFIXES:
+                    if rest.endswith(suffix):
+                        rest = rest[: -len(suffix)]
+                return rest or None
+        return None
 
     @property
     def papers(self) -> list[str]:

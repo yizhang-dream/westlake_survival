@@ -1512,8 +1512,8 @@ def pms_stations() -> None:
     rows = [
         (
             s.name or "—",
-            s.campus or "—",
-            s.position or s.room_name or "—",
+            s.campus_display or "—",
+            s.position_display or "—",
             s.status_text or ("空闲" if s.is_idle else "—"),
             "、".join(s.papers) or "—",
         )
