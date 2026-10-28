@@ -11,7 +11,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 
 先跑 `westlake doctor`（命令不在 PATH 就用 `python -m westlake_survival doctor`，`--json` 便于判断）。它检查解释器版本、包本体、命令与解释器是否同一个环境、依赖（flask 基础依赖 / keyring / playwright）、账号有无、直连网络，每一项缺失都给一条可直接抄的修复命令；全绿再干活，退出码 0=可用、1=有缺失。
 
-- **缺什么就装什么**，命令都写在输出的「修复」列里，通常是 `pip install -e .`（Flask 自 2026-10-28 起是基础依赖，装完就有网页前端）/ `pip install -e '.[secure]'` / `playwright install chromium`。这些只装 Python 依赖，不碰系统凭据，可以直接执行。
+- **缺什么就装什么**，命令都写在输出的「修复」列里，通常是 `pip install -e .`（Flask 自 2026-10-28 起是基础依赖，装完就有网页前端）/ `pip install -e '.[secure]'` / `pip install -e '.[browser]'` 再 `playwright install chromium`（share 讲义与 hosts/scholar 浏览器链路）。这些只装 Python 依赖，不碰系统凭据，可以直接执行。
 - **解释器必须一致**：`westlake` 命令、`python -m westlake_survival`、以及你自己写的 Python 脚本要用同一个解释器，否则「明明装了却 import 不到」。doctor 报「不是同一个环境」时，改用 `python -m westlake_survival` 调用即可对齐。
 - **账号不由 Agent 填**：doctor 报「校园账号 未配置」时，请用户本人跑 `westlake`（或双击 `start.bat`）在网页「设置」页填一次；不要索取、不要代填、不要写凭据文件。做隔离测试用临时 `WESTLAKE_HOME` 或 `WESTLAKE_NO_KEYRING=1`——**两者任一成立即沙箱**，钥匙串读写都跳过，绝不改本机真实凭据。
 - **网络**：库层默认直连（无视 `HTTP_PROXY/HTTPS_PROXY`）；校外访问教务/Canvas 需 VPN，先 `westlake vpn status` 看状态。
