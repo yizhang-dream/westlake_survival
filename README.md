@@ -15,7 +15,7 @@ westlake --help
 westlake calendar today     # 公开功能无需账号
 ```
 
-端口上已经有本网页在跑时（比如双击了两次 `start.bat`），`westlake` 不再起第二个服务，直接把浏览器指过去。
+端口上已经有本网页在跑时（比如双击了两次 `start.bat` / `start.command`），`westlake` 不再起第二个服务，直接把浏览器指过去。
 
 脚本或自动化里不想被浏览器打断，用 `westlake --help` 或设 `WESTLAKE_NO_WEBUI=1`。启动行为与首次配置的完整契约见 [docs/first_run.md](docs/first_run.md)。
 

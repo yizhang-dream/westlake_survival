@@ -95,8 +95,22 @@ def resources() -> list[dict]:
     2026-10-25 实测：``/por/rclist.csp`` 登录后也回 "unexpected user
     service"（假阴性，不能当资源接口）；EasyConnect 隧道建立后系统路由
     表会出现经 Sangfor 虚拟网卡（下一跳 172.20.*）的 /32 主机路由——
-    那才是本账号真实拿到的资源清单。Windows 下用 PowerShell 读。
+    那才是本账号真实拿到的资源清单。Windows 用 PowerShell、macOS 用
+    netstat 读路由表；其余平台返回空。
     """
+    import sys
+
+    if sys.platform == "win32":
+        rows = _routes_windows()
+    elif sys.platform == "darwin":
+        rows = _routes_macos()
+    else:
+        rows = []
+    return sorted(rows, key=lambda r: r["title"])
+
+
+def _routes_windows() -> list[dict]:
+    """Windows：PowerShell 读 Get-NetRoute，取下一跳 172.20.* 的条目。"""
     import subprocess
 
     ps = (
@@ -129,7 +143,44 @@ def resources() -> list[dict]:
                 "url": f"http://{prefix.split('/')[0]}/",
                 "raw": {"nexthop": item.get("NextHop")},
             })
-    return sorted(rows, key=lambda r: r["title"])
+    return rows
+
+
+def _parse_netstat_routes(text: str) -> list[dict]:
+    """解析 macOS ``netstat -rn -f inet`` 输出里的 Sangfor 主机路由。
+
+    netstat 不带前缀长度：带 ``H`` 标志的路由按 /32 还原，保持与 Windows
+    侧 ``DestinationPrefix`` 同构。
+    """
+    rows: list[dict] = []
+    for line in text.splitlines():
+        parts = line.split()
+        # 列序：Destination Gateway Flags Netif [Expire]
+        if len(parts) < 4 or "H" not in parts[2]:
+            continue
+        dest, gateway = parts[0], parts[1]
+        if not gateway.startswith("172.20."):
+            continue
+        rows.append({
+            "title": f"{dest}/32",
+            "url": f"http://{dest}/",
+            "raw": {"nexthop": gateway},
+        })
+    return rows
+
+
+def _routes_macos() -> list[dict]:
+    """macOS：netstat 读路由表（Sangfor 隧道建立后网关落在 172.20.*）。"""
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["netstat", "-rn", "-f", "inet"],
+            capture_output=True, text=True, timeout=15,
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    return _parse_netstat_routes(out)
 
 
 def open_login(wait_seconds: int = 300) -> dict:
