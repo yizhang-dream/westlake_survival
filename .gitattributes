@@ -1,0 +1,3 @@
+# 双击启动脚本的行尾：Windows 批处理要 CRLF，macOS shell 脚本要 LF（CRLF 会让 bash 直接报错）。
+start.bat text eol=crlf
+start.command text eol=lf
