@@ -1292,6 +1292,30 @@ def lib_cmd() -> None:
     """图书馆命令。"""
 
 
+def _lib_backend_guard() -> bool:
+    """老 OPAC 下线时说明现状并返回 False。
+
+    2026-10-28 实测：学校换成「阿法迪云 eLibrary」新平台，老 ``/opac/*`` 连根都
+    404。此时**不要**再走 CAS 登录——那条回调已失效，反复失败有锁号风险。
+    """
+    try:
+        from westlake_survival.lib.opac import detect_backend
+
+        backend = detect_backend()
+    except Exception:
+        return True
+    if backend.get("opac_alive"):
+        return True
+    click.secho(
+        "图书馆系统已迁移：老 OPAC 的检索 / 新书 / CAS 借阅接口整体下线"
+        f"（{backend.get('detail', '')}）。新平台是「阿法迪云 eLibrary」，"
+        "登录改成平台自有账号，本工具还没接新接口；请直接访问图书馆网站。",
+        fg="yellow",
+        err=True,
+    )
+    return False
+
+
 @lib_cmd.command(name="search")
 @click.argument("keyword")
 @click.option("--page", type=int, default=1, show_default=True, help="页码。")
@@ -1300,6 +1324,8 @@ def lib_search(keyword: str, page: int) -> None:
     """检索图书馆书目（按题名）。"""
     from westlake_survival.lib import search
 
+    if not _lib_backend_guard():
+        raise SystemExit(1)
     books = search(keyword, page=page)
     if not books:
         click.echo("未找到匹配的书目。")
@@ -1314,6 +1340,8 @@ def lib_loans() -> None:
     """列出个人当前借阅记录（需登录）。"""
     from westlake_survival.lib import my_loans
 
+    if not _lib_backend_guard():
+        raise SystemExit(1)
     loans = my_loans()
     if not loans:
         click.echo("当前无借阅记录。")

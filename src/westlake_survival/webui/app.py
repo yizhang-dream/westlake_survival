@@ -1235,10 +1235,15 @@ def _reachable(url: str, timeout: float = 3.0) -> bool:
 
 
 def _lib_context(query: str = "") -> dict:
-    """图书馆页：书目检索 + 我的借阅 + 新书（OPAC 需校园网/VPN）。"""
+    """图书馆页：书目检索 + 我的借阅 + 新书。
+
+    2026-10-28 实测：老阿法迪 OPAC（``/opac/*``）整体下线，学校换成「阿法迪云
+    eLibrary」新平台（``/page/login.jsp``，平台自有账号）。老接口全 404 时直接
+    说明现状并跳过取数——尤其不能对已下线的 CAS 回调反复发起登录（有锁号风险）。
+    """
     context: dict = {
         "query": query, "books": [], "loans": [], "new_books": [],
-        "error": None, "loans_error": None, "new_error": None,
+        "error": None, "loans_error": None, "new_error": None, "notice": None,
     }
     module = _import_module("lib")
     if module is None:
@@ -1250,6 +1255,20 @@ def _lib_context(query: str = "") -> dict:
             from westlake_survival.lib.opac import OPAC_BASE as opac
         except Exception:
             opac = "http://172.16.10.223:8180/opac"
+    try:
+        from westlake_survival.lib.opac import detect_backend
+
+        backend = detect_backend()
+    except Exception:
+        backend = None
+    if backend and not backend.get("opac_alive"):
+        context["notice"] = (
+            "图书馆系统已迁移：老的 OPAC 检索 / 新书 / CAS 借阅接口整体下线"
+            f"（{backend.get('detail', '')}）。"
+            "新平台是「阿法迪云 eLibrary」，登录改成平台自有账号，本工具还没接新接口，"
+            "所以这里暂时没有数据；查书与借阅请直接访问图书馆网站。"
+        )
+        return context
     if not _reachable(opac):
         message = "OPAC 仅校园网/VPN 内可达，请先连接学校 VPN"
         context["error"] = message

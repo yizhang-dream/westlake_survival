@@ -2,6 +2,7 @@
 {% block title %}图书馆 · 西湖生存手册{% endblock %}
 {% block content %}
 <h1 class="page">图书馆</h1>
+{% if notice %}<div class="note">{{ notice }}</div>{% endif %}
 {% if error %}<div class="note">书目检索不可用：{{ error }}（馆藏 OPAC 仅校园网/VPN 内可达）</div>{% endif %}
 
 <div class="stats">
@@ -30,6 +31,8 @@
 </table>
 {% elif query and not error %}
 <div class="callout mute"><span>没有匹配的书目。</span></div>
+{% elif notice %}
+<div class="callout mute"><span>检索暂不可用（见上方说明）。</span></div>
 {% else %}
 <div class="callout mute"><span>输入题名开始检索（OPAC 需校园网/VPN）。</span></div>
 {% endif %}
@@ -48,6 +51,8 @@
 </table>
 {% elif loans_error %}
 <div class="note">借阅记录不可用：{{ loans_error }}（需校园网/VPN 与统一凭据）</div>
+{% elif notice %}
+<div class="callout mute"><span>借阅暂不可用（见上方说明）。</span></div>
 {% else %}
 <div class="callout mute"><span>当前无借阅记录。</span></div>
 {% endif %}
@@ -67,6 +72,8 @@
 </div>
 {% elif new_error %}
 <div class="note">新书列表不可用：{{ new_error }}</div>
+{% elif notice %}
+<div class="callout mute"><span>新书暂不可用（见上方说明）。</span></div>
 {% else %}
 <div class="callout mute"><span>暂无新书数据。</span></div>
 {% endif %}
