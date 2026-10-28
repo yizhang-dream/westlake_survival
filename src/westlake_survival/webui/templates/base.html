@@ -345,6 +345,8 @@
   aside.toc-side details.toc-grp > summary::-webkit-details-marker { display: none; }
   aside.toc-side details.toc-grp > summary:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
   aside.toc-side details.toc-grp > summary .n { font-size: .68rem; color: var(--muted); font-weight: 600; }
+  aside.toc-side details.toc-grp > summary a.grp-jump { color: inherit; text-decoration: none; flex: 1; }
+  aside.toc-side details.toc-grp > summary a.grp-jump:hover { color: var(--accent); }
   aside.toc-side details.toc-grp > summary::after { content: '▸'; font-size: .7rem; }
   aside.toc-side details.toc-grp[open] > summary::after { content: '▾'; }
   aside.toc-side a.toc-site {
@@ -653,13 +655,15 @@
         var parent = current || topNode;
         if (!parent) return;
         if (el.tagName === 'H3') {
-          if (!el.id) el.id = uid(han(el.textContent) || 's');
           var h3txt = h3Text(el);
+          if (!el.id) el.id = uid(han(h3txt) || 's'); // 锚点 id 用净化文字，徽标数字变化不漂移
           if (h3txt) parent.children.push({ id: el.id, label: h3txt });
         } else {
-          if (!el.id) el.id = parent.id + '-f' + (parent.children.length + 1);
           var txt = ((el.querySelector('summary') || {}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 14);
-          if (txt) parent.children.push({ id: el.id, label: txt });
+          if (txt) { // 有文字才占号：空 summary 的 fold 不消耗序号，避免同父重复 id
+            if (!el.id) el.id = parent.id + '-f' + (parent.children.length + 1);
+            parent.children.push({ id: el.id, label: txt });
+          }
         }
       });
       if (topNode) tree.unshift(topNode);
@@ -676,7 +680,7 @@
       if (leaves > 8) html += '<input class="toc-search" type="search" placeholder="搜索…" autocomplete="off">';
       tree.forEach(function (t, gi) {
         if (t.children.length >= 2) {
-          html += '<details class="toc-grp"' + (gi === 0 ? ' open' : '') + '><summary>' + t.label +
+          html += '<details class="toc-grp"' + (gi === 0 ? ' open' : '') + '><summary><a class="grp-jump" href="#' + t.id + '">' + t.label + '</a>' +
             '<span class="n">' + t.children.length + '</span></summary>' +
             t.children.map(function (c) {
               return '<a class="toc-site" href="#' + c.id + '"><span>' + c.label + '</span></a>';
@@ -729,6 +733,17 @@
           var el = document.getElementById(a.getAttribute('href').slice(1));
           if (!el) return;
           if (el.tagName === 'DETAILS') el.open = true;
+          window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - topbarH() - 12, behavior: 'smooth' });
+          aside.classList.remove('show');
+        });
+      });
+      // 组头标签可点击跳到本区块（徽标与空白处仍是开合）——「顶部」组头因此恢复回顶
+      Array.prototype.forEach.call(aside.querySelectorAll('a.grp-jump'), function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var el = document.getElementById(a.getAttribute('href').slice(1));
+          if (!el) return;
           window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - topbarH() - 12, behavior: 'smooth' });
           aside.classList.remove('show');
         });
