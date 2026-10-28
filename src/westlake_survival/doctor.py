@@ -147,7 +147,7 @@ def _check_credentials() -> Check:
     except Exception:
         detail = "未配置：课表/成绩/作业/图书馆这些要登录的功能用不了，公开功能照常"
         status = "warn"
-        fix = "由本人在网页「设置」页填一次：运行 `westlake`（或双击 start.bat）；Agent 不得代填"
+        fix = "由本人在网页「设置」页填一次：运行 `westlake`（或双击 start.bat / start.command）；Agent 不得代填"
     return Check(key="credentials", name="校园账号", status=status, detail=detail, fix=fix)
 
 
