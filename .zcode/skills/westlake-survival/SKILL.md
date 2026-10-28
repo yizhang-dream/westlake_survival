@@ -256,6 +256,7 @@ westlake scholar open cnki                    # 某库直达/CARSI 入口 URL（
 westlake webui serve --port 2018              # 本地前端；/capabilities 是能力总览
 # 前端配色取自西湖大学官网实测（品牌橙 #ee7823 / 门户蓝 #0d5fbd / 门户深墨 #171725 导航）
 # + 明暗切换（右上按钮，存 localStorage）+ 弹性缓动动效（spring cubic-bezier）
+# + 全页面自动目录两级：h3 小节与游离折叠块计入二级（手建目录页 /sis /sites 跳过）
 westlake cache clear --module events
 ```
 

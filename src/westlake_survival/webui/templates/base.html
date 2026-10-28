@@ -182,6 +182,7 @@
   h3.sub { scroll-margin-top: calc(var(--topbar-h, 47px) + 14px); }
   details.fold { scroll-margin-top: calc(var(--topbar-h, 47px) + 14px); }
   section[id] { scroll-margin-top: calc(var(--topbar-h, 47px) + 14px); }
+  h3[id] { scroll-margin-top: calc(var(--topbar-h, 47px) + 14px); } /* 自动目录给 h3 补锚点后不被吸顶导航遮住 */
   tr.detail-row .callout { margin: .2rem 0 .5rem; font-size: .88rem; line-height: 1.55; }
   p { color: var(--muted); }
   .grid { display: grid; gap: .9rem; }
@@ -601,19 +602,17 @@
     })();
   </script>
   <script>
-    // 全局自动目录（2026-10-25 用户裁定「所有页面都要目录」）：扫描 h2.section
-    // 区块及其后续折叠块，≥2 项即自动生成左侧目录树；已有手建目录（sites/sis）跳过。
+    // 全局自动目录（2026-10-25 用户裁定「所有页面都要目录」；2026-10-28 裁定两级拆分）：
+    // 一级 = h2.section/h2.page 区块；二级 = 区块内（该 h2 到下一个 h2，按文档序）的
+    // h3 系列标题（h3.sub / h3.section / 无 class，fold 内部的不算）与 details.fold 合并。
+    // 不属于任何区块的游离子块（无 h2 页面 / 首个 h2 之前）挂「顶部」（h1）下；
+    // ≥2 子项渲染折叠组；已有手建目录（sites/sis）跳过。
     (function () {
       if (document.querySelector('aside.toc-side')) return;
       var wrap = document.querySelector('main .wrap');
       if (!wrap) return;
-      var h2s = Array.prototype.slice.call(wrap.querySelectorAll('h2.section, h2.page'));
-      if (!h2s.length) {
-        // 无区块标题的页面：仅「顶部」一项（用户裁定所有页面都要有目录）
-        h2s = [];
-      }
 
-      // —— 目标树：每个 h2 一个节点；其后同级内容里的 details.fold 是子项 ——
+      // —— 目标树 ——
       var used = {};
       function uid(base) {
         var i = 1, id = 'at-' + base;
@@ -624,39 +623,46 @@
       function han(s) {
         return encodeURIComponent(String(s || '').replace(/\s+/g, '').slice(0, 10)).replace(/%/g, '');
       }
-      var tree = [];
-      h2s.forEach(function (h2) {
-        var holder = h2.closest('[id]') || h2;
-        if (!holder.id) holder.id = uid(han(h2.textContent) || 'b');
-        var label = (h2.textContent || '').replace(/（[\s\S]*?）/g, '').trim().slice(0, 14) || '区块';
-        var node = { id: holder.id, label: label, children: [] };
-        var scope = holder.parentElement;
-        var sibs = Array.prototype.slice.call(scope.children);
-        for (var k = sibs.indexOf(holder) + 1; k < sibs.length; k++) {
-          var s = sibs[k];
-          if (s.nodeType !== 1) continue;
-          if (s === h2 || (s.matches && s.matches('h2.section'))) break;
-          if (s.querySelector && s !== holder && s.querySelector('h2.section')) break;
-          var folds = [];
-          if (s.matches && s.matches('details.fold')) folds.push(s);
-          if (s.querySelectorAll) folds = folds.concat(Array.prototype.slice.call(s.querySelectorAll('details.fold')));
-          folds.forEach(function (f) {
-            if (node.children.some(function (c) { return c.id === f.id; })) return;
-            if (!f.id) f.id = holder.id + '-f' + (node.children.length + 1);
-            var txt = ((f.querySelector('summary') || {}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 14);
-            if (txt) node.children.push({ id: f.id, label: txt });
-          });
-        }
-        tree.push(node);
-      });
-      // 顶部入口（h1）：所有页面都有目录（用户裁定）
+      // h3 目录文字：克隆后剔除 .chip/.count 徽标再取文本（≤14 字截断与 fold 一致）
+      function h3Text(el) {
+        var clone = el.cloneNode(true);
+        Array.prototype.forEach.call(clone.querySelectorAll('.chip, .count'), function (c) { c.remove(); });
+        return (clone.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+      }
+      // 顶部入口（h1）：游离子块也挂这里（用户裁定所有页面都要有目录）
       var h1 = wrap.querySelector('h1.page');
       var topNode = null;
       if (h1) {
         if (!h1.id) h1.id = 'at-top';
         topNode = { id: h1.id, label: '顶部', children: [] };
-        tree.unshift(topNode);
       }
+      var tree = [];
+      var current = null; // 最近一个 h2 节点；它之前的子块是游离子块
+      var seq = wrap.querySelectorAll('h2.section, h2.page, h3.section, h3.sub, h3:not([class]), details.fold');
+      Array.prototype.forEach.call(seq, function (el) {
+        if (el.matches('h2.section, h2.page')) {
+          var holder = el.closest('[id]') || el;
+          if (!holder.id) holder.id = uid(han(el.textContent) || 'b');
+          var label = (el.textContent || '').replace(/（[\s\S]*?）/g, '').trim().slice(0, 14) || '区块';
+          current = { id: holder.id, label: label, children: [] };
+          tree.push(current);
+          return;
+        }
+        if (el.tagName === 'H3' && el.closest('details.fold')) return; // fold 内 h3 不入目录（两级装不下三级）
+        if (el.closest('.stats, .note')) return;                       // 统计条 / 提示条不是子模块
+        var parent = current || topNode;
+        if (!parent) return;
+        if (el.tagName === 'H3') {
+          if (!el.id) el.id = uid(han(el.textContent) || 's');
+          var h3txt = h3Text(el);
+          if (h3txt) parent.children.push({ id: el.id, label: h3txt });
+        } else {
+          if (!el.id) el.id = parent.id + '-f' + (parent.children.length + 1);
+          var txt = ((el.querySelector('summary') || {}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+          if (txt) parent.children.push({ id: el.id, label: txt });
+        }
+      });
+      if (topNode) tree.unshift(topNode);
       var leaves = tree.reduce(function (n, t) { return n + Math.max(1, t.children.length); }, 0);
       if (leaves < 1) return;
 
