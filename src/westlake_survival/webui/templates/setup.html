@@ -4,8 +4,16 @@
 {% block content %}
 <h1 class="page">账号配置</h1>
 
-<div class="callout"><span>公开功能（校历 / 班车 / 新闻 / 培养方案 / 通识课程 / 地图图片）不需要任何账号。
-  要用课表、成绩、作业这些，就在下面填一次学号与密码——网页里完成，不用开终端。</span></div>
+{% if needs_setup %}
+<div class="callout" id="firstRun">
+  <span><strong>第 1 步：填一次你自己的账号。</strong>每台电脑各存各的，密码只留在本机、不跨设备同步。
+    填完点「保存并检测」，课表 / 成绩 / 作业 / 图书馆这些需要登录的功能就通了。</span>
+  <p style="margin:.6rem 0 0"><a class="btn ghost" href="/?skip=1">先看看公开功能（校历 / 班车 / 新闻 / 地图）→</a></p>
+</div>
+{% else %}
+<div class="callout"><span>账号已配置。下面可以改密码、换 Canvas 令牌，或清除令牌。
+  公开功能（校历 / 班车 / 新闻 / 培养方案 / 通识课程 / 地图图片）始终不需要账号。</span></div>
+{% endif %}
 
 <div id="status" style="margin-bottom:1.2rem">
   <table class="data">
@@ -198,10 +206,12 @@
           var rest = cv.state ? '；当前' + (cv.state.configured ? '已配置（' + cv.state.source + '）' : '无令牌') : '';
           rows += '<tr><td>Canvas 令牌</td><td>' + (cv.note || '') + rest + '</td></tr>';
         }
+        var done = !!(payload.sis && payload.sis.verified);
         box.innerHTML =
           '<table class="data"><thead><tr><th>服务</th><th>结果</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<p class="muted" style="font-size:.84rem">验证没通过也保住了输入，之后再查会重新验证；打印系统（pms）是另一套密码，需要时再单独配置。</p>' +
-          '<p><a href="/">回到仪表盘 →</a></p>';
+          '<p>' + (done ? '配置完成，可以去用需要登录的功能了。' : '已保存，联网后可再点一次「保存并检测」确认。') +
+          ' <a class="btn" href="/">进首页 →</a></p>';
         await refreshStatus();
       }
     } catch (err) {

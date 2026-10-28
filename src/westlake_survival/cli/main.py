@@ -1756,7 +1756,8 @@ def webui_serve(host: str, port: int) -> None:
         from westlake_survival.webui import run
     except ImportError as exc:  # Flask 是可选依赖
         click.secho(
-            f"错误：缺少 Web 界面依赖（{exc}）。请安装可选依赖：pip install 'westlake_survival[webui]'",
+            "错误：缺少 Web 界面依赖（Flask）。本包未发布到 PyPI，"
+            "请在仓库目录运行：pip install -e '.[webui]'",
             fg="red",
             err=True,
         )
@@ -1768,19 +1769,25 @@ def webui_serve(host: str, port: int) -> None:
         raise SystemExit(1) from exc
 
 
+def _webui_entry_url(port: int) -> str:
+    """启动落地页：没配过账号直接进「设置」，配过就进仪表盘。"""
+    suffix = "" if _first_run_configured() else "setup"
+    return f"http://127.0.0.1:{port}/{suffix}"
+
+
 @click.command(name="go", help="一步启动：起 WebUI 并自动打开浏览器（用户入口）。")
 @click.option("--port", default=2018, show_default=True, help="本地端口。")
 @click.option("--no-browser", is_flag=True, help="只启动服务，不打开浏览器（Agent/无桌面环境用）。")
 def go_cmd(port: int, no_browser: bool) -> None:
     """``westlake go``：启动 WebUI 并自动打开浏览器。
 
-    用户日常只需要这一条命令；浏览器打开后所有操作（含首次账号配置）都在
-    网页里完成。终端侧的 ``westlake setup`` 等命令留给 Agent。
+    浏览器落地页就是用户该去的地方：首次启动（本机还没有账号）直达「设置」
+    页填一次学号密码，之后每次直达仪表盘。终端侧的 ``westlake setup`` 留给 Agent。
     """
     import threading
     import webbrowser
 
-    url = f"http://127.0.0.1:{port}/"
+    url = _webui_entry_url(port)
     if not no_browser:
         # 服务就绪后再开浏览器：最多等 15 秒，避免直接命中连接失败页。
         def _open_when_ready() -> None:
@@ -1800,6 +1807,8 @@ def go_cmd(port: int, no_browser: bool) -> None:
 
         threading.Thread(target=_open_when_ready, daemon=True).start()
     click.echo(f"西湖生存手册 · Web 界面：{url}")
+    if url.endswith("/setup"):
+        click.echo("首次启动：请在打开的页面里填一次学号与统一身份认证密码。")
     if not no_browser:
         click.echo("浏览器将自动打开；若没有弹出，手动访问上面的地址。")
     click.echo("Ctrl+C 停止。")
@@ -1872,16 +1881,16 @@ def find_cmd(query: str | None) -> None:
 def cli(ctx: click.Context) -> None:
     """westlake_survival 统一命令行入口。
 
-    不带子命令且尚未配置教务凭据时，自动进入首次配置向导（仅交互终端）。
+    不带子命令时**直接起 WebUI 并打开浏览器**：本机还没配过账号就落在「设置」
+    页，让用户在那里填一次学号密码；配过就落在仪表盘。脚本或自动化要帮助信息，
+    用 ``westlake --help``；要跳过启动，设 ``WESTLAKE_NO_WEBUI=1``。
     """
     if ctx.invoked_subcommand is not None:
         return
-    if not _first_run_configured():
-        click.echo("提示：还没有配置教务账号。")
-        click.echo("用户侧：运行 `westlake webui serve`，在网页「设置」页填一次学号密码（公开功能无需账号）。")
-        click.echo("Agent 侧：可直接运行 `westlake setup`。")
-        click.echo("")
-    click.echo(ctx.get_help())
+    if os.environ.get("WESTLAKE_NO_WEBUI"):
+        click.echo(ctx.get_help())
+        return
+    go_cmd.callback(2018, False)
 
 
 def _first_run_configured() -> bool:
