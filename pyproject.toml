@@ -38,15 +38,19 @@ dependencies = [
     # discovery/hosts/vpn 直接 import urllib3（关 InsecureRequestWarning 等），
     # 虽随 requests 传递安装，直接导入就显式声明，不靠传递巧合。
     "urllib3>=1.26",
+    # 凭据加密存储默认可用（2026-10-29 裁定：基础安装即无浏览器可用、开箱
+    # 即钥匙串；Linux 无桌面取不到后端时 doctor 如实降级 warn）。
+    "keyring>=25",
 ]
 
 [project.optional-dependencies]
 # 兼容旧装法：Flask 已在必需依赖里，这里重复列出只为让 `pip install -e '.[webui]'` 照常工作。
 webui = ["flask>=3.0"]
 test = ["pytest>=8.0"]
+# 兼容旧装法：keyring 已在必需依赖里，这里重复列出只为让旧命令照常工作。
 secure = ["keyring>=25"]
 # 浏览器链路（share 读 OneDrive/SharePoint 分享、hosts/sites 渲染深挖、scholar 数据库 SSO）。
-# 各使用点都有 ImportError 守卫：缺了优雅降级或给出安装指引，不拖垮装机。
+# 可选增强：缺了三条链路自动降级、doctor 只报 warn（2026-10-29 裁定：没有浏览器也能用）。
 # 装完还要 `playwright install chromium` 下载浏览器本体。
 browser = ["playwright>=1.40"]
 # 兼容旧装法：cryptography 已在必需依赖里，这里重复列出只为让旧命令照常工作。

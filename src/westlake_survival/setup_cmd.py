@@ -28,6 +28,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 import click
@@ -213,8 +214,11 @@ def run_setup(
 @click.option("--no-save", is_flag=True, help="只探测，不落盘。")
 @click.option("--force-save", is_flag=True, help="兼容保留：现在验证未通过也会保存，无需此开关。")
 @click.option("--no-keyring", is_flag=True, help="只写配置文件，不碰系统钥匙串（自动化用）。")
+@click.option("--open", "open_frontend", is_flag=True,
+              help="保存成功后自动拉起前端并开浏览器（默认不弹——网页 /setup 验证通过会自动进仪表盘，无需此开关）。")
 def setup_cmd(
-    sid, password, canvas_token, clear_canvas_token, no_verify, no_save, force_save, no_keyring
+    sid, password, canvas_token, clear_canvas_token, no_verify, no_save, force_save,
+    no_keyring, open_frontend
 ) -> None:
     """首次配置：填一次学号密码，自动接上能用的服务。"""
     report = run_setup(
@@ -227,6 +231,28 @@ def setup_cmd(
         use_keyring=not no_keyring,
         clear_canvas_token=clear_canvas_token,
     )
+    # 配置好即见前端（2026-10-29 用户裁定）。默认不弹：CLI setup 常由 Agent
+    # 代跑，且 isatty 在 Agent 外壳（winpty/pty）下不可靠会误触发——所以只认
+    # 显式 --open，且 WESTLAKE_NO_WEBUI=1 是硬关。用户主路径是网页 /setup，
+    # 那边验证通过 3 秒自动进仪表盘，不经这里。
+    if (
+        open_frontend
+        and report.stored_in
+        and not no_save
+        and not os.environ.get("WESTLAKE_NO_WEBUI")
+    ):
+        import subprocess
+
+        try:
+            subprocess.Popen(
+                [sys.executable, "-m", "westlake_survival", "go"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            click.echo("已自动打开前端（http://127.0.0.1:2018/）。")
+        except Exception as exc:  # noqa: BLE001 - 弹不出不影响配置结果
+            click.echo(f"前端未自动打开（{exc.__class__.__name__}）：运行 westlake 手动打开。")
+
     # 交互向导本身跑完即成功；验证未通过时给非零退出码，便于脚本判断。
     # 只管理令牌（没填学号）时没有可判定的教务状态，按成功处理。
     ok_exit = no_verify or report.sis_ok or not report.sid

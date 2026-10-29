@@ -13,7 +13,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 
 先跑 `westlake doctor`（不在 PATH 就 `python -m westlake_survival doctor`；`--json` 便于判断）。逐项体检解释器/包/命令一致性/依赖/账号/网络，缺什么给一条能直接抄的修复命令；退出码 0=可用、1=有缺失，全绿再干活。
 
-- **缺什么就装什么**（只装 Python 依赖，可直接执行）：`pip install -e .`（Flask 是基础依赖，装完就有网页）/ `pip install -e '.[secure]'` / `pip install -e '.[browser]'` 再 `playwright install chromium`。Linux 无桌面环境：钥匙串自动退明文文件（doctor 如实降级为 warn）、playwright 缺系统库补 `playwright install-deps chromium`。
+- **缺什么就装什么**（只装 Python 依赖，可直接执行）：`pip install -e .` 一条就齐——Flask/keyring 都是基础依赖，装完即有网页与加密凭据存储。`.[browser]`（playwright + `playwright install chromium`）是**可选增强**：缺它 doctor 只报 warn 不挡活，share 讲义/hosts 渲染深挖/CARSI 校外 SSO 三条链路自动降级，**没有浏览器也能用**。Linux 无桌面：钥匙串取不到后端时退明文文件（warn）、playwright 缺系统库补 `playwright install-deps chromium`。
 - **解释器必须一致**：`westlake`、`python -m westlake_survival`、自写脚本要用同一个解释器，否则「明明装了却 import 不到」。查法：`which westlake`（macOS/Linux）/ `where westlake`（Windows）、`pip show westlake-survival`；不一致就改用 `python -m westlake_survival` 对齐。
 - **账号不由 Agent 填**：doctor 报「校园账号 未配置」时，请用户本人跑 `westlake`（或启动脚本 `start.bat` / `start.command` / `start.sh`）在网页「设置」页填一次；不要索取、不要代填、不要写凭据文件。做隔离测试用临时 `WESTLAKE_HOME` 或 `WESTLAKE_NO_KEYRING=1`——**两者任一成立即沙箱**，钥匙串读写都跳过。
 - **网络**：库层默认直连（无视 `HTTP_PROXY/HTTPS_PROXY`）；校外访问教务/Canvas 需 VPN，先 `westlake vpn status`。
@@ -59,7 +59,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 
 ## 用户入口（网页第一）
 
-用户侧双击 `start.bat`（Windows）/ `start.command`（macOS）/ 终端 `./start.sh`（Linux），或裸跑 `westlake`：浏览器自动打开，没配过账号**直达 `/setup`** 填一次学号+统一密码（Canvas 令牌选填，可一键清除；验证不过也落盘，不必重填）。自动化用 `WESTLAKE_NO_WEBUI=1`。Agent 侧等价 `westlake setup`（含 `--canvas-token '<令牌>' --no-verify` 保存、`--clear-canvas-token` 删除）。统一密码通吃 SIS/Canvas/AMS/打印/预约/门户/体育。
+用户侧双击 `start.bat`（Windows）/ `start.command`（macOS）/ 终端 `./start.sh`（Linux），或裸跑 `westlake`：浏览器自动打开，没配过账号**直达 `/setup`** 填一次学号+统一密码（Canvas 令牌选填，可一键清除；验证不过也落盘，不必重填）。**保存并验证通过后 3 秒自动进仪表盘**（未验证则留在设置页）；终端路径要 `westlake setup --open` 才主动拉起前端（默认不弹——CLI setup 常由 Agent 代跑；`WESTLAKE_NO_WEBUI=1` 硬关）。Agent 侧等价 `westlake setup`（含 `--canvas-token '<令牌>' --no-verify` 保存、`--clear-canvas-token` 删除）。统一密码通吃 SIS/Canvas/AMS/打印/预约/门户/体育。
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
