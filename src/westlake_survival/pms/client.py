@@ -559,18 +559,18 @@ class PMSClient:
     def change_password(self, old_password: str, new_password: str) -> None:
         """``POST /api/client/Auth/ChgPassword``：修改登录密码。
 
-        请求体字段名依据文档 ``ChgPasswordReq``（``szLogonName`` /
-        ``szOldPassword`` / ``szNewPassword``）推断，**未经真实环境验证**。
+        请求体 ``{"szOldPasswd", "szNewPasswd"}``，字段名取自线上前端
+        ``client/new/cprintPc/js/changePassword.js``（2026-10-29 抓取），
+        不带 ``szLogonName``——推翻此前按文档 ``ChgPasswordReq`` 的猜测。
+
+        线上前端成功后还会向 ``/uniPrint/user/changePassword?schoolCode=S001``
+        明文同步统一密码；本库不做第二跳（统一密码一致性交由学校侧处理），
+        CLI/WebUI 也均未暴露本方法。
         """
-        username, _ = self.resolve_credentials()
         self._send(
             "POST",
             f"{_AUTH}/ChgPassword",
-            json_body={
-                "szLogonName": username,
-                "szOldPassword": old_password,
-                "szNewPassword": new_password,
-            },
+            json_body={"szOldPasswd": old_password, "szNewPasswd": new_password},
             timeout=AUTH_TIMEOUT,
             context="Auth/ChgPassword",
         )

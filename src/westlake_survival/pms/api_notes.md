@@ -101,7 +101,7 @@
 | `ensure_logged_in()` | （Check + Login 组合） | — | — | — | — | ✅ 2026-10-28 实测：`PrintJob/Get`/`Report/Stat` 会话过期时自动重登后成功取数 |
 | `logout()` | `...AuthController/Logout` | GET/POST | `/api/client/Auth/Logout` | — | `code`,`result`(回跳地址) | ⚠️ 路由按同构短名，未验证 |
 | `user_info()` | `...AuthController/GetUserInfo` | GET/POST | `/api/client/Auth/GetUserInfo` | `szLogonName`(可选) | `result` = 用户信息（原始 dict） | ⚠️ 匿名 `code=4` |
-| `change_password()` | `...AuthController/ChgPassword` | POST | `/api/client/Auth/ChgPassword` | body `ChgPasswordReq`（字段名**文档未给**，按 `szLogonName/szOldPassword/szNewPassword` 推断） | `BaseResponse` | ⚠️ 字段推断，未验证 |
+| `change_password()` | `...AuthController/ChgPassword` | POST | `/api/client/Auth/ChgPassword` | body `{"szOldPasswd", "szNewPasswd"}`（**2026-10-29 按线上前端 `changePassword.js` 校正**，不带 `szLogonName`，推翻文档推断） | `BaseResponse`（`code=1` 原密码错误） | ✅ 字段名有前端实证；改密端到端刻意未实测（不改用户密码） |
 
 前端实际读取的用户字段：`szTrueName`（姓名）、`dwSex`（0 女 / 1 男）、
 `szLogonName`、`szEmail`、`szTel`。**未发现独立的「余额」接口**；
@@ -322,3 +322,24 @@
 
 Live 测试默认被 `pyproject.toml` 的 `addopts = "-m 'not live'"` 排除；在校内网络下用
 `pytest src/test/pms -m live` 单独跑。
+
+---
+
+## 7. 静态站点拓扑（2026-10-29 help.html 顺藤实测）
+
+从 `/client/new/cprintPc/help.html` 顺藤摸出的静态资源与旁路通道
+（全部只读探测；47 MB 安装包只做了 Range 头验证，未整包下载）：
+
+| 资源 / 通道 | 结果 |
+| --- | --- |
+| 入口分流 | `/client/` → UA 判断 → 移动 `client/new/cprintMobile/index.html` / PC `client/new/cprintPc/help.html`；`/client/new/` 同款分流页 |
+| PC 驱动客户端 | `GET /client/UniOpmClient_Setup.exe` → **200，48,941,901 字节，支持 Range**（help.html 条目 610078「下载打印驱」指向它，匿名可下） |
+| 部署配置 | `GET /client/new/setconfig.js` → `V3.0.20220822`：仅账号密码登录（`setlogin=password`）、可改密（`set_change_password=1`）、黑白+彩色、中英双语、统一密码改密同步开启（`set_uniprint_changpassword_api=1`）、支付网关 `http://selfcopying.cnbksy.com/payapi/webAuth`（多钱包跳转） |
+| API 前缀 | 除 `/api`（本库已实现的部分）外，前端另定义三条：`host1=/uniPrint`（PC `js/host.js`）、`host2=/alipay`、`host3=/nuan`（移动 `js/host.js`）。三条根路径盲探均 404——动作路径只在前端按需拼接 |
+| 统一密码同步 | `POST /uniPrint/user/changePassword?schoolCode=S001`，**表单编码**（非 JSON）：`{username, oldPassword, newPassword}`。线上前端在 `/api/client/Auth/ChgPassword` 成功后的第二跳调用；**明文 HTTP 传输**（登录用 RSA 包裹，改密两跳都不用）。本库不做第二跳，CLI/WebUI 不暴露改密入口 |
+| 多语言字典 | `GET /api/system/MulLan/Get?dwSubSysSN=1..8` 匿名一律 `{"code":1,"result":null}`（疑似需会话，未验证）；页面 idQuery 文案在取不到时回退 JS 内置默认（如 610023「杭州打印管理系统」） |
+| 二维码登录 | PC/移动 `js/login.js` 另有 `Auth/LoginQRSetInterval?szToken=...` 轮询流（§5 已列不实现：需手机扫码场景） |
+
+改密双跳结论：`/api/client/Auth/ChgPassword`（JSON，`change_password()` 已按
+前端实证校正字段）成功后前端才调 `/uniPrint` 第二跳；两跳均把新旧密码明文
+放进 HTTP 请求体——敏感事实，也是本库不给改密入口的原因之一。
