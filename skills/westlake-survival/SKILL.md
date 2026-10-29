@@ -5,7 +5,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 
 # 西湖大学生存手册（westlake-survival）
 
-把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：写操作仅限五条，且都必须凭用户当轮明确指令执行——`canvas submit` 交作业、`canvas reply` 讨论回帖、`canvas send` 回私信、`booking book` 预约场地、`booking cancel` 取消预约；不做选课、抢课等其他写操作。
+把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：写操作仅限五条，且都必须凭用户当轮明确指令执行——`canvas submit` 交作业、`canvas reply` 讨论回帖、`canvas send` 回私信、`booking book` 预约场地、`booking cancel` 取消预约；五条统一走 `consequence.py` 确认门（未 `--yes` 打印风险描述并退出 1，`--dry-run` 预检放行，不做交互提示）；不做选课、抢课等其他写操作。
 
 本文只放路由与行为规则；**完整命令示例、Python API 方法表、MCP 工具清单在 [docs/skill_reference.md](../../docs/skill_reference.md)**，各系统深挖见 docs/ 对应文档（按需再读，不必全量加载）。
 
@@ -82,9 +82,9 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 ## Agent 行为守则
 
 - **网络一律直连（库层已内置）**：所有会话默认 `trust_env=False`；Agent 自己写脚本抓校园站点也必须显式直连（`requests` 传 `trust_env=False`，或复用 `westlake_survival.discovery.direct_session()`）；唯一例外 HPC 成果库代理兜底。诊断「连不上」先排除代理劫持。
-- **默认只读，写操作仅五条且要当轮明确指令**：`canvas submit`/`reply`/`send`、`booking book`/`cancel`。只凭用户当轮给出的对象与内容执行，不构造未文档化的请求。
-- **交作业三步走**：①`--dry-run` 预检；②提交（用户点名文件即视为授权）；③`canvas submission` 回读核验（submitted、附件名、未迟交）后才报完成。已评分作业默认不重交。
-- **回帖与私信先确认**：`canvas reply`/`send` 默认打印将发送内容等确认，`--yes` 才发；发完回读核对落地；`cannot_reply` 的会话直接拒绝。
+- **默认只读，写操作仅五条且要当轮明确指令**：`canvas submit`/`reply`/`send`、`booking book`/`cancel`。统一确认门（consequence.py）：未 `--yes` 一律打印结构化风险描述（改什么/风险/严重度/可逆性）并退出 1，先拿到用户当轮指令再传 `--yes`；不构造未文档化的请求，不新增写操作（新写操作必须先在 consequence.py 登记描述符，门会拒绝未登记名）。
+- **交作业三步走**：①`--dry-run` 预检；②`--yes` 提交（用户点名文件即视为授权）；③`canvas submission` 回读核验（submitted、附件名、未迟交）后才报完成。已评分作业默认不重交。
+- **回帖与私信**：`canvas reply`/`send` 未 `--yes` 会打印风险描述退出；凭用户当轮指令传 `--yes` 发送；发完回读核对落地；`cannot_reply` 的会话直接拒绝。
 - **写作业内容先看课程资料**：动笔前看 `assignment-info`（描述与附件）、`files`、`modules`——题目文件可能在三处任一处，描述里没有不代表没有。不要假定资料在固定本地路径。
 - **绝不打印凭据/令牌**：不 `cat` `~/.westlake_survival/credentials.txt` 或 `canvas_token.txt`，不回显学号密码或 `WESTLAKE_CANVAS_TOKEN`；只看 `sso creds status` 的有无。
 - **个人数据脱敏**：成绩、学籍、住宿、贷款等输出给第三方前默认脱敏/摘要提示。

@@ -14,10 +14,10 @@ English | [简体中文](README.md)
 
 Campus services at Westlake University are scattered across dozens of standalone systems — SIS, the AMS teaching system, Canvas, the booking center, the campus portal, the library, sports venues, and more. **westlake_survival** wires them together at the API level into a single toolkit:
 
+- **Python library (in-process API)** — `pip install westlake-survival`, then `import westlake_survival` for the full structured API: the shortest path for agents that can run code; [examples/](examples/) has runnable samples.
 - **CLI** — `westlake` covers queries and a handful of writes; not sure which command? Ask `westlake find <keyword>` (plain-language words like "paper", "borrow", "holiday" all match).
 - **Local WebUI** — run `westlake` (or double-click a start script) and a browser opens into the dashboard: 30+ pages including account setup; `/capabilities` lists every capability.
-- **MCP server** — `westlake-mcp` is one process away for any MCP-capable AI client.
-- **Python library** — `import westlake_survival` for structured data; [examples/](examples/) has runnable samples.
+- **MCP server (compatibility layer)** — `westlake-mcp` for clients that can only call registered tools (Claude Desktop, chat sidebars); agents with a terminal (ZCode, Claude Code, …) use the three entries above.
 
 Three principles, stated up front:
 
