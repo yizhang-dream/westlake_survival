@@ -1,31 +1,31 @@
-# Install & quick start
+# Installation & Quick Start
 
-## From PyPI (recommended)
+## From PyPI (Recommended)
 
 ```bash
 pip install westlake-survival      # full base install (WebUI + encrypted keyring included)
-westlake                           # start the web app and open a browser
-westlake calendar today            # public features need no account
+westlake                           # launch the local web dashboard
+westlake calendar today            # public queries run without credentials
 westlake --help
 ```
 
-Optional extra: `pip install 'westlake-survival[browser]'` then `playwright install chromium` — enables OneDrive lecture notes, hosts deep rendering, and CARSI off-campus SSO.
+Optional extra: `pip install 'westlake-survival[browser]'` followed by `playwright install chromium` enables headless browser features: OneDrive/SharePoint shared notes indexing, deep client-side rendering for campus hosts, and off-campus CARSI SSO renewal.
 
-## No terminal at all
+## GUI-Only Launch (No Terminal Required)
 
-Windows: double-click `start.bat`; macOS: `start.command`; Linux: `./start.sh`. The first run installs dependencies and opens the browser on the **Settings** page — you type your student ID and unified password once; after verification the dashboard loads.
+Windows: double-click `start.bat`; macOS: double-click `start.command`; Linux: execute `./start.sh`. On the first run, the script installs dependencies and automatically opens your browser to the **Settings** page. Enter your student ID and unified password once; upon successful verification, the main dashboard loads. Subsequent runs skip setup and open the dashboard directly.
 
-## First-time setup
+## First-Time Configuration
 
-- One unified password covers SIS / Canvas / AMS / booking / sports / printing / portal; Canvas also accepts a personal token (settable in the web UI).
-- Passwords are typed in the web form only; the terminal never asks by default (`westlake setup --terminal` is the no-GUI fallback).
-- Credentials stay on this machine (keychain first), never synced across machines.
+- A single institutional password authenticates across SIS, Canvas, AMS, venue booking, sports facilities, cloud printing, and the campus portal. Canvas also supports personal access tokens configured directly in the web UI.
+- Passwords are entered securely through the local browser UI; the CLI avoids storing or requesting plaintext credentials in standard terminal sessions (`westlake setup --terminal` is provided for headless environments).
+- Credentials are stored exclusively on the local machine in your OS keychain (Windows Credential Manager, macOS Keychain, or Linux Secret Service) and are never synced across devices.
 
-## Environment check
+## Environment Diagnostics
 
 ```bash
-westlake doctor        # item-by-item check with a copy-paste fix for each gap
-westlake doctor --json # machine-readable
+westlake doctor        # comprehensive environment diagnostics with copy-paste remediation commands
+westlake doctor --json # structured JSON output for scripts and agents
 ```
 
-Full docs (Chinese-first) live on [GitHub](https://github.com/yizhang-dream/westlake_survival/tree/main/docs).
+Comprehensive technical documentation is maintained in the [GitHub repository documentation](https://github.com/yizhang-dream/westlake_survival/tree/main/docs).

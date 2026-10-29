@@ -1,37 +1,37 @@
-# Campus life
+# Campus Life & Services
 
-Everything here needs **no account** unless noted.
+Most utilities in this section operate completely **without credentials**, except where authenticated personal records are indicated.
 
-## Calendar / shuttle / snapshot
+## Academic Calendar, Shuttle Transit & Daily Context
 
 ```bash
-westlake calendar today        # date, week number, events
-westlake calendar week 10      # week 10 at a glance
-westlake calendar events       # academic-calendar events
-westlake transit next          # next shuttle
-westlake transit table         # timetable
-westlake transit ical          # shuttle ICS (one-click copy on /ical)
-westlake context               # "Westlake right now": week + shuttle + weather + AQI + deadlines
-westlake digest                # morning digest
+westlake calendar today        # current date, teaching week number, and academic events
+westlake calendar week 10      # week 10 schedule overview
+westlake calendar events       # institutional academic calendar milestones
+westlake transit next          # next scheduled campus shuttle departures
+westlake transit table         # complete cross-campus shuttle timetable
+westlake transit ical          # shuttle schedule exported to .ics format
+westlake context               # comprehensive real-time snapshot: week, shuttle, weather, AQI, upcoming deadlines
+westlake digest                # morning briefing summary
 ```
 
-`context` includes live weather and air quality by default (open-meteo, no API key).
+`westlake context` queries real-time weather and air quality index (AQI) conditions by default (powered by Open-Meteo, zero API keys required).
 
-## Dining / housing / map / phones
+## Dining, Residential Life, Navigation & Directory
 
 ```bash
-westlake campus dining         # canteens & cafés
-westlake campus housing        # apartments
-westlake map [--campus yungu]  # campus map + 360° panoramas + getting there
-westlake contact phones        # useful phone numbers
+westlake campus dining         # dining halls, cafeterias, and campus coffee shops
+westlake campus housing        # student and residential apartment details
+westlake map [--campus yungu]  # campus geographic map, 360° panoramas, and transit directions
+westlake contact phones        # essential campus emergency and administrative contacts
 ```
 
-## Printing / portal / to-dos (unified password)
+## Cloud Printing, Campus Portal & Task Center (Unified Credentials)
 
 ```bash
-westlake pms stations          # print stations (no account)
-westlake pms jobs              # my print jobs
-westlake portal cards          # portal cards (unread mail / loans / to-dos)
-westlake todo list|doing|done  # task center
-westlake affairs apps booking  # where to get things done (service catalog)
+westlake pms stations          # campus print station locations (no login required)
+westlake pms jobs              # active print queue and job history
+westlake portal cards          # portal dashboard summary cards (unread email, book loans, pending approvals)
+westlake todo list|doing|done  # administrative to-do task tracker
+westlake affairs apps booking  # administrative service directory (guide to campus workflows)
 ```

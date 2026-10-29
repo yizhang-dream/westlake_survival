@@ -2,9 +2,9 @@
 
 # westlake_survival
 
-> 把西湖大学散落在数十个系统里的校园服务，收拢成**一条命令、一次调用、一个页面**。
+> 面向西湖大学师生的校园服务聚合工具包与开发套件。
 >
-> Python 库 · CLI · MCP 服务器 · 本地 WebUI —— 一套能力，四个入口，人与 AI 代理皆宜。
+> 提供 Python 库、命令行工具（CLI）、本地 Web 仪表盘与 MCP 服务端，兼顾日常使用与自动化接入。
 >
 > 📚 在线文档：https://yizhang-dream.github.io/westlake_survival/
 
@@ -16,18 +16,18 @@
 ![MCP](https://img.shields.io/badge/MCP-server-8957e5)
 ![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-dd4a4a)
 
-西湖大学的校园服务散落在 SIS、教学系统 AMS、Canvas、预约中心、门户、图书馆、体育场馆……各自为政的几十个系统里。**westlake_survival** 在 API 层面把它们逐一接通，收敛为一个工具包：
+西湖大学的校园服务分散在 SIS、教学系统 AMS、Canvas、场地预约、校内门户、体育场馆等多个系统中。**westlake_survival** 在 API 层面进行整合，收敛为统一的工具包与开发接口：
 
-- **Python 库（进程内 API）**：`pip install westlake-survival` 后 `import westlake_survival` 直用全量结构化数据——会跑代码的代理的最短路径；[examples/](examples/) 有可直接跑的样例。
-- **CLI**：`westlake` 一条命令覆盖查询与少量写操作；不确定归哪条，`westlake find <口语关键词>` 直接问（「论文」「借书」「放假」都能命中）。
-- **本地 WebUI**：裸跑 `westlake`（或双击启动脚本）自动打开浏览器进仪表盘——30+ 页面，含账号配置；`/capabilities` 一页列出全部能力。
-- **MCP 服务器（兼容层）**：`westlake-mcp` 面向只能调用工具的客户端（Claude Desktop、Cursor 聊天等）；ZCode / Claude Code 这类有终端的代理走上面三个入口即可。
+- **Python 库（进程内 API）**：安装 `westlake-survival` 后直接 `import westlake_survival` 获取全量结构化数据，适合 Python 脚本与代码执行环境；[examples/](examples/) 提供了可直接运行的示例。
+- **CLI**：`westlake` 提供覆盖全功能的命令行入口；若不确定具体子命令，可使用 `westlake find <关键词>` 检索（支持「论文」「借书」「放假」等关键词）。
+- **本地 WebUI**：运行 `westlake`（或双击启动脚本）自动启动本地服务并打开浏览器仪表盘，包含账号配置与 30 余个功能页面；可在 `/capabilities` 查看完整能力清单。
+- **MCP 服务器**：提供 `westlake-mcp`，便于仅支持 Tool Call 的客户端（如 Claude Desktop、Cursor 聊天等）接入；具备终端环境的 Agent 直接调用 CLI 或 Python 库即可。
 
-三条底线，先说清楚：
+核心设计原则：
 
-1. **默认只读**。写操作仅五条——交作业、讨论回帖、回私信、预约场地、取消预约——且都必须凭使用者当轮明确指令执行；不做选课、抢课，不绕过权限。
-2. **凭据只存本机**。钥匙串优先、只存一份、不打印不提交、不跨机器同步；账号由本人在网页「设置」页填写，终端不问密码。见[凭据与隐私](#凭据与隐私)。
-3. **无官方背书**。社区工具，结构参考 [sustech_survival](https://github.com/dumixthestpd/sustech_survival)，与西湖大学官方无关。
+1. **默认只读**。写操作严格限制为五项（Canvas 作业提交、讨论回帖、发送私信，以及场地预约与取消预约），且均须凭使用者明确指令执行；不提供选课、抢课功能，不绕过权限系统。
+2. **凭据仅存本地**。优先采用系统钥匙串并保持单一持久化存储，不打印、不提交、不跨设备同步；账号信息由使用者在本地网页「设置」页面录入，终端默认不提示输入明文密码。详见[凭据与隐私](#凭据与隐私)。
+3. **无官方背书**。本项目为开源社区工具，项目结构参考 [sustech_survival](https://github.com/dumixthestpd/sustech_survival)，与西湖大学官方无关。
 
 ## 功能总览
 
@@ -39,52 +39,52 @@
 | 场地预约 | 17 类场地（自习室/研讨室/琴房/活动用房…）：分类、逐日可约、逐格空闲、我的预约、预约与取消 | 统一密码 |
 | 体育场馆 | 场景、场地、逐日可约、我的预约（只读） | 统一密码 |
 | 任务与门户 | 办事大厅目录、我的待办/进行中/抄送、门户个人卡片（未读邮件/在借/待办计数） | 统一密码 |
-| 学术科研 | 订阅数据库注册表、CARSI 校外 SSO（`scholar ensure` 一条命令）、DOI→PDF 全文下载、科研进展、导师名录、HPC 集群、报销与经费制度 | 部分免账号 |
+| 学术科研 | 订阅数据库注册表、CARSI 校外 SSO（`scholar ensure` 建立会话）、DOI→PDF 全文下载、科研进展、导师名录、HPC 集群、报销与经费制度 | 部分免账号 |
 | 就业 | 招聘岗位、招聘会、宣讲会：最新＋深列表＋详情 | 免账号 |
 | 培养方案 | 专业学分要求与课程表、课程体系、通识课目录、课程搜索 | 免账号 |
-| 校园生活 | 校历周次与假期、班车时刻与 ICS、每日晨报快照（`context`/`digest`）、食堂咖啡、公寓、校区地图与 720° 全景、打印网点 | 免账号 |
+| 校园生活 | 校历周次与假期、班车时刻与 ICS、每日信息快照（`context`/`digest`）、食堂咖啡、公寓、校区地图与 720° 全景、打印网点 | 免账号 |
 | 讲义下载 | OneDrive/SharePoint 分享讲义免账号直读与下载（需 `[browser]` 可选增强） | 免账号 |
 | 信息检索 | 官网全站搜索、新闻、讲座活动、学院动态、学生百科 WikiLake | 免账号 |
 | 系统盘点 | 90+ 项服务注册表、子站在线普查、站点栏目、服务可达性、VPN 状态与隧道路由 | 免账号 |
 | 图书馆 | 系统于 2026-10-28 迁移至「阿法迪云 eLibrary」，借阅查询暂不可用（[迁移说明](docs/library_migration_2026-10-28.md)） | — |
 
-体育场馆与图书馆座位是独立系统，与预约中心的对照见 [docs/module_audit_2026-10-27.md](docs/module_audit_2026-10-27.md)；办事门户 `affairs portal` 服务端接口近期疑似变化、暂报错。个人档案类（学籍/住宿/荣誉/志愿/资助/社团）还有 20+ 条只读命令，`westlake find` 一查便知。
+体育场馆与图书馆座位属于独立系统，与预约中心的对照见 [docs/module_audit_2026-10-27.md](docs/module_audit_2026-10-27.md)；办事门户 `affairs portal` 接口近期因服务端变更暂不可用。个人档案类（学籍/住宿/荣誉/志愿/资助/社团）相关只读命令可通过 `westlake find` 检索。
 
 ## 快速开始
 
-**最省事**：双击仓库根目录的 `start.bat`（Windows）/ `start.command`（macOS），或终端 `./start.sh`（Linux）。首次运行自动装依赖，随后浏览器自动打开——没配过账号直达「设置」页，**本人**填一次学号与统一密码，验证通过自动进仪表盘；之后每次启动直达仪表盘。同一端口已有服务在跑时不重复启动，直接把浏览器指过去。
+**图形化快速启动**：运行仓库根目录的 `start.bat`（Windows）、`start.command`（macOS）或 `./start.sh`（Linux）。首次运行时会自动安装依赖并启动浏览器；若未配置账号会自动进入「设置」页，由用户录入学号与统一身份认证密码，验证通过后进入仪表盘。若端口已有服务运行，会自动复用已有实例。
 
 **终端**（已发布 PyPI，无需 clone 仓库）：
 
 ```bash
 pip install westlake-survival   # PyPI 直装；开发装法：clone 后 pip install -e .，锁验证过的版本用 requirements.txt
-westlake                      # 起网页并开浏览器；脚本/自动化设 WESTLAKE_NO_WEBUI=1 关闭弹出
+westlake                      # 启动 Web 服务并打开浏览器；自动化环境可设 WESTLAKE_NO_WEBUI=1 禁用浏览器唤起
 westlake calendar today       # 校历等公开功能无需账号
 westlake --help
 ```
 
-启动行为与首次配置的完整契约见 [docs/first_run.md](docs/first_run.md)。环境不对（装了却用不了、缺依赖、命令和解释器不同环境）先跑 `westlake doctor`：逐项体检解释器/依赖/账号/网络，缺什么给一条能直接抄的修复命令（[docs/doctor.md](docs/doctor.md)）。
+启动行为与首次配置的完整契约见 [docs/first_run.md](docs/first_run.md)。若遇到依赖缺失或运行异常，可先执行 `westlake doctor` 检查 Python 解释器、依赖包、账号配置与网络状态，根据提示完成修复（详见 [docs/doctor.md](docs/doctor.md)）。
 
 ## 配合 AI 代理使用（任何代理通用）
 
-本仓库为代理而设计。三种接法按需选、可叠加：
+本项目针对自动化流程与 AI Agent 进行了专门设计，支持以下接入方式：
 
-1. **读 `AGENTS.md` 的代理**（ZCode、DSH、Codex、Claude Code、Cursor……）：clone 即用——根目录 [AGENTS.md](AGENTS.md) 已写明纪律、入口与验证方式，代理开会话自动读到；配好账号后直接差遣 `westlake` CLI。
-2. **带技能（Skill）机制的代理**：技能文档在 [skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md)，拷进你的代理的技能根即可被发现：
+1. **基于 `AGENTS.md` 规范的 Agent**（ZCode、DSH、Codex、Claude Code、Cursor 等）：根目录 [AGENTS.md](AGENTS.md) 约定了行为规范、调用入口与验证流程；完成账号配置后直接调用 `westlake` CLI。
+2. **Skill 机制接入**：技能定义文件位于 [skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md)，将其复制至对应 Agent 框架的技能目录即可加载：
    ```bash
    git clone https://github.com/yizhang-dream/westlake_survival.git
    cp -r westlake_survival/skills/westlake-survival ~/.zcode/skills/    # ZCode；其他代理用 ~/.agents/skills/、~/.claude/skills/ 等
    ```
-3. **MCP 客户端**：装包后注册 `westlake-mcp` 进程；配置片段与全套 MCP 工具清单见 [docs/skill_reference.md](docs/skill_reference.md)。
+3. **MCP 客户端接入**：安装包后配置并启动 `westlake-mcp` 服务端；配置示例与 MCP 工具清单见 [docs/skill_reference.md](docs/skill_reference.md)。
 
-代理接手第一步永远是 **`westlake doctor`**（`--json` 便于程序判断）：全绿再干活；账号不由代理填，请使用者在网页「设置」页本人填写。
+Agent 接入后建议优先运行 **`westlake doctor`**（支持 `--json` 输出）：各项检查通过后再开展后续工作；账号信息须引导使用者在本地网页「设置」页面自行填写，Agent 勿代填。
 
 ## 凭据与隐私
 
-- **一个统一密码通吃**：SIS、Canvas、AMS、预约、体育、打印、门户都走西湖统一身份认证；Canvas 另兼容个人令牌，网页可存可清。
-- **只存一份、只存本机**：钥匙串（Windows 凭据管理器 / macOS 钥匙串 / Linux Secret Service）优先；写文件即自动清钥匙串，反之亦然（[docs/credential_single_store.md](docs/credential_single_store.md)）。不跨机器、不跨系统用户同步。
-- **密码只在网页表单里敲**：终端默认不问密码（SSH 等无图形环境才 `westlake setup --terminal`）；做隔离测试设 `WESTLAKE_HOME` 或 `WESTLAKE_NO_KEYRING`，任一成立即沙箱。
-- **默认直连**：全部会话 `trust_env=False`，无视 `HTTP_PROXY/HTTPS_PROXY`——校园站点经系统代理常 502/超时；外部脚本复用请走 `westlake_survival.discovery.direct_session()`。
+- **统一身份认证**：SIS、Canvas、AMS、场地预约、体育系统、自助打印与校内门户均接入统一身份认证；Canvas 额外支持配置个人访问令牌。
+- **单一存储与本地保护**：优先采用系统钥匙串（Windows 凭据管理器 / macOS Keychain / Linux Secret Service）；写入本地文件时自动清理钥匙串对应项，反之亦然（[docs/credential_single_store.md](docs/credential_single_store.md)），不跨设备同步。
+- **凭据录入隔离**：终端默认不提示输入明文密码（无桌面环境可通过 `westlake setup --terminal` 配置）；自动化与隔离测试可设置 `WESTLAKE_HOME` 或 `WESTLAKE_NO_KEYRING` 进入沙箱模式。
+- **网络默认直连**：网络会话默认设置 `trust_env=False`，忽略 `HTTP_PROXY/HTTPS_PROXY` 代理设置，避免校园内网服务因代理转发出现异常；外部脚本可通过 `westlake_survival.discovery.direct_session()` 建立直连会话。
 - 校外访问教务/Canvas 需校园网或 VPN：`westlake vpn status` 查状态。
 
 ## 验证（端到端）
@@ -92,9 +92,9 @@ westlake --help
 本仓库不维护单元测试，功能验证一律端到端真跑：
 
 ```bash
-python tools/module_smoke.py   # 全部只读 CLI 逐条真跑，出 OK/EMPTY/AUTH/FAIL 体检表
-python tools/webui_smoke.py    # 进程内起真实 Flask 服务，逐页 GET 断言 200
-python tools/pii_scan.py       # 提交前扫真实学号等个人信息
+python tools/module_smoke.py   # 逐条测试只读 CLI 并输出状态表
+python tools/webui_smoke.py    # 进程内启动真实 Flask 服务并验证各页面响应
+python tools/pii_scan.py       # 提交前扫描敏感个人信息
 ```
 
 ## 文档

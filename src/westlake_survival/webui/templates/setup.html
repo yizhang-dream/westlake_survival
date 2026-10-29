@@ -6,13 +6,11 @@
 
 {% if needs_setup %}
 <div class="callout" id="firstRun">
-  <span><strong>第 1 步：填一次你自己的账号。</strong>每台电脑各存各的，密码只留在本机、不跨设备同步。
-    填完点「保存并检测」，课表 / 成绩 / 作业 / 图书馆这些需要登录的功能就通了。</span>
-  <p style="margin:.6rem 0 0"><a class="btn ghost" href="/?skip=1">先看看公开功能（校历 / 班车 / 新闻 / 地图）→</a></p>
+  <span><strong>初始化配置：</strong>请输入统一身份认证凭据。凭据仅加密保存在当前设备本地，不进行跨设备同步。配置并验证通过后，即可使用个人课表、成绩、作业与图书借阅等功能。</span>
+  <p style="margin:.6rem 0 0"><a class="btn ghost" href="/?skip=1">直接浏览公开功能（校历 / 班车 / 新闻 / 地图）→</a></p>
 </div>
 {% else %}
-<div class="callout"><span>账号已配置。下面可以改密码、换 Canvas 令牌，或清除令牌。
-  公开功能（校历 / 班车 / 新闻 / 培养方案 / 通识课程 / 地图图片）始终不需要账号。</span></div>
+<div class="callout"><span>账号已配置完成。可在下方更新密码、更换或清除 Canvas 访问令牌。校历、班车、新闻、地图等公开功能无需凭据即可直接使用。</span></div>
 {% endif %}
 
 <div id="status" style="margin-bottom:1.2rem">
@@ -37,17 +35,17 @@
 
 <form id="setupForm" class="filter" style="flex-direction:column;align-items:stretch">
   <label>学号
-    <input name="sid" autocomplete="username" placeholder="学号">
+    <input name="sid" autocomplete="username" placeholder="请输入学号">
   </label>
-  <label>统一身份认证密码（校园门户密码；旧的 SIS 密码也兼容；不会回显）
-    <input name="password" type="password" autocomplete="current-password">
+  <label>统一身份认证密码（校园统一门户密码）
+    <input name="password" type="password" autocomplete="current-password" placeholder="请输入密码">
   </label>
-  <label>Canvas 访问令牌（选填；留空不改动。存了会先试令牌，不行再回退统一密码）
-    <input name="canvas_token" autocomplete="off" placeholder="粘贴令牌，或留空">
+  <label>Canvas 访问令牌（选填；优先使用令牌，失败时回退至统一认证密码；留空则保持不变）
+    <input name="canvas_token" autocomplete="off" placeholder="粘贴 Access Token，留空则保持不变">
   </label>
   <label style="display:flex;flex-direction:row;align-items:center;gap:.45rem">
     <input type="checkbox" name="verify" checked style="min-width:auto">
-    现在就登录验证（校内网络；校外请先连 VPN。验证没通过也会先保存，并在结果里标明「未验证」）
+    保存时立即验证连接（需处于校内网络或已连接校园 VPN；验证未通过亦会先保存本地）
   </label>
   <div>
     <button type="submit" id="submitBtn">保存并检测</button>
@@ -57,10 +55,10 @@
 <div id="result" style="display:none;margin-top:1.4rem"></div>
 
 <section class="card" style="margin-top:1.8rem">
-  <div class="card-head"><h2 class="section">导航模块显隐</h2></div>
-  <div class="callout"><span>只控制导航栏显示哪些模块（本浏览器记忆）。后端数据与各页面 URL 始终全量可用——关掉只是不占导航位，直接访问地址照常打开。</span></div>
+  <div class="card-head"><h2 class="section">导航模块显示设置</h2></div>
+  <div class="callout"><span>控制顶部导航栏的模块显示项（设置保存在当前浏览器）。隐藏仅精简导航展示，各页面及接口仍可正常访问。</span></div>
   <div id="navToggles" class="chip-cloud" style="margin-top:.9rem;flex-wrap:wrap;gap:.45rem"></div>
-  <p class="muted" style="font-size:.82rem;margin-top:.6rem">勾选=显示在导航。改动即时生效。</p>
+  <p class="muted" style="font-size:.82rem;margin-top:.6rem">点击切换显示状态，设置即时生效。</p>
 </section>
 
 <script>
@@ -149,7 +147,7 @@
   var clearBtn = document.getElementById('clearCanvasBtn');
   if (clearBtn) {
     clearBtn.addEventListener('click', async function () {
-      if (!confirm('删除本地 Canvas 令牌？之后 Canvas 改用统一密码（IAM 会话）。')) return;
+      if (!confirm('确认清除本地 Canvas 令牌？清除后将回退使用统一认证密码。')) return;
       var noteBox = document.getElementById('clearedNote');
       try {
         var res = await fetch('/setup/api/canvas/clear', { method: 'POST' });
@@ -176,7 +174,7 @@
     btn.disabled = true;
     btn.textContent = '正在检测…';
     box.style.display = 'block';
-    box.innerHTML = '<p class="muted">正在验证并保存…（验证要连学校网络，可能需要几秒）</p>';
+    box.innerHTML = '<p class="muted">正在验证凭据并保存配置（连接校内服务中）…</p>';
     var data = {
       sid: form.sid.value.trim(),
       password: form.password.value,
@@ -209,10 +207,10 @@
         var done = !!(payload.sis && payload.sis.verified);
         box.innerHTML =
           '<table class="data"><thead><tr><th>服务</th><th>结果</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-          '<p class="muted" style="font-size:.84rem">验证没通过也保住了输入，之后再查会重新验证；打印系统（pms）是另一套密码，需要时再单独配置。</p>' +
-          '<p>' + (done ? '配置完成，可以去用需要登录的功能了。' : '已保存，联网后可再点一次「保存并检测」确认。') +
-          ' <a class="btn" href="/">进首页 →</a>' +
-          (done ? ' <span class="muted">（<span id="jumpSec">3</span> 秒后自动进入）</span>' : '') + '</p>';
+          '<p class="muted" style="font-size:.84rem">未通过验证的凭据仍已保存至本地，后续请求将重新认证；校园文印系统（PMS）使用独立密码，可在对应页面单独配置。</p>' +
+          '<p>' + (done ? '配置已完成，个人功能已就绪。' : '配置已保存至本地；网络恢复后可再次点击「保存并检测」验证。') +
+          ' <a class="btn" href="/">进入仪表盘 →</a>' +
+          (done ? ' <span class="muted">（<span id="jumpSec">3</span> 秒后自动跳转）</span>' : '') + '</p>';
         await refreshStatus();
         if (done) {
           // 配置好即见前端（2026-10-29 用户裁定）：验证通过 3 秒自动进仪表盘；

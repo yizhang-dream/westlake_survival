@@ -3,31 +3,31 @@
 ## PyPI 直装（推荐）
 
 ```bash
-pip install westlake-survival      # 基础即全功能（含 WebUI 与钥匙串加密存储）
-westlake                           # 起网页并打开浏览器
+pip install westlake-survival      # 基础安装包含 WebUI 与钥匙串存储
+westlake                           # 启动本地服务并打开浏览器
 westlake calendar today            # 校历等公开功能无需账号
 westlake --help
 ```
 
-可选增强：`pip install 'westlake-survival[browser]'` 再 `playwright install chromium`（OneDrive 讲义 / hosts 渲染深挖 / CARSI 校外 SSO 三条链路用）。
+可选增强：执行 `pip install 'westlake-survival[browser]'` 与 `playwright install chromium`，支持 OneDrive 讲义解析、子站深度渲染及 CARSI 校外 SSO 联动。
 
-## 双击启动（不想开终端）
+## 图形化快捷启动
 
-Windows 双击仓库根目录 `start.bat`，macOS 双击 `start.command`，Linux 跑 `./start.sh`。首次运行自动装依赖，浏览器直达「设置」页——**本人**填一次学号与统一密码，验证通过自动进仪表盘。
+Windows 环境运行仓库根目录 `start.bat`，macOS 运行 `start.command`，Linux 执行 `./start.sh`。首次运行时会自动安装依赖并在浏览器中打开「设置」页面；用户填入统一身份认证凭据并通过验证后，将自动进入仪表盘。
 
 ## 首次配置
 
-- 一个统一密码通吃 SIS / Canvas / AMS / 预约 / 体育 / 打印 / 门户；Canvas 另兼容个人令牌（网页可存可清）。
-- 密码只在网页表单里敲，终端默认不问（SSH 等无图形环境才 `westlake setup --terminal`）。
-- 凭据只存本机（钥匙串优先），不跨机器同步。
+- 统一身份认证密码适用于 SIS、Canvas、AMS、场地预约、体育系统、自助打印与校内门户；Canvas 同时支持配置个人访问令牌。
+- 密码在本地网页表单中输入，终端默认不提示输入明文密码（无桌面环境可通过 `westlake setup --terminal` 完成配置）。
+- 凭据仅保存在当前设备（优先使用系统钥匙串），不进行跨设备同步。
 
-## 环境体检
+## 环境自检
 
-装了却用不了、缺依赖、命令和解释器不同环境时，先跑：
+若遇到依赖缺失或环境路径不一致，可执行环境自检：
 
 ```bash
-westlake doctor        # 逐项体检，缺什么给一条能直接抄的修复命令
-westlake doctor --json # 给程序判断
+westlake doctor        # 逐项检查运行环境并输出修复建议
+westlake doctor --json # 输出结构化检查结果
 ```
 
-详见 [GitHub 文档](https://github.com/yizhang-dream/westlake_survival/tree/main/docs)（中文为主）。
+详见 [GitHub 文档](https://github.com/yizhang-dream/westlake_survival/tree/main/docs)。

@@ -1,28 +1,28 @@
-# Canvas courses & assignments
+# Canvas Courses & Assignments
 
-Auth: **personal token first** (settable/clearable in the web Settings page, or `WESTLAKE_CANVAS_TOKEN`), falling back to the unified-password session automatically. On a 401, suspect a stale token: `westlake setup --clear-canvas-token`.
+Authentication uses a **personal access token by default** (configurable and removable in the web Settings UI or via `WESTLAKE_CANVAS_TOKEN`), gracefully falling back to your unified campus session if no token is provided. If you encounter HTTP 401 Unauthorized errors, your token may have expired: run `westlake setup --clear-canvas-token` to reset it.
 
-## Read queries
+## Read-Only Queries
 
 ```bash
-westlake canvas courses                    # course list
-westlake canvas deadlines                  # all deadlines (no 7-day cap)
-westlake canvas exams                      # exams & quizzes
-westlake canvas todo                       # to-dos
+westlake canvas courses                    # active course list
+westlake canvas deadlines                  # complete upcoming deadlines (bypasses default 7-day cap)
+westlake canvas exams                      # quizzes and scheduled exams
+westlake canvas todo                       # Canvas to-do items
 westlake canvas assignment-info --course <x> --assignment <y> \
-       [--download ./dir]                  # details + attachments + rubric
-westlake canvas files --course ...         # course files (downloadable)
+       [--download ./dir]                  # assignment brief, rubric, and attached files
+westlake canvas files --course ...         # browse and download course file repositories
 westlake canvas discussions|announcements|inbox
 ```
 
-## Three write ops (consequence gate)
+## Write Operations & Consequence Gate
 
 ```bash
-westlake canvas submit --course ... --assignment ... --file hw.pdf --dry-run   # 1) plan
-westlake canvas submit ... --yes                                            # 2) submit
-westlake canvas submission --course ... --assignment ...                     # 3) read back
-westlake canvas reply  --course ... --topic ... --text "..." --yes           # discussion reply
-westlake canvas send   --conversation 123 --text "..." --yes                 # inbox message
+westlake canvas submit --course ... --assignment ... --file hw.pdf --dry-run   # 1) Pre-flight simulation
+westlake canvas submit ... --yes                                            # 2) Execute submission
+westlake canvas submission --course ... --assignment ...                     # 3) Verify submitted artifact
+westlake canvas reply  --course ... --topic ... --text "..." --yes           # Post discussion reply
+westlake canvas send   --conversation 123 --text "..." --yes                 # Send inbox message
 ```
 
-Without `--yes` a structured risk descriptor prints (what changes / risk / severity / reversibility) and the command exits 1; conversations marked `cannot_reply` are refused outright. Recommended flow for submissions: plan → `--yes` → read back.
+Every write operation is protected by the consequence gate. Omitting `--yes` prints a structured risk descriptor (action target, risk category, severity level, and reversibility) and aborts execution with exit code 1. Conversations flagged with `cannot_reply` are automatically rejected. The standard protocol for assignment submission is: **simulate (`--dry-run`) → execute (`--yes`) → verify (`submission`)**.

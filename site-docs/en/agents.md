@@ -1,44 +1,47 @@
-# Agent integration
+# AI Agent Integration
 
-Built for AI agents. Three paths, freely combined:
+Designed from the ground up for autonomous AI agents and developer workflows. Integrate via any of the three patterns below:
 
-## 1. Agents that read `AGENTS.md` (ZCode, DSH, Codex, Claude Code, Cursor, …)
+## 1. Instruction-driven agents via `AGENTS.md` (ZCode, DSH, Codex, Claude Code, Cursor, etc.)
 
-Clone and go — the root [AGENTS.md](https://github.com/yizhang-dream/westlake_survival/blob/main/AGENTS.md) states the ground rules, entry points, and verification flow; drive the `westlake` CLI once the account is configured.
+Clone and run directly. The repository root [AGENTS.md](https://github.com/yizhang-dream/westlake_survival/blob/main/AGENTS.md) specifies behavioral boundaries, entry points, and verification procedures. Agents read this file automatically on session initialization and invoke the `westlake` CLI directly once credentials are configured.
 
-## 2. Python library (in-process API — shortest path for code-capable agents)
+## 2. In-Process Python API (Recommended for code-capable agents)
+
+Direct in-process function calls provide the lowest latency and strongly typed data models:
 
 ```python
 import westlake_survival
 from westlake_survival.sis import get_schedule
-for s in get_schedule():
-    print(s.weekday, s.start_time, s.title)
+
+for session in get_schedule():
+    print(session.weekday, session.start_time, session.title)
 ```
 
-Runnable samples in [examples/](https://github.com/yizhang-dream/westlake_survival/tree/main/examples); no repo needed after `pip install westlake-survival`.
+Runnable examples are provided in [examples/](https://github.com/yizhang-dream/westlake_survival/tree/main/examples). When installed via `pip install westlake-survival`, the library runs without requiring a local repository clone.
 
-## 3. Skill mechanism
+## 3. Skill Mechanism
 
-The skill document lives at [skills/westlake-survival/SKILL.md](https://github.com/yizhang-dream/westlake_survival/blob/main/skills/westlake-survival/SKILL.md); copy it into your agent's skills root:
+The standalone skill definition is located at [skills/westlake-survival/SKILL.md](https://github.com/yizhang-dream/westlake_survival/blob/main/skills/westlake-survival/SKILL.md). Copy it into your agent's skills directory:
 
 ```bash
 cp -r westlake_survival/skills/westlake-survival ~/.zcode/skills/   # or ~/.agents/skills/, ~/.claude/skills/
 ```
 
-The `westlake-mcp` server remains as a compatibility layer for tool-only clients (Claude Desktop, chat sidebars); agents with a terminal use the paths above.
+The `westlake-mcp` server serves as a compatibility layer for clients restricted to tool-calling interfaces (such as Claude Desktop or chat sidebars). Agents with shell or Python execution access should prefer the CLI or Python API.
 
-## Write safety (consequence gate)
+## Write Safety & Consequence Gate
 
-Exactly five write operations exist: `canvas submit / reply / send`, `booking book / cancel`, all behind [consequence.py](https://github.com/yizhang-dream/westlake_survival/blob/main/src/westlake_survival/consequence.py):
+Exactly five write operations exist across the entire toolkit: `canvas submit`, `canvas reply`, `canvas send`, `booking book`, and `booking cancel`. All write paths are protected by [consequence.py](https://github.com/yizhang-dream/westlake_survival/blob/main/src/westlake_survival/consequence.py):
 
-- Without `--yes`: a structured risk descriptor (what changes / risk / severity / reversibility) prints and the command exits 1.
-- `--dry-run` (submit / book): plan-only, nothing is changed.
-- Deliberately no interactive y/n prompt — it hangs under piped agent stdin.
+- **Mandatory `--yes` flag**: Without `--yes`, execution terminates immediately with exit code 1, outputting a structured risk descriptor (action target, risk category, severity rating, and reversibility).
+- **Pre-flight simulation with `--dry-run`**: Supported on `submit` and `book` to preview request payloads and constraints without altering remote state.
+- **Non-interactive by design**: Interactive `[y/N]` prompts are intentionally omitted to prevent agent pipelines from hanging on blocked stdin buffers.
 
-## First step for any agent
+## Initialization & Health Check
 
 ```bash
-westlake doctor --json    # all green before doing anything
+westlake doctor --json    # inspects environment, dependencies, and network health
 ```
 
-Agents never fill credentials; the user does that once in the web Settings page.
+Ensure `westlake doctor` passes before executing multi-step tasks. AI agents must never handle raw credentials directly; users configure authentication once via the local web Settings UI.

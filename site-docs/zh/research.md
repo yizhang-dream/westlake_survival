@@ -4,13 +4,13 @@
 
 ```bash
 westlake scholar dbs               # 订阅数据库注册表
-westlake scholar open cnki         # 某库入口
-westlake scholar campus            # 校园 IP 信标（现在校内吗）
+westlake scholar open cnki         # 数据库访问入口
+westlake scholar campus            # 校园网络环境检测
 westlake scholar doi 10.1038/... -o out.pdf   # DOI → PDF 全文（校园网订阅通道）
-westlake scholar ensure            # 校外：CARSI 联盟 SSO 一条命令拉活会话
+westlake scholar ensure            # 校外访问：通过 CARSI 建立数据库访问会话
 ```
 
-`scholar ensure` 需 `[browser]` 可选增强；其余免账号（校园网内出版社按 IP 认账）。
+`scholar ensure` 依赖 `[browser]` 可选依赖；其余数据库查询无需账号（校园网内通过 IP 自动授权）。
 
 ## 培养方案（program）
 
@@ -37,6 +37,6 @@ westlake events                   # 讲座活动
 
 ```bash
 westlake careers                  # 最新招聘岗位
-westlake career deep --kind campus|jobfair|teachin   # 深列表
-westlake career detail <id>       # 详情
+westlake career deep --kind campus|jobfair|teachin   # 招聘专栏深列表
+westlake career detail <id>       # 招聘详情
 ```

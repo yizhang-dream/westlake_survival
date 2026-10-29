@@ -1,22 +1,22 @@
 ---
 name: westlake-survival
-description: 西湖大学校园一站式工具（学业/教学/科研/生活/办事/信息六域）。学业：课表（SIS 与教学系统 AMS 两套）、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 一条命令）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与卡点见文档）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、93 服务注册表与在线普查。凡与西湖大学（Westlake）相关的查询或操作需求都可使用——包括但不限于「查/交作业、下周什么考试、几号放假、下一班校车、找论文并下载全文、校外访问数据库、我借了什么书、打印点在哪、报销规定、今天有什么讲座/待办、找某位老师、宿舍与荣誉记录、跑普查找服务」。不确定某需求归哪条命令时，先运行 westlake find <需求关键词>（口语同义词可命中，如「论文」「借书」「放假」）。
+description: 西湖大学校园服务聚合工具（学业/教学/科研/生活/办事/信息六域）。学业：课表（SIS 与教学系统 AMS 两套）、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 自动建立会话）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与对照见文档）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、93 项服务注册表与在线普查。适用于西湖大学相关的查询或操作需求（包括查/交作业、考试安排、放假校历、班车时刻、论文全文获取、校外数据库访问、打印网点、经费制度、讲座待办、教师信息、档案记录与服务探测等）。不确定命令归属时，可先运行 westlake find <关键词> 检索（支持「论文」「借书」「放假」等关键词）。
 ---
 
-# 西湖大学生存手册（westlake-survival）
+# 西湖大学服务工具包（westlake-survival）
 
-把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：写操作仅限五条，且都必须凭用户当轮明确指令执行——`canvas submit` 交作业、`canvas reply` 讨论回帖、`canvas send` 回私信、`booking book` 预约场地、`booking cancel` 取消预约；五条统一走 `consequence.py` 确认门（未 `--yes` 打印风险描述并退出 1，`--dry-run` 预检放行，不做交互提示）；不做选课、抢课等其他写操作。
+汇总西湖大学常用校园服务，提供命令行工具、Python API 与 MCP 服务器。**默认只读**：写操作严格受限为五项，且均须凭用户明确指令执行（`canvas submit` 作业提交、`canvas reply` 讨论回帖、`canvas send` 私信发送、`booking book` 场地预约、`booking cancel` 取消预约）。上述写操作统一经由 `consequence.py` 确认拦截（缺少 `--yes` 参数时打印结构化风险描述并以状态码 1 退出，`--dry-run` 仅作预检，不进行交互式询问）；不包含选课、抢课等其他写操作。
 
 本文只放路由与行为规则；**完整命令示例、Python API 方法表、MCP 工具清单在 [docs/skill_reference.md](../../docs/skill_reference.md)**，各系统深挖见 docs/ 对应文档（按需再读，不必全量加载）。
 
-## 环境自检（Agent 接手第一步）
+## 环境自检（Agent 接入规范）
 
-先跑 `westlake doctor`（不在 PATH 就 `python -m westlake_survival doctor`；`--json` 便于判断）。逐项体检解释器/包/命令一致性/依赖/账号/网络，缺什么给一条能直接抄的修复命令；退出码 0=可用、1=有缺失，全绿再干活。
+建议优先运行 `westlake doctor`（不在 PATH 时使用 `python -m westlake_survival doctor`；支持 `--json` 输出）。检查项覆盖 Python 解释器、包安装、命令路径一致性、依赖完整性、账号配置及网络状态；退出码 0 表示通过，1 表示存在缺失项，全部通过后再开展后续工作。
 
-- **缺什么就装什么**（只装 Python 依赖，可直接执行）：仓库内 `pip install -e .`，无仓库环境 `pip install westlake-survival`（PyPI，2026-10-29 首发同版本）——Flask/keyring 都是基础依赖，装完即有网页与加密凭据存储。`.[browser]`（playwright + `playwright install chromium`）是**可选增强**：缺它 doctor 只报 warn 不挡活，share 讲义/hosts 渲染深挖/CARSI 校外 SSO 三条链路自动降级，**没有浏览器也能用**。Linux 无桌面：钥匙串取不到后端时退明文文件（warn）、playwright 缺系统库补 `playwright install-deps chromium`。
-- **解释器必须一致**：`westlake`、`python -m westlake_survival`、自写脚本要用同一个解释器，否则「明明装了却 import 不到」。查法：`which westlake`（macOS/Linux）/ `where westlake`（Windows）、`pip show westlake-survival`；不一致就改用 `python -m westlake_survival` 对齐。
-- **账号不由 Agent 填**：doctor 报「校园账号 未配置」时，请用户本人跑 `westlake`（或启动脚本 `start.bat` / `start.command` / `start.sh`）在网页「设置」页填一次；不要索取、不要代填、不要写凭据文件。做隔离测试用临时 `WESTLAKE_HOME` 或 `WESTLAKE_NO_KEYRING=1`——**两者任一成立即沙箱**，钥匙串读写都跳过。
-- **网络**：库层默认直连（无视 `HTTP_PROXY/HTTPS_PROXY`）；校外访问教务/Canvas 需 VPN，先 `westlake vpn status`。
+- **按需补齐依赖**（仅限 Python 依赖）：源码环境执行 `pip install -e .`，独立环境执行 `pip install westlake-survival`（Flask 与 keyring 属于基础依赖，包含 WebUI 与凭据加密存储）。`.[browser]`（Playwright 及配套 Chromium）为**可选增强**：未安装时 doctor 仅提示 warning，讲义解析、子站深度渲染与 CARSI 校外 SSO 自动降级，其余功能正常可用。无桌面 Linux 环境下，若无法获取系统钥匙串后端将降级至本地配置文件并提示 warning；Playwright 缺少系统依赖时可执行 `playwright install-deps chromium` 补齐。
+- **解释器一致性**：确保 `westlake` 命令、`python -m westlake_survival` 与调用脚本使用同一个 Python 环境，避免环境错位导致模块无法导入。排查方式：`which westlake`（macOS/Linux）或 `where westlake`（Windows），结合 `pip show westlake-survival` 核对路径；若存在偏差，统一使用 `python -m westlake_survival` 调用。
+- **账号配置规范**：当 doctor 提示「校园账号未配置」时，引导用户运行 `westlake`（或对应平台启动脚本），在本地网页「设置」页面自行填写，Agent 严禁索取凭据或代填。测试与沙箱隔离可配置临时 `WESTLAKE_HOME` 或设置 `WESTLAKE_NO_KEYRING=1`，此时将完全跳过系统钥匙串读写。
+- **网络直连**：网络请求默认直连，忽略 `HTTP_PROXY/HTTPS_PROXY` 代理配置；校外访问教务系统或 Canvas 需连入校园网或开启 VPN，可先执行 `westlake vpn status` 确认。
 
 ## 能力路由
 
@@ -27,7 +27,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 环境不对 / 装了用不了 / 不知道归哪条 | `doctor` / `find <关键词>` |
 | 今天几号 / 第几周 / 校历事件 / 学期 | `calendar today` / `week N` / `events` |
 | 下一班校车 / 班车时刻 / 课表班车 ICS | `transit next` / `table` / `transit ical`（网页 /ical 一键复制） |
-| 一句话「此刻西湖」/ 每日晨报 | `context` / `digest` |
+| 当前状态快照 / 今日快报 | `context` / `digest` |
 | SIS 课表 / 成绩 / 考试 / 选课车 / ICS | `sis schedule` / `grades` / `exams` / `cart` / `sis ical`；周网格+冲突检测 `sis grid`（只读；选课窗口开可并入选课车节次预检） |
 | 教学系统 AMS 课表 / 周次 / 学籍选课入口 | `ams schedule`（`--start/--end`）/ `status` / `menus`（与 SIS 两套，走 IAM） |
 | 待评教 / 第二课堂 / 导师 / 学籍异动 | `sis-evals list --pending` / `records second-class` / `records advisor` / `records other-apps` |
@@ -55,11 +55,11 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | HPC 集群 / 报销制度 / 镜像站 | `hpc overview` / `finance sections\|articles` / `mirrors` |
 | 服务是否可达 / 服务全景普查 | `probe` / `probe scan [--full]`（网页 /services、/capabilities） |
 | VPN 登录 / 状态 / 隧道资源 | `vpn login` / `status` / `resources` |
-| 一步打开全部功能 | 裸跑 `westlake`（起 WebUI 自动开浏览器，未配账号直达 /setup） |
+| 启动本地完整服务 | 裸跑 `westlake`（起 WebUI 自动开浏览器，未配账号直达 /setup） |
 
-## 用户入口（网页第一）
+## 用户入口（WebUI）
 
-用户侧双击 `start.bat`（Windows）/ `start.command`（macOS）/ 终端 `./start.sh`（Linux），或裸跑 `westlake`：浏览器自动打开，没配过账号**直达 `/setup`** 填一次学号+统一密码（Canvas 令牌选填，可一键清除；验证不过也落盘，不必重填）。**保存并验证通过后 3 秒自动进仪表盘**（未验证则留在设置页）。**密码默认永远在网页表单里敲，不在终端**：`westlake setup` 无参跑 = 打开浏览器设置页并等网页完成配置（`--wait` 秒数，缺省 10 分钟）；`--terminal` 才走终端提示（SSH 无图形环境兜底）；全旗标 `--sid/--password` 属自动化代跑。`WESTLAKE_NO_WEBUI=1` 恒硬关网页弹出。Agent 侧令牌管理 `westlake setup --canvas-token '<令牌>' --no-verify` / `--clear-canvas-token`。统一密码通吃 SIS/Canvas/AMS/打印/预约/门户/体育。
+用户可通过启动脚本或运行 `westlake` 打开本地界面：初次运行若未配置账号会自动跳转至 `/setup`，由用户录入统一身份认证凭据（Canvas 令牌选填，支持独立清除）。验证通过后进入仪表盘。密码录入以本地网页表单为准，终端默认不提示输入（无图形环境可使用 `westlake setup --terminal`）；自动化测试支持指定参数。设置 `WESTLAKE_NO_WEBUI=1` 可禁用浏览器自动打开。统一身份认证适用于 SIS、Canvas、AMS、自助打印、场地预约、校内门户及体育场馆。
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
@@ -69,21 +69,26 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 - **预约中心**：统一密码 OIDC 自动登录；接口对没权限的分类只返回空列表，能不能约看 `booking types`。
 - **sport**：统一密码 IAM CAS 自动登录；只读不做预约（下单涉次卡支付未接）。
 - **无凭据照常可用**：`calendar`/`transit`/`context`/`digest`/`search`/`news`/`program`/`research`/`events`/`careers`/`faculty`/`campus`/`map`/`contact`/`pms stations`/`probe`/`cache` 与 `scholar dbs|campus|doi|carsi|open`。
-- **凭据只存一份**：钥匙串或明文文件二选一，写入自动清另一份；`sso creds status` 只报来源有无。**登录报密码错别反复试**——IAM 失败计数触发图形验证码（14h+ 不复位）。凭据是本机状态，换机器/用户/环境各配一次。
+- **凭据单一存储**：系统钥匙串或本地配置文件二选一，写入时自动清理另一份；`sso creds status` 仅报告凭据来源是否存在。若登录提示密码错误切勿反复重试，连续失败将触发统一身份认证验证码锁定。凭据属于本机状态，环境变更后需重新配置。
 
-## 卡点归因（先归因，再谈能不能做）
+## 问题排查与功能归因
 
-用户说「做不了」时别直接记成「系统不支持」，先五问：①**锚定**——绑死单一系统了？（「预约」≠只有预约中心，还有 sportvenue/seats/CGYY 表单）②**时效**——依据是旧通知？③**占位符**——「外链/暂未接入」是线索不是结论④**搜不到**≠不存在⑤卡一轮就问用户平时从哪进。
+遇到功能不可用或查询未命中时，先厘清系统边界与当前状态：① 多系统交叉（例如场地预约分散在预约中心、体育场馆与图书馆座位系统）；② 时效性确认（通知或规则是否已有调整）；③ 接口与占位状态甄别；④ 检索范围是否受限；⑤ 必要时核对常规人工访问路径。
 
-判定前三跑（只读、几十秒）：`probe`、`hosts list`、`affairs apps 预约`。结论必归四类之一：**真做不了**（权限/网络/服务端缺失）/ **没建工具** / **逆向没做完** / **我判断错了**。对照清单 docs/module_audit_2026-10-27.md；新系统登记进 `discovery.EVIDENCE_HOSTS`。
+常规排查命令：`probe`、`hosts list`、`affairs apps 预约`。归因通常属于四类情况：权限/网络/服务端客观受限、尚未接入对应工具、接口解析待完善、或命令调用方式有误。可参考 docs/module_audit_2026-10-27.md 审计对照表；新发现系统应登记至 `discovery.EVIDENCE_HOSTS`。
 
-改任何解析层前后各跑 `python tools/module_smoke.py`（51 条只读命令体检）；**新增模块必须在其中登记一条只读命令**。并发硬规则：同账号最多 2 路登录；见 `4333 验证码或登录名为空` 立即停手不重试。
+修改解析逻辑前后，均须运行 `python tools/module_smoke.py` 验证；新增模块须在该测试脚本中登记只读测试命令。登录并发控制：同一账号并发登录不应超过 2 路；若捕获 `4333 验证码或登录名为空` 异常，须立即中止重试。
 
 ## Agent 行为守则
 
-- **网络一律直连（库层已内置）**：所有会话默认 `trust_env=False`；Agent 自己写脚本抓校园站点也必须显式直连（`requests` 传 `trust_env=False`，或复用 `westlake_survival.discovery.direct_session()`）；唯一例外 HPC 成果库代理兜底。诊断「连不上」先排除代理劫持。
-- **默认只读，写操作仅五条且要当轮明确指令**：`canvas submit`/`reply`/`send`、`booking book`/`cancel`。统一确认门（consequence.py）：未 `--yes` 一律打印结构化风险描述（改什么/风险/严重度/可逆性）并退出 1，先拿到用户当轮指令再传 `--yes`；不构造未文档化的请求，不新增写操作（新写操作必须先在 consequence.py 登记描述符，门会拒绝未登记名）。
-- **交作业三步走**：①`--dry-run` 预检；②`--yes` 提交（用户点名文件即视为授权）；③`canvas submission` 回读核验（submitted、附件名、未迟交）后才报完成。已评分作业默认不重交。
+- **网络直连规范**：所有网络会话默认设置 `trust_env=False`；Agent 自行编写脚本访问校内站点时亦须显式直连（`requests` 传入 `trust_env=False`，或复用 `westlake_survival.discovery.direct_session()`）。排查网络连通性时优先确认是否存在代理冲突。
+- **默认只读与写操作确认**：写操作严格受限于 `canvas submit`/`reply`/`send` 以及 `booking book`/`cancel`。统一经过 consequence.py 确认拦截：缺少 `--yes` 时打印结构化风险描述并以退出码 1 终止，获取用户明确指令后再添加 `--yes`；严禁构造未文档化的写操作请求。
+- **Canvas 作业提交规范**：① 使用 `--dry-run` 预检提交内容；② 获得用户明确指令后通过 `--yes` 执行提交；③ 使用 `canvas submission` 回查提交状态与附件信息，确认无误后完成。已评分作业默认不执行二次提交。
+- **回帖与私信**：`canvas reply`/`send` 未 `--yes` 会打印风险描述退出；凭用户当轮指令传 `--yes` 发送；发完回读核对落地；`cannot_reply` 的会话直接拒绝。
+- **写作业内容先看课程资料**：动笔前看 `assignment-info`（描述与附件）、`files`、`modules`——题目文件可能在三处任一处，描述里没有不代表没有。不要假定资料在固定本地路径。
+- **绝不打印凭据/令牌**：不 `cat` `~/.westlake_survival/credentials.txt` 或 `canvas_token.txt`，不回显学号密码或 `WESTLAKE_CANVAS_TOKEN`；只看 `sso creds status` 的有无。
+- **个人数据脱敏**：成绩、学籍、住宿、贷款等输出给第三方前默认脱敏/摘要提示。
+- **失败降级**：`OffCampusError`=需校园网/VPN（<https://vpn.westlake.edu.cn/>）；`AuthError`=凭据缺失/失效（`westlake sso creds set`）；命令失败如实转述错误，不臆造数据。
 - **回帖与私信**：`canvas reply`/`send` 未 `--yes` 会打印风险描述退出；凭用户当轮指令传 `--yes` 发送；发完回读核对落地；`cannot_reply` 的会话直接拒绝。
 - **写作业内容先看课程资料**：动笔前看 `assignment-info`（描述与附件）、`files`、`modules`——题目文件可能在三处任一处，描述里没有不代表没有。不要假定资料在固定本地路径。
 - **绝不打印凭据/令牌**：不 `cat` `~/.westlake_survival/credentials.txt` 或 `canvas_token.txt`，不回显学号密码或 `WESTLAKE_CANVAS_TOKEN`；只看 `sso creds status` 的有无。

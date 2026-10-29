@@ -7,8 +7,7 @@
 {% if error %}<div class="note">{{ error }}</div>{% endif %}
 
 {% if counts %}
-<div class="callout"><span>共 {{ counts.total }} 项能力：命令行 {{ counts.cli }} · MCP 工具 {{ counts.mcp }} · 网页 {{ counts.web }}；
-  其中 {{ counts.needs_auth }} 项需要凭据，其余为官网公开数据。</span></div>
+<div class="callout"><span>共接入 {{ counts.total }} 项系统能力：命令行 {{ counts.cli }} · MCP 工具 {{ counts.mcp }} · 网页 {{ counts.web }}；其中 {{ counts.needs_auth }} 项需身份认证，其余为公开数据接口。</span></div>
 
 <input type="search" id="capFilter" placeholder="搜索能力（名称 / 说明 / 子命令）"
        style="width:100%;max-width:26rem;padding:.45rem .6rem;margin:.4rem 0 1.2rem;
@@ -50,16 +49,16 @@
 {% endfor %}
 
 <section>
-  <h2 class="section">服务普查</h2>
-  <p class="muted" style="font-size:.86rem">直连探测学校子域（绕系统代理）；点击运行，几秒后出结果。</p>
-  <button type="button" id="scanBtn">运行普查</button>
+  <h2 class="section">服务探测</h2>
+  <p class="muted" style="font-size:.86rem">直连检测常用校园子域名连通状态（绕过系统代理）。</p>
+  <button type="button" id="scanBtn">开始探测</button>
   <div id="scanOut" style="margin-top:.8rem"></div>
 </section>
 
 {% if api_endpoints %}
 <section class="cap-group">
   <h2 class="section">HTTP 接口（{{ api_endpoints | length }}）</h2>
-  <p class="muted" style="font-size:.86rem">本机只读接口；日历订阅在校历页有专门入口。样例为当前实时数据，超长已截断。</p>
+  <p class="muted" style="font-size:.86rem">本机 HTTP 只读接口；校历订阅请前往「校历」页面。样例为实时数据，过长内容已截断展示。</p>
   {% for item in api_endpoints %}
   <div class="card cap-item">
     <div style="display:flex;justify-content:space-between;gap:.8rem;align-items:baseline">
@@ -73,8 +72,8 @@
 {% endif %}
 
 <p class="muted" style="font-size:.82rem">
-  机器可读版本：<a href="/api/capabilities">/api/capabilities</a>。
-  CLI 与 MCP 一一对应同一批库函数，数据源都是官网或校内系统。
+  接口元数据：<a href="/api/capabilities">/api/capabilities</a>。
+  命令行与 MCP 工具均基于统一底层库构建，数据直接对齐官网与校内系统。
 </p>
 
 <script>
@@ -83,7 +82,7 @@
   if (btn) btn.addEventListener('click', async function () {
     btn.disabled = true; btn.textContent = '探测中…';
     var out = document.getElementById('scanOut');
-    out.innerHTML = '<p class="muted">直连探测中（约 5-15 秒）…</p>';
+    out.innerHTML = '<p class="muted">正在探测服务连通性…</p>';
     try {
       var res = await fetch('/api/services/scan?hosts=www,sis,canvas,hpc,mirrors,one,booking,mydisk');
       var data = await res.json();
@@ -91,9 +90,9 @@
         return '<tr><td>' + r.host + '.westlake.edu.cn</td><td>' + r.status + '</td><td>' + (r.title || '') + '</td></tr>';
       }).join('');
       out.innerHTML = '<table class="data"><thead><tr><th>主机</th><th>状态</th><th>标题</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-        '<p class="muted" style="font-size:.8rem">共探测 ' + data.total + ' 个，活 ' + (data.alive || []).length + ' 个（通配 502 不计）。完整普查：westlake probe scan --full</p>';
+        '<p class="muted" style="font-size:.8rem">已探测 ' + data.total + ' 个服务，正常响应 ' + (data.alive || []).length + ' 个（已排除通配 502 节点）。完整探测命令：<code>westlake probe scan --full</code></p>';
     } catch (e) { out.innerHTML = '<div class="note">探测失败：' + e + '</div>'; }
-    btn.disabled = false; btn.textContent = '运行普查';
+    btn.disabled = false; btn.textContent = '开始探测';
   });
 })();
 </script>

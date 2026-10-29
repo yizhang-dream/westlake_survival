@@ -1,6 +1,6 @@
 # 学业：SIS 与 AMS
 
-西湖有两套教学系统，统一密码都通：**SIS**（教务，IAM OAuth2）与 **AMS**（教学系统，IAM 统一认证，会话缓存 8 小时）。以下命令均需校园网/VPN。
+西湖大学包含两套教务教学系统，均接入统一身份认证：**SIS**（教务系统，基于 IAM OAuth2）与 **AMS**（教学系统，基于 IAM 统一认证，会话缓存 8 小时）。以下命令均须在校园网或 VPN 环境下执行。
 
 ## SIS 课表与考试
 
@@ -11,7 +11,7 @@ westlake sis ical            # 导出 .ics 订阅（网页 /ical 一键复制）
 westlake sis exams           # 考试安排（时间/考场/座位）
 ```
 
-`sis grid` 的冲突检测会把「同一节课按班级拆多间教室」的平行条目排除（不算冲突）；选课窗口开放后可把选课车节次并入预检——**不做 add/drop/抢课**。
+`sis grid` 在冲突检测时会自动合并同一教学班分拆多间教室的平行排课记录；在选课开放阶段支持并入选课车节次进行时间重叠预检。本工具不提供选课、退课或抢课功能。
 
 ## 成绩与选课车
 
@@ -30,7 +30,7 @@ westlake records other-apps          # 学籍异动等申请
 westlake profile info|academic|extended   # 个人三档信息
 ```
 
-records/aid 系列共 20+ 条只读命令，不确定就用 `westlake find <关键词>`。
+档案与资助（records/aid）包含 20 余项只读查询命令，可通过 `westlake find <关键词>` 检索对应命令。
 
 ## AMS 教学系统
 
@@ -40,4 +40,4 @@ westlake ams status          # 学籍与选课入口
 westlake ams menus           # 服务入口清单
 ```
 
-与 SIS 是两套课表（数据各有侧重），都只读。
+AMS 与 SIS 分属不同业务维度，两套课表数据各有侧重，均保持只读。

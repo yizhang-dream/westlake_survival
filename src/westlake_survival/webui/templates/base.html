@@ -519,16 +519,16 @@
   <div class="wrap sheet">
     {% if needs_setup and request.endpoint != 'setup_page' %}
     <div class="note" style="display:flex;justify-content:space-between;gap:1rem;align-items:center">
-      <span>还没有配置教务账号——公开功能照常可用；要用课表/成绩/作业，填一次学号密码即可。</span>
-      <a href="/setup" style="white-space:nowrap">去配置 →</a>
+      <span>还没有配置教务账号。公开功能可直接使用；查询课表、成绩与作业请先配置学号及密码。</span>
+      <a href="/setup" style="white-space:nowrap">前往配置 →</a>
     </div>
     {% endif %}
     {% block content %}{% endblock %}
   </div>
 </main>
 <footer>
-  本地工具，仅绑定 <code>127.0.0.1</code>，无登录 / 鉴权。
-  数据来自公开页面，可能有延迟；以学校官方通知为准。
+  本地服务仅监听 <code>127.0.0.1</code>，无公网鉴权。
+  数据来源于校内及公开系统，请以学校官方最新通知为准。
 </footer>
 <script>
   (function () {

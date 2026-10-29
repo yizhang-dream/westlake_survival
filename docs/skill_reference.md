@@ -1,6 +1,6 @@
-# skill_reference —— SKILL.md 的细节下放层
+# 命令与接口参考（skill_reference）
 
-> SKILL.md 只留路由与行为规则以控制每会话 token 开销；本文承接原速查内容，**按需查阅**：完整命令示例（免凭据/需凭据/门户/场馆/就业/Canvas/分享）、Python API 方法表、MCP 工具清单、各系统深挖注记。命令行为以 `westlake find` 与 `--help` 为准。
+> 本文汇总 westlake_survival 的常用命令示例、Python API 方法表、MCP 工具清单与系统适配注记，供按需查阅。具体命令用法以 `westlake find` 与 `--help` 输出为准。
 
 ## 免凭据命令示例（可直接执行）
 
@@ -13,7 +13,7 @@ westlake transit table --campus 云谷 --day 工作日
 westlake transit ical --days 14 --out bus.ics
 # 网页订阅：校历页有班车/课表 ICS 一键复制（/ical/shuttle、/ical/schedule）
 westlake context --level terse               # terse|normal|verbose
-westlake digest --level normal               # 晨报；terse 只留本地快算
+westlake digest --level normal               # 每日摘要；terse 仅计算本地指标
 westlake search 西湖 --limit 10 --page 1
 westlake news --category 学术 --limit 5      # 人物|资讯|学术|校园|招生|媒体|影像
 westlake news detail <URL>
@@ -88,7 +88,7 @@ westlake canvas submission --course 概率论 --assignment 作业3
 
 - 课程/作业接受 id 或名称关键词（子串唯一命中才执行；命中多个列候选；搜不到先查全名——「物理学实验 Ⅱ」搜「物理实验」搜不到）。
 - `assignments` 里无截止、提交类型 `none` 的条目（ClassParticipation/Quiz）多为课堂记录，看 `assignment-info` 描述再定。
-- 提交链路真机验证过（2026-10-15 真交 Lab 5：西湖 Canvas 禁学生写课程文件区，包内自动退回本人文件区上传再提交）。
+- 提交链路经端到端验证（西湖 Canvas 禁止学生直接向课程公共文件区写入，包内自动切换至个人文件区上传后再提交）。
 
 ## OneDrive/SharePoint 讲义分享
 
@@ -141,7 +141,7 @@ for course in c.list_courses():                                 # 扫当前可�
 | `reply_to_discussion(cid, tid, text)` / `reply_conversation(id, body)` | 写操作：回帖 / 回私信 |
 | `get_assignment(cid, aid)` / `assignment_attachments(cid, aid)` | 作业详情（含 rubric）/ 描述抽附件 |
 | `list_files(course_id)` / `file_info(file_id)` / `download_file(file_id, dest)` | 文件区 |
-| `submit_assignment(…)` / `get_submission(cid, aid)` | 提交（干跑/真交）/ 回读状态 |
+| `submit_assignment(…)` / `get_submission(cid, aid)` | 提交（预检/实际提交）/ 回读状态 |
 
 ## MCP 备选通道
 
