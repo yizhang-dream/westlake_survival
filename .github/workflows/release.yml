@@ -26,7 +26,18 @@ jobs:
           python -m pip install --upgrade pip build
           python -m build
 
+      # 幂等保护：版本已在 PyPI 上（比如先手动 dispatch 发过、再补打标签）就跳过，
+      # 否则重复上传同版本会被 PyPI 拒绝，标签触发的跑会挂红。
+      - name: Skip if version already on PyPI
+        id: exists
+        run: |
+          V="$(python -c "print(__import__('re').search(r'\"(.+)\"', open('src/westlake_survival/_version.py').read()).group(1))")"
+          code="$(curl -s -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/westlake-survival/$V/json")"
+          echo "version=$V http=$code"
+          [ "$code" = "200" ] && echo "skip=true" >> "$GITHUB_OUTPUT" || echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: Publish to PyPI
+        if: steps.exists.outputs.skip != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
