@@ -21,6 +21,8 @@ jobs:
         python-version: ["3.10", "3.12"]
     env:
       TZ: "Asia/Shanghai"
+      # Windows runner 的 stdout/子进程按 cp1252 解码中文必炸，整作业钉 UTF-8
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v5
 
