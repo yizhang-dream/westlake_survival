@@ -37,6 +37,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote, urljoin
 
+import requests
+
 from westlake_survival._cache import load_json, save_json
 from westlake_survival._net import DEFAULT_TIMEOUT, http_session
 from westlake_survival.exceptions import AuthError, WestlakeError

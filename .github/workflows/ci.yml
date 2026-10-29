@@ -1,0 +1,47 @@
+name: CI
+
+# 离线门：不碰校园网与凭据，只验「装得上、CLI 起得来、文档与 CLI 一致、无 PII」。
+# 端到端验证（tools/module_smoke.py、tools/webui_smoke.py）需校园网/VPN 与账号，
+# 在贡献者本机跑（见 CONTRIBUTING.md）。
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  offline-gate:
+    name: offline gate · ${{ matrix.os }} · py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.12"]
+    env:
+      TZ: "Asia/Shanghai"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . ruff
+
+      - name: Static check (undefined names)
+        run: ruff check --select F821 src
+
+      - name: CLI boots
+        run: westlake --help
+
+      - name: SKILL and CLI agree
+        run: python tools/skill_coverage.py .
+
+      - name: PII gate
+        run: python tools/pii_scan.py
