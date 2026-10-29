@@ -4,7 +4,7 @@ about: 某条命令或页面不工作、结果不对
 labels: bug
 ---
 
-**哪条命令 / 哪个页面**
+**哪条命令 / 哪个页面** *(which command or page — English welcome)*
 
 <!-- 例：westlake canvas deadlines；WebUI 的 /sis 页 -->
 

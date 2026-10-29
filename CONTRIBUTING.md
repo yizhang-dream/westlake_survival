@@ -2,6 +2,8 @@
 
 单人维护为主，外部 issue / PR 欢迎，有空即审。
 
+> **English quick version** — Issues and PRs in English or 中文 are both fine. Install: `pip install -e .` (Python 3.10+). No unit tests: verify end-to-end with `python tools/module_smoke.py` / `python tools/webui_smoke.py` (campus network needed), and always pass `python tools/pii_scan.py` before committing. Keep `skills/westlake-survival/SKILL.md`, the README capability table, and `docs/skill_reference.md` in sync when capabilities change. Write operations stay at exactly five, behind the consequence gate — no course-selection automation.
+
 ## 先问再写
 
 - **bug 与小修** → 先开 issue（模板会问子系统与 doctor 输出），再提 PR。
