@@ -345,15 +345,19 @@ class Context:
 
     @property
     def weather(self) -> dict[str, Any] | None:
-        """实时天气 dict（结构见 :func:`fetch_weather`）；失败返回 ``None``。"""
-        if self.level is not Level.VERBOSE:
+        """实时天气 dict（结构见 :func:`fetch_weather`）；失败返回 ``None``。
+
+        normal 起加载（2026-10-29 对标 sustech：其 NORMAL 档即含天气/AQI；
+        原 VERBOSE-only 导致默认档打印空「（暂无）」节）；TERSE 保持纯净。
+        """
+        if self.level is Level.TERSE:
             return None
         return self._get("weather", lambda: fetch_weather(self.now))
 
     @property
     def aqi(self) -> dict[str, Any] | None:
         """实时空气质量 dict（结构见 :func:`fetch_aqi`）；失败返回 ``None``。"""
-        if self.level is not Level.VERBOSE:
+        if self.level is Level.TERSE:
             return None
         return self._get("aqi", lambda: fetch_aqi(self.now))
 

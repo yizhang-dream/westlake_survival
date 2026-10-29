@@ -1,0 +1,31 @@
+site_name: westlake_survival
+site_description: 西湖大学校园服务工具包 — Python 库 · CLI · MCP · 本地 WebUI（English below）
+site_url: https://yizhang-dream.github.io/westlake_survival/
+docs_dir: site-docs
+repo_url: https://github.com/yizhang-dream/westlake_survival
+repo_name: yizhang-dream/westlake_survival
+copyright: PolyForm Noncommercial 1.0.0 · 社区项目，与西湖大学官方无关
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      toggle: {icon: material/weather-night, name: 切换深色}
+    - scheme: slate
+      toggle: {icon: material/weather-sunny, name: 切换浅色}
+  features:
+    - navigation.top
+
+nav:
+  - 首页: zh/index.md
+  - 安装与快速开始: zh/install.md
+  - Agent 集成: zh/agents.md
+  - English:
+      - Home: en/index.md
+      - Install: en/install.md
+      - Agents: en/agents.md
+
+markdown_extensions:
+  - tables
+  - admonition

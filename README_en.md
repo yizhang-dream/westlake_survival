@@ -5,6 +5,10 @@ English | [简体中文](README.md)
 > Every campus service at Westlake University, gathered into **one command, one call, one page**.
 >
 > Python library · CLI · MCP server · local WebUI — one capability set, four entry points, for humans and AI agents alike.
+>
+> 📚 Docs: https://yizhang-dream.github.io/westlake_survival/
+
+![Docs](https://img.shields.io/badge/docs-online-8957e5)
 
 ![PyPI](https://img.shields.io/pypi/v/westlake-survival)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)

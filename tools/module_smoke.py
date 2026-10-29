@@ -117,6 +117,7 @@ COMMANDS: list[tuple[str, list[str], str]] = [
     ("todo", ["todo", "cc"], "抄送给我的流程（未读）"),
     ("todo", ["todo", "apps"], "可发起/访问的应用"),
     ("sis", ["sis", "schedule"], "课表"),
+    ("sis", ["sis", "grid"], "周课表网格+冲突检测（只读）"),
     ("sis", ["sis", "grades"], "成绩"),
     ("sis", ["sis", "exams"], "考试"),
     ("sis", ["sis", "cart"], "选课车（只读）"),

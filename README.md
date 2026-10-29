@@ -5,6 +5,10 @@
 > 把西湖大学散落在数十个系统里的校园服务，收拢成**一条命令、一次调用、一个页面**。
 >
 > Python 库 · CLI · MCP 服务器 · 本地 WebUI —— 一套能力，四个入口，人与 AI 代理皆宜。
+>
+> 📚 在线文档：https://yizhang-dream.github.io/westlake_survival/
+
+![Docs](https://img.shields.io/badge/docs-online-8957e5)
 
 ![PyPI](https://img.shields.io/pypi/v/westlake-survival)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)

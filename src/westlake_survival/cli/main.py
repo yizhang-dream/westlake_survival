@@ -1282,6 +1282,20 @@ def sis_cart() -> None:
     _print_table(rows, ("课程代码", "课程名称", "学分", "状态", "其他"))
 
 
+@sis_cmd.command(name="grid")
+@_handle_errors
+def sis_grid() -> None:
+    """周课表网格 + 冲突检测（只读；选课窗口开放后可把选课车节次并入预检）。"""
+    from westlake_survival.sis import get_schedule
+    from westlake_survival.sis.grid import render_text
+
+    sessions = get_schedule()
+    if not sessions:
+        click.echo("课表为空（可能尚未选课或未到教学周）。")
+        return
+    click.echo(render_text(sessions))
+
+
 @sis_cmd.command(name="ical")
 @click.option("--out", type=click.Path(dir_okay=False, path_type=Path), default="schedule.ics", show_default=True, help="写入 .ics 文件。")
 @_handle_errors

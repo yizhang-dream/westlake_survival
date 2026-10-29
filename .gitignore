@@ -19,6 +19,7 @@ htmlcov/
 .v2c/
 .video_agent/
 *.ics.tmp
+site/
 
 # OS / editor
 *.stackdump
