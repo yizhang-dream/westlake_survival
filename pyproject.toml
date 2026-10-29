@@ -62,6 +62,7 @@ westlake-mcp = "westlake_survival.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/yizhang-dream/westlake_survival"
+Documentation = "https://yizhang-dream.github.io/westlake_survival/"
 Reference = "https://github.com/dumixthestpd/sustech_survival"
 
 [tool.hatch.version]

@@ -28,7 +28,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 | 今天几号 / 第几周 / 校历事件 / 学期 | `calendar today` / `week N` / `events` |
 | 下一班校车 / 班车时刻 / 课表班车 ICS | `transit next` / `table` / `transit ical`（网页 /ical 一键复制） |
 | 一句话「此刻西湖」/ 每日晨报 | `context` / `digest` |
-| SIS 课表 / 成绩 / 考试 / 选课车 / ICS | `sis schedule` / `grades` / `exams` / `cart` / `sis ical` |
+| SIS 课表 / 成绩 / 考试 / 选课车 / ICS | `sis schedule` / `grades` / `exams` / `cart` / `sis ical`；周网格+冲突检测 `sis grid`（只读；选课窗口开可并入选课车节次预检） |
 | 教学系统 AMS 课表 / 周次 / 学籍选课入口 | `ams schedule`（`--start/--end`）/ `status` / `menus`（与 SIS 两套，走 IAM） |
 | 待评教 / 第二课堂 / 导师 / 学籍异动 | `sis-evals list --pending` / `records second-class` / `records advisor` / `records other-apps` |
 | 个人信息 / 住宿 / 荣誉 / 志愿 / 资助 / 社团 | `profile info\|academic\|extended` / `records` 系列 14 子命令 / `aid` 系列 7 子命令（find 可查全名） |

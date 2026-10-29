@@ -861,6 +861,30 @@ def _sis_context() -> dict:
         with ThreadPoolExecutor(max_workers=6) as pool:
             for key, value in pool.map(lambda item: _run(*item), loaders.items()):
                 context["blocks"][key] = value
+    # 周课表网格（对标 conflict-free schedule 视图）：由已抓取的课表行后处理，
+    # 不产生第二次登录；失败降级为不渲染该块。
+    schedule_rows = context["blocks"].get("schedule")
+    if isinstance(schedule_rows, list) and schedule_rows:
+        try:
+            from westlake_survival.sis.grid import detect_conflicts, _slots
+
+            slots = _slots(schedule_rows)
+            cells: dict[tuple[int, int], str] = {}
+            conflict_cells: set[tuple[int, int]] = set()
+            for label, weekday, start, end, _, _ in slots:
+                for hour in range(start // 60, (end - 1) // 60 + 1):
+                    key = (weekday, hour)
+                    if key in cells and cells[key] != label:
+                        conflict_cells.add(key)
+                    cells.setdefault(key, label)
+            context["sched_grid"] = {
+                "hours": sorted({hour for (_, hour) in cells}),
+                "cells": {f"{d}-{h}": text for (d, h), text in cells.items()},
+                "conflict_cells": [f"{d}-{h}" for (d, h) in conflict_cells],
+                "conflicts": detect_conflicts(schedule_rows),
+            }
+        except Exception:  # noqa: BLE001 - 网格是增强视图，失败不影响整页
+            pass
     return context
 
 
