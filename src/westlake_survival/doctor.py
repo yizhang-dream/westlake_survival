@@ -39,7 +39,7 @@ _OPTIONAL = (
     (
         "flask",
         "Web 界面（基础依赖）",
-        "在仓库目录运行：pip install -e .（缺它通常是旧包或 --no-deps 装的）",
+        "pip install --upgrade westlake-survival（缺它通常是旧包或 --no-deps 装的；仓库开发装法 pip install -e .）",
         "起不了网页（`westlake` 默认就是开网页「设置」）",
     ),
 )
@@ -63,7 +63,7 @@ def _check_python() -> Check:
         name="解释器",
         status="ok" if ok else "missing",
         detail=f"Python {version} @ {sys.executable}",
-        fix="" if ok else "装 Python 3.10+，再在仓库目录 pip install -e .",
+        fix="" if ok else "装 Python 3.10+，再 pip install westlake-survival",
     )
 
 
@@ -92,7 +92,7 @@ def _check_command() -> Check:
             name="命令 westlake",
             status="warn",
             detail="不在 PATH 上；可用 python -m westlake_survival 等效调用",
-            fix="在仓库目录 pip install -e .（或把 Scripts/bin 目录加进 PATH）",
+            fix="pip install westlake-survival（或把 Scripts/bin 目录加进 PATH）",
         )
     same = os.path.normcase(os.path.dirname(os.path.abspath(exe))) == os.path.normcase(
         os.path.dirname(os.path.abspath(sys.executable))
@@ -138,7 +138,7 @@ def _check_playwright() -> Check:
         name="浏览器链路（browser，可选）",
         status="warn",
         detail="缺 playwright：share 讲义 / hosts 渲染深挖 / CARSI 校外 SSO 三条链路自动降级，其余功能不受影响",
-        fix="需要这三条链路时：在仓库目录运行 pip install -e '.[browser]'，然后 playwright install chromium"
+        fix="需要这三条链路时：pip install 'westlake-survival[browser]'，然后 playwright install chromium"
             "；Linux 无桌面环境缺系统库时再补 playwright install-deps chromium",
     )
 
@@ -155,7 +155,7 @@ def _check_keyring() -> Check:
             name="钥匙串（secure）",
             status="missing",
             detail="缺 keyring：凭据退回明文文件存，能用但不加密",
-            fix="在仓库目录运行：pip install -e '.[secure]'",
+            fix="pip install 'westlake-survival[secure]'",
         )
     try:
         import keyring

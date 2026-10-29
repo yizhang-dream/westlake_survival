@@ -6,6 +6,7 @@
 >
 > Python 库 · CLI · MCP 服务器 · 本地 WebUI —— 一套能力，四个入口，人与 AI 代理皆宜。
 
+![PyPI](https://img.shields.io/pypi/v/westlake-survival)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-58839b)
 ![MCP](https://img.shields.io/badge/MCP-server-8957e5)
@@ -49,10 +50,10 @@
 
 **最省事**：双击仓库根目录的 `start.bat`（Windows）/ `start.command`（macOS），或终端 `./start.sh`（Linux）。首次运行自动装依赖，随后浏览器自动打开——没配过账号直达「设置」页，**本人**填一次学号与统一密码，验证通过自动进仪表盘；之后每次启动直达仪表盘。同一端口已有服务在跑时不重复启动，直接把浏览器指过去。
 
-**终端等价**：
+**终端**（已发布 PyPI，无需 clone 仓库）：
 
 ```bash
-pip install -e .              # Flask 已是基础依赖，装完即有前端；锁版本用 requirements.txt
+pip install westlake-survival   # PyPI 直装；开发装法：clone 后 pip install -e .，锁验证过的版本用 requirements.txt
 westlake                      # 起网页并开浏览器；脚本/自动化设 WESTLAKE_NO_WEBUI=1 关闭弹出
 westlake calendar today       # 校历等公开功能无需账号
 westlake --help
