@@ -4,7 +4,7 @@ about: 想让 westlake_survival 多做什么
 labels: enhancement
 ---
 
-**想解决什么问题**
+**想解决什么问题** *(what problem — English welcome)*
 
 <!-- 场景优先：你想完成什么事，现在卡在哪 -->
 

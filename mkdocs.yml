@@ -21,10 +21,22 @@ nav:
   - 首页: zh/index.md
   - 安装与快速开始: zh/install.md
   - Agent 集成: zh/agents.md
+  - 学业（SIS 与 AMS）: zh/academics.md
+  - Canvas 课程与作业: zh/canvas.md
+  - 场地预约与体育场馆: zh/booking.md
+  - 校园生活: zh/campus-life.md
+  - 学术与就业: zh/research.md
+  - 站点与系统: zh/systems.md
   - English:
       - Home: en/index.md
       - Install: en/install.md
       - Agents: en/agents.md
+      - Academics (SIS & AMS): en/academics.md
+      - Canvas: en/canvas.md
+      - Booking & sports: en/booking.md
+      - Campus life: en/campus-life.md
+      - Research & careers: en/research.md
+      - Sites & systems: en/systems.md
 
 markdown_extensions:
   - tables
