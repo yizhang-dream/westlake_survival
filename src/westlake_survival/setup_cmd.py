@@ -215,7 +215,7 @@ def run_setup(
 @click.option("--force-save", is_flag=True, help="兼容保留：现在验证未通过也会保存，无需此开关。")
 @click.option("--no-keyring", is_flag=True, help="只写配置文件，不碰系统钥匙串（自动化用）。")
 @click.option("--open", "open_frontend", is_flag=True,
-              help="保存成功后自动拉起前端并开浏览器（默认不弹——网页 /setup 验证通过会自动进仪表盘，无需此开关）。")
+              help="强制保存后拉起前端（交互式输入时本就自动弹；这是给全旗标自动化代跑用的开关）。")
 def setup_cmd(
     sid, password, canvas_token, clear_canvas_token, no_verify, no_save, force_save,
     no_keyring, open_frontend
@@ -231,17 +231,21 @@ def setup_cmd(
         use_keyring=not no_keyring,
         clear_canvas_token=clear_canvas_token,
     )
-    # 配置好即见前端（2026-10-29 用户裁定）。默认不弹：CLI setup 常由 Agent
-    # 代跑，且 isatty 在 Agent 外壳（winpty/pty）下不可靠会误触发——所以只认
-    # 显式 --open，且 WESTLAKE_NO_WEBUI=1 是硬关。用户主路径是网页 /setup，
-    # 那边验证通过 3 秒自动进仪表盘，不经这里。
+    # 配置好即见前端（2026-10-29 用户裁定：就要自动弹）。判据不是 isatty
+    # （Agent 外壳 winpty 下恒 True，实测会误触发），而是「凭据是否经交互
+    # 提示输入」：学号密码没有全由 --sid/--password 旗标给出，就说明真有人
+    # 在这台终端前敲过提示——保存成功即弹。全旗标（自动化代跑，SKILL 纪律
+    # 本就禁止 Agent 碰凭据）默认不弹，要弹给 --open；WESTLAKE_NO_WEBUI=1
+    # 恒硬关。
+    human_typed = not (sid and password)
     if (
-        open_frontend
+        (human_typed or open_frontend)
         and report.stored_in
         and not no_save
         and not os.environ.get("WESTLAKE_NO_WEBUI")
     ):
         import subprocess
+        import sys
 
         try:
             subprocess.Popen(
