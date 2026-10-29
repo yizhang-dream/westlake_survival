@@ -17,9 +17,10 @@ for m in re.finditer(r"westlake\s+([a-z][a-z0-9\-]*)(?:\s+([a-z][a-z0-9\-]*))?",
         continue
     cmds.add((top, sub))
 
-# 取实际 CLI 结构
+# 取实际 CLI 结构（钉 UTF-8：CLI 帮助含中文，Windows 本地码页 cp1252 解码必炸）
 help_top = subprocess.run([py, "-m", "westlake_survival", "--help"],
-                          capture_output=True, text=True, cwd=root).stdout
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", cwd=root).stdout
 top_ok = set(re.findall(r"^  ([a-z][a-z0-9\-]*)", help_top, re.M))
 
 missing = []
@@ -32,7 +33,8 @@ for top, sub in sorted(cmds, key=lambda x: (x[0], x[1] or '')):
     if not sub:
         continue
     h = subprocess.run([py, "-m", "westlake_survival", top, "--help"],
-                       capture_output=True, text=True, cwd=root).stdout
+                       capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", cwd=root).stdout
     subs = set(re.findall(r"^  ([a-z][a-z0-9\-]*)", h, re.M))
     if sub not in subs and not re.search(rf"\b{sub}\b", h):
         missing.append(f"{top} {sub}")
