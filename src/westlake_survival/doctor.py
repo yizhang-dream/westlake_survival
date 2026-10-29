@@ -42,13 +42,6 @@ _OPTIONAL = (
         "在仓库目录运行：pip install -e .（缺它通常是旧包或 --no-deps 装的）",
         "起不了网页（`westlake` 默认就是开网页「设置」）",
     ),
-    (
-        "playwright",
-        "浏览器链路（browser）",
-        "在仓库目录运行：pip install -e '.[browser]'，然后 playwright install chromium"
-        "；Linux 无桌面环境缺系统库时再补 playwright install-deps chromium",
-        "`westlake share` 读不了 OneDrive/SharePoint 分享；hosts/sites 渲染深挖与 scholar 数据库 SSO 退化为无浏览器路径",
-    ),
 )
 
 #: 公开站点：判断「这台机器能不能直连校园网之外的世界」。
@@ -129,6 +122,25 @@ def _check_optionals() -> list[Check]:
             )
         )
     return checks
+
+
+def _check_playwright() -> Check:
+    """浏览器链路是可选增强（2026-10-29 用户裁定：没有浏览器也能用）。
+
+    缺 playwright 只报 warn 不挡活：share 讲义 / hosts 渲染深挖 / CARSI
+    校外 SSO 三条链路自动降级，其余全部功能照常，装不装都不影响退出码。
+    """
+    if _spec("playwright"):
+        return Check(key="playwright", name="浏览器链路（browser，可选）", status="ok",
+                     detail="已安装")
+    return Check(
+        key="playwright",
+        name="浏览器链路（browser，可选）",
+        status="warn",
+        detail="缺 playwright：share 讲义 / hosts 渲染深挖 / CARSI 校外 SSO 三条链路自动降级，其余功能不受影响",
+        fix="需要这三条链路时：在仓库目录运行 pip install -e '.[browser]'，然后 playwright install chromium"
+            "；Linux 无桌面环境缺系统库时再补 playwright install-deps chromium",
+    )
 
 
 def _check_keyring() -> Check:
@@ -227,6 +239,7 @@ def run_checks(*, network: bool = True) -> list[Check]:
     """跑全部检查。``network=False`` 时跳过联网探测（离线/脚本用）。"""
     checks = [_check_python(), _check_package(), _check_command()]
     checks.extend(_check_optionals())
+    checks.append(_check_playwright())
     checks.append(_check_keyring())
     checks.append(_check_credentials())
     checks.append(_check_canvas_token())

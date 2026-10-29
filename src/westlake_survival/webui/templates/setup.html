@@ -211,8 +211,20 @@
           '<table class="data"><thead><tr><th>服务</th><th>结果</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<p class="muted" style="font-size:.84rem">验证没通过也保住了输入，之后再查会重新验证；打印系统（pms）是另一套密码，需要时再单独配置。</p>' +
           '<p>' + (done ? '配置完成，可以去用需要登录的功能了。' : '已保存，联网后可再点一次「保存并检测」确认。') +
-          ' <a class="btn" href="/">进首页 →</a></p>';
+          ' <a class="btn" href="/">进首页 →</a>' +
+          (done ? ' <span class="muted">（<span id="jumpSec">3</span> 秒后自动进入）</span>' : '') + '</p>';
         await refreshStatus();
+        if (done) {
+          // 配置好即见前端（2026-10-29 用户裁定）：验证通过 3 秒自动进仪表盘；
+          // 未验证已保存则留在本页，方便看到原因或联网后重试。
+          var left = 3;
+          var secEl = document.getElementById('jumpSec');
+          var timer = setInterval(function () {
+            left -= 1;
+            if (secEl) secEl.textContent = String(left);
+            if (left <= 0) { clearInterval(timer); window.location.assign('/'); }
+          }, 1000);
+        }
       }
     } catch (err) {
       box.innerHTML = '<div class="note">请求失败：' + err + '</div>';
