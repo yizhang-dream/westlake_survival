@@ -848,7 +848,10 @@ def canvas_conversation(conversation_id: int, download_dir: str | None) -> None:
 @click.option("--yes", "skip_confirm", is_flag=True, help="跳过确认直接发送。")
 @_handle_canvas_errors
 def canvas_send(conversation_id: int, text: str, skip_confirm: bool) -> None:
-    """在已有会话里回一条消息（写操作）。"""
+    """在已有会话里回一条消息（写操作；统一确认门，--yes 才执行）。"""
+    from westlake_survival.consequence import gate_cli
+
+    gate_cli("canvas.send", confirmed=skip_confirm)
     from westlake_survival.canvas import canvas
 
     client = canvas()
@@ -858,8 +861,6 @@ def canvas_send(conversation_id: int, text: str, skip_confirm: bool) -> None:
     click.secho(f"将发送：{text}", fg="yellow")
     if thread["cannot_reply"]:
         raise click.ClickException("该会话标记为不可回复")
-    if not skip_confirm:
-        click.confirm("确认发送以上内容？", abort=True)
     client.reply_conversation(conversation_id, text)
     click.secho("已发送。", fg="green")
 
@@ -933,7 +934,10 @@ def canvas_entries(course: str, topic: str, limit: int, full: bool) -> None:
 @click.option("--yes", "skip_confirm", is_flag=True, help="跳过确认直接发布。")
 @_handle_canvas_errors
 def canvas_reply(course: str, topic: str, text: str, skip_confirm: bool) -> None:
-    """在讨论主题下回帖（写操作）。"""
+    """在讨论主题下回帖（写操作；统一确认门，--yes 才执行）。"""
+    from westlake_survival.consequence import gate_cli
+
+    gate_cli("canvas.reply", confirmed=skip_confirm)
     from westlake_survival.canvas import canvas
 
     client = canvas()
@@ -943,8 +947,6 @@ def canvas_reply(course: str, topic: str, text: str, skip_confirm: bool) -> None
     click.echo(f"课程：{found.course_code or ''} {found.name}")
     click.echo(f"主题：{detail['title']}（id={topic_id}）")
     click.secho(f"将发布：{text}", fg="yellow")
-    if not skip_confirm:
-        click.confirm("确认发布以上回帖？", abort=True)
     client.reply_to_discussion(found.id, topic_id, text)
     click.secho("已发布。", fg="green")
 
@@ -1124,7 +1126,10 @@ def canvas_submit(
     dry_run: bool,
     skip_confirm: bool,
 ) -> None:
-    """提交作业（写操作）：上传文件 / 提交文本 / 提交链接。"""
+    """提交作业（写操作；统一确认门：--dry-run 预检 / --yes 执行）。"""
+    from westlake_survival.consequence import gate_cli
+
+    gate_cli("canvas.submit", confirmed=skip_confirm, dry_run=dry_run)
     from westlake_survival.canvas import canvas
 
     client = canvas()
@@ -1150,8 +1155,6 @@ def canvas_submit(
     if dry_run:
         click.secho("预检通过（dry-run，未提交）。", fg="yellow")
         return
-    if not skip_confirm:
-        click.confirm("确认提交以上内容？", abort=True)
     submission = client.submit_assignment(
         found_course.id,
         found_assignment.id,

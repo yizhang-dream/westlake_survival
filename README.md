@@ -14,10 +14,10 @@
 
 西湖大学的校园服务散落在 SIS、教学系统 AMS、Canvas、预约中心、门户、图书馆、体育场馆……各自为政的几十个系统里。**westlake_survival** 在 API 层面把它们逐一接通，收敛为一个工具包：
 
+- **Python 库（进程内 API）**：`pip install westlake-survival` 后 `import westlake_survival` 直用全量结构化数据——会跑代码的代理的最短路径；[examples/](examples/) 有可直接跑的样例。
 - **CLI**：`westlake` 一条命令覆盖查询与少量写操作；不确定归哪条，`westlake find <口语关键词>` 直接问（「论文」「借书」「放假」都能命中）。
 - **本地 WebUI**：裸跑 `westlake`（或双击启动脚本）自动打开浏览器进仪表盘——30+ 页面，含账号配置；`/capabilities` 一页列出全部能力。
-- **MCP 服务器**：`westlake-mcp` 一个进程，接给任何支持 MCP 的 AI 客户端。
-- **Python 库**：`import westlake_survival` 拿结构化数据，[examples/](examples/) 有可直接跑的样例。
+- **MCP 服务器（兼容层）**：`westlake-mcp` 面向只能调用工具的客户端（Claude Desktop、Cursor 聊天等）；ZCode / Claude Code 这类有终端的代理走上面三个入口即可。
 
 三条底线，先说清楚：
 

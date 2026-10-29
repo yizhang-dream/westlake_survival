@@ -698,9 +698,13 @@ def _cli():
     @click.option("--theme", default="", help="主题")
     @click.option("--remark", default="", help="备注")
     @click.option("--dry-run", is_flag=True, help="只校验不提交")
+    @click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
     @handle
-    def book_cmd(selector, day, start, end, theme, remark, dry_run) -> None:
-        """预约一段（写操作；--dry-run 先看能不能约）。"""
+    def book_cmd(selector, day, start, end, theme, remark, dry_run, skip_confirm) -> None:
+        """预约一段（写操作；--dry-run 预检 / --yes 执行）。"""
+        from westlake_survival.consequence import gate_cli
+
+        gate_cli("booking.book", confirmed=skip_confirm, dry_run=dry_run)
         result = book(selector, day, start, end, theme=theme, remark=remark, dry_run=dry_run)
         click.echo("校验通过（未提交）：" + json.dumps(result, ensure_ascii=False)
                    if dry_run else "预约成功：" + json.dumps(result, ensure_ascii=False))
@@ -708,9 +712,13 @@ def _cli():
     @group.command(name="cancel")
     @click.argument("appointment_id")
     @click.option("--reason", default="")
+    @click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
     @handle
-    def cancel_cmd(appointment_id, reason) -> None:
-        """取消预约（写操作）。"""
+    def cancel_cmd(appointment_id, reason, skip_confirm) -> None:
+        """取消预约（写操作；--yes 执行）。"""
+        from westlake_survival.consequence import gate_cli
+
+        gate_cli("booking.cancel", confirmed=skip_confirm)
         click.echo(json.dumps(cancel(appointment_id, reason=reason), ensure_ascii=False))
 
     @group.command(name="sports")
