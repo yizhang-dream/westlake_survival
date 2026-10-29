@@ -1,3 +1,5 @@
+[English](README_en.md) | 简体中文
+
 # westlake_survival
 
 > 把西湖大学散落在数十个系统里的校园服务，收拢成**一条命令、一次调用、一个页面**。
