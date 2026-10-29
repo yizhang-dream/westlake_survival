@@ -1,4 +1,4 @@
-# westlake_survival 依赖快照 —— 2026-10-28 本机（Windows，C:\Users\zyz\.venvs\main）实测可用的版本组合。
+# westlake_survival 依赖快照 —— 2026-10-28 在 Windows 实测可用的版本组合。
 # 日常安装推荐 `pip install -e .`（跟随 pyproject.toml，版本浮动）；
 # 想复现一套验证过的环境时用本文件：`pip install -r requirements.txt`。
 # 装完 playwright 后还需一步：`playwright install chromium`。
