@@ -5,7 +5,7 @@ import sys
 
 root = sys.argv[1] if len(sys.argv) > 1 else "."
 py = sys.argv[2] if len(sys.argv) > 2 else sys.executable
-skill = f"{root}/.zcode/skills/westlake-survival/SKILL.md"
+skill = f"{root}/skills/westlake-survival/SKILL.md"
 text = open(skill, encoding="utf-8").read()
 
 # 提取 `westlake <cmd> ...` 形式（去重、只取前两级）
