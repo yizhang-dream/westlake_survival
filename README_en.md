@@ -6,6 +6,7 @@ English | [简体中文](README.md)
 >
 > Python library · CLI · MCP server · local WebUI — one capability set, four entry points, for humans and AI agents alike.
 
+![PyPI](https://img.shields.io/pypi/v/westlake-survival)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-58839b)
 ![MCP](https://img.shields.io/badge/MCP-server-8957e5)
@@ -49,10 +50,10 @@ Sports venues and library seats live in separate systems; see [docs/module_audit
 
 **Easiest**: double-click `start.bat` (Windows) or `start.command` (macOS) in the repo root, or run `./start.sh` (Linux). The first run installs dependencies, then a browser opens — straight to the **Settings** page if no account is configured; you fill in your student ID and unified password once, and after verification the dashboard loads. Later starts go straight to the dashboard. If the server is already running on the port, no second instance starts — the browser is just pointed at it.
 
-**Terminal equivalent**:
+**Terminal** (published on PyPI — no clone needed):
 
 ```bash
-pip install -e .              # Flask is a base dependency — the WebUI ships with it
+pip install westlake-survival   # from PyPI; for development, clone the repo and pip install -e .
 westlake                      # start the web app and open a browser; WESTLAKE_NO_WEBUI=1 disables popups
 westlake calendar today       # calendar and other public features need no account
 westlake --help
