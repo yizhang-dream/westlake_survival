@@ -205,22 +205,84 @@ def run_setup(
     return report
 
 
+def _configured() -> bool:
+    """本机是否已有教务凭据（只查来源，不读密码内容）。"""
+    try:
+        from westlake_survival.sso import read_credentials
+
+        read_credentials()
+        return True
+    except Exception:
+        return False
+
+
+def _setup_via_browser(wait_seconds: int) -> None:
+    """默认配置路径（2026-10-29 用户裁定）：终端不碰密码。
+
+    起/复用 WebUI 并把浏览器开到「设置」页，学号密码由用户在网页表单里填
+    （保存+验证+自动进仪表盘都由页面完成）；本命令轮询凭据落盘即收尾。
+    """
+    import time
+
+    if _configured():
+        click.echo("本机已配置过账号。要修改：运行 westlake 打开网页，或直接访问 http://127.0.0.1:2018/setup 。")
+        raise SystemExit(0)
+    if os.environ.get("WESTLAKE_NO_WEBUI"):
+        click.echo("WESTLAKE_NO_WEBUI=1：不自动开网页。手动方式：先 westlake webui serve，"
+                   "再访问 http://127.0.0.1:2018/setup ；无图形环境也可用 --terminal 在终端输入。")
+        raise SystemExit(1)
+
+    import subprocess
+    import sys
+
+    try:
+        subprocess.Popen(
+            [sys.executable, "-m", "westlake_survival", "go"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        click.echo("浏览器已打开「设置」页——学号与统一密码在网页里填（终端不输入密码）。")
+    except Exception as exc:  # noqa: BLE001 - 打不开浏览器仍给出地址
+        click.echo(f"浏览器未自动打开（{exc.__class__.__name__}）：手动访问 http://127.0.0.1:2018/setup 。")
+    if wait_seconds <= 0:
+        raise SystemExit(0)
+    human_wait = f"{wait_seconds // 60} 分钟" if wait_seconds >= 60 else f"{wait_seconds} 秒"
+    click.echo(f"等待网页完成配置（最多 {human_wait}，Ctrl+C 退出）…")
+    deadline = time.monotonic() + wait_seconds
+    while time.monotonic() < deadline:
+        if _configured():
+            click.echo("✓ 已在网页完成配置，全部功能可用（运行 westlake 直达主页）。")
+            raise SystemExit(0)
+        time.sleep(2)
+    click.echo("等待超时：还没在网页保存凭据。之后随时运行 westlake 打开设置页补填。")
+    raise SystemExit(1)
+
+
 @click.command(name="setup")
-@click.option("--sid", default=None, help="学号；缺省交互输入。")
-@click.option("--password", default=None, help="密码；缺省交互隐藏输入（不要在共享环境用参数）。")
+@click.option("--sid", default=None, help="学号；缺省不问终端——打开浏览器设置页填（--terminal 才在终端提示）。")
+@click.option("--password", default=None, help="密码；缺省不问终端——打开浏览器设置页填（不要在共享环境用参数）。")
 @click.option("--canvas-token", default=None, help="Canvas 令牌；会写入配置文件，供 REST API 优先使用。")
 @click.option("--clear-canvas-token", is_flag=True, help="只删除本地 Canvas 令牌（回退统一密码）。")
 @click.option("--no-verify", is_flag=True, help="跳过网络验证，只保存凭据/令牌。")
 @click.option("--no-save", is_flag=True, help="只探测，不落盘。")
 @click.option("--force-save", is_flag=True, help="兼容保留：现在验证未通过也会保存，无需此开关。")
 @click.option("--no-keyring", is_flag=True, help="只写配置文件，不碰系统钥匙串（自动化用）。")
+@click.option("--terminal", is_flag=True, help="在终端提示里输入学号密码（SSH 等无图形环境的兜底；默认走浏览器设置页）。")
+@click.option("--wait", "wait_seconds", default=600, show_default=True,
+              help="打开设置页后等待网页完成配置的秒数（0=打开即返回，不等）。")
 @click.option("--open", "open_frontend", is_flag=True,
-              help="强制保存后拉起前端（交互式输入时本就自动弹；这是给全旗标自动化代跑用的开关）。")
+              help="强制保存后拉起前端（--terminal / 全旗标路径用；浏览器路径本来就先弹）。")
 def setup_cmd(
     sid, password, canvas_token, clear_canvas_token, no_verify, no_save, force_save,
-    no_keyring, open_frontend
+    no_keyring, terminal, wait_seconds, open_frontend
 ) -> None:
-    """首次配置：填一次学号密码，自动接上能用的服务。"""
+    """首次配置：默认打开浏览器「设置」页填学号密码（终端不问密码）。"""
+    # 无凭据参数时不再走终端提示（2026-10-29 用户裁定：默认在浏览器前端敲
+    # 账号密码）——除非显式 --terminal（SSH 无图形环境兜底）。全旗标
+    # （--sid+--password，或只管令牌）仍走原自动化路径，不弹不问。
+    no_credentials_given = not sid and not password
+    if no_credentials_given and not terminal and not canvas_token and not clear_canvas_token:
+        _setup_via_browser(wait_seconds)
     report = run_setup(
         sid=sid,
         password=password,
@@ -231,12 +293,10 @@ def setup_cmd(
         use_keyring=not no_keyring,
         clear_canvas_token=clear_canvas_token,
     )
-    # 配置好即见前端（2026-10-29 用户裁定：就要自动弹）。判据不是 isatty
-    # （Agent 外壳 winpty 下恒 True，实测会误触发），而是「凭据是否经交互
-    # 提示输入」：学号密码没有全由 --sid/--password 旗标给出，就说明真有人
-    # 在这台终端前敲过提示——保存成功即弹。全旗标（自动化代跑，SKILL 纪律
-    # 本就禁止 Agent 碰凭据）默认不弹，要弹给 --open；WESTLAKE_NO_WEBUI=1
-    # 恒硬关。
+    # 配置好即见前端（2026-10-29 用户裁定）。默认路径已在 _setup_via_browser
+    # 里先弹过浏览器，到不了这里；这里只覆盖 --terminal（人工敲提示，判据
+    # 「凭据非全旗标给出」而非 isatty——后者在 Agent 外壳 winpty 下恒 True
+    # 实测误触发）与全旗标 +--open。WESTLAKE_NO_WEBUI=1 恒硬关。
     human_typed = not (sid and password)
     if (
         (human_typed or open_frontend)
