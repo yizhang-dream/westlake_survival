@@ -59,7 +59,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 
 ## 用户入口（网页第一）
 
-用户侧双击 `start.bat`（Windows）/ `start.command`（macOS）/ 终端 `./start.sh`（Linux），或裸跑 `westlake`：浏览器自动打开，没配过账号**直达 `/setup`** 填一次学号+统一密码（Canvas 令牌选填，可一键清除；验证不过也落盘，不必重填）。**保存并验证通过后 3 秒自动进仪表盘**（未验证则留在设置页）；终端交互式 `westlake setup`（在提示里人工敲学号密码）保存成功也自动拉起前端，全旗标代跑不弹（要弹加 `--open`），`WESTLAKE_NO_WEBUI=1` 恒硬关。Agent 侧等价 `westlake setup`（含 `--canvas-token '<令牌>' --no-verify` 保存、`--clear-canvas-token` 删除）。统一密码通吃 SIS/Canvas/AMS/打印/预约/门户/体育。
+用户侧双击 `start.bat`（Windows）/ `start.command`（macOS）/ 终端 `./start.sh`（Linux），或裸跑 `westlake`：浏览器自动打开，没配过账号**直达 `/setup`** 填一次学号+统一密码（Canvas 令牌选填，可一键清除；验证不过也落盘，不必重填）。**保存并验证通过后 3 秒自动进仪表盘**（未验证则留在设置页）。**密码默认永远在网页表单里敲，不在终端**：`westlake setup` 无参跑 = 打开浏览器设置页并等网页完成配置（`--wait` 秒数，缺省 10 分钟）；`--terminal` 才走终端提示（SSH 无图形环境兜底）；全旗标 `--sid/--password` 属自动化代跑。`WESTLAKE_NO_WEBUI=1` 恒硬关网页弹出。Agent 侧令牌管理 `westlake setup --canvas-token '<令牌>' --no-verify` / `--clear-canvas-token`。统一密码通吃 SIS/Canvas/AMS/打印/预约/门户/体育。
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 
