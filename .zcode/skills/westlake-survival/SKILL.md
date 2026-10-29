@@ -59,7 +59,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 
 ## 用户入口（网页第一）
 
-用户侧双击 `start.bat`（Windows）/ `start.command`（macOS）/ 终端 `./start.sh`（Linux），或裸跑 `westlake`：浏览器自动打开，没配过账号**直达 `/setup`** 填一次学号+统一密码（Canvas 令牌选填，可一键清除；验证不过也落盘，不必重填）。**保存并验证通过后 3 秒自动进仪表盘**（未验证则留在设置页）；终端路径要 `westlake setup --open` 才主动拉起前端（默认不弹——CLI setup 常由 Agent 代跑；`WESTLAKE_NO_WEBUI=1` 硬关）。Agent 侧等价 `westlake setup`（含 `--canvas-token '<令牌>' --no-verify` 保存、`--clear-canvas-token` 删除）。统一密码通吃 SIS/Canvas/AMS/打印/预约/门户/体育。
+用户侧双击 `start.bat`（Windows）/ `start.command`（macOS）/ 终端 `./start.sh`（Linux），或裸跑 `westlake`：浏览器自动打开，没配过账号**直达 `/setup`** 填一次学号+统一密码（Canvas 令牌选填，可一键清除；验证不过也落盘，不必重填）。**保存并验证通过后 3 秒自动进仪表盘**（未验证则留在设置页）；终端交互式 `westlake setup`（在提示里人工敲学号密码）保存成功也自动拉起前端，全旗标代跑不弹（要弹加 `--open`），`WESTLAKE_NO_WEBUI=1` 恒硬关。Agent 侧等价 `westlake setup`（含 `--canvas-token '<令牌>' --no-verify` 保存、`--clear-canvas-token` 删除）。统一密码通吃 SIS/Canvas/AMS/打印/预约/门户/体育。
 
 ## 凭据前提（先判断再执行，缺凭据就换命令）
 

@@ -16,7 +16,7 @@
 | 终端装完即用 | `pip install -e .` 之后直接 `westlake`：Flask 自 2026-10-28 起是**基础依赖**，装完就有前端，不再需要 `[webui]` extra |
 | 重复启动 | 同一端口已有本网页在跑 → 不再起第二个服务，直接把浏览器指过去（`westlake go` 打印「已在运行」） |
 | 脚本 / 自动化 | `westlake --help`，或设 `WESTLAKE_NO_WEBUI=1` 让裸命令只打印帮助 |
-| 终端配置后弹前端 | `westlake setup --open` 保存成功 → 后台拉起 `westlake go`（已在本跑则只开浏览器）；默认不弹（CLI setup 常由 Agent 代跑），`WESTLAKE_NO_WEBUI=1` 硬关（2026-10-29） |
+| 终端配置后弹前端 | 交互式 `westlake setup`（凭据经提示人工输入）保存成功 → 后台拉起 `westlake go`（已在本跑则只开浏览器）；全旗标自动化代跑默认不弹（判据是「有没有人工敲提示」而非 isatty——后者在 Agent 外壳 winpty 下恒 True 会误触发），要弹加 `--open`；`WESTLAKE_NO_WEBUI=1` 恒硬关（2026-10-29 二次裁定：就要自动弹） |
 
 保存后：页面当场给出每个服务的结果，并区分「已验证并保存 / 未验证已保存」，
 再给一个「进首页 →」按钮。验证没通过也落盘，不必重填（凭据只存一份，见
