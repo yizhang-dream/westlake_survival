@@ -63,10 +63,10 @@ westlake --help
 本仓库为代理而设计。三种接法按需选、可叠加：
 
 1. **读 `AGENTS.md` 的代理**（ZCode、DSH、Codex、Claude Code、Cursor……）：clone 即用——根目录 [AGENTS.md](AGENTS.md) 已写明纪律、入口与验证方式，代理开会话自动读到；配好账号后直接差遣 `westlake` CLI。
-2. **带技能（Skill）机制的代理**：技能文档在 [.zcode/skills/westlake-survival/SKILL.md](.zcode/skills/westlake-survival/SKILL.md)（ZCode 项目级已就位），其他代理把目录拷进自己的技能根即可被发现：
+2. **带技能（Skill）机制的代理**：技能文档在 [skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md)，拷进你的代理的技能根即可被发现：
    ```bash
    git clone https://github.com/yizhang-dream/westlake_survival.git
-   cp -r westlake_survival/.zcode/skills/westlake-survival ~/.agents/skills/   # 或 ~/.claude/skills/ 等你的代理的技能根
+   cp -r westlake_survival/skills/westlake-survival ~/.zcode/skills/    # ZCode；其他代理用 ~/.agents/skills/、~/.claude/skills/ 等
    ```
 3. **MCP 客户端**：装包后注册 `westlake-mcp` 进程；配置片段与全套 MCP 工具清单见 [docs/skill_reference.md](docs/skill_reference.md)。
 

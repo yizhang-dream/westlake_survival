@@ -7,7 +7,7 @@ description: 西湖大学校园一站式工具（学业/教学/科研/生活/办
 
 把西湖大学各服务系统收敛为一条 CLI / 一套 Python API / 一个 MCP 服务器。**默认只读**：写操作仅限五条，且都必须凭用户当轮明确指令执行——`canvas submit` 交作业、`canvas reply` 讨论回帖、`canvas send` 回私信、`booking book` 预约场地、`booking cancel` 取消预约；不做选课、抢课等其他写操作。
 
-本文只放路由与行为规则；**完整命令示例、Python API 方法表、MCP 工具清单在 [docs/skill_reference.md](../../../docs/skill_reference.md)**，各系统深挖见 docs/ 对应文档（按需再读，不必全量加载）。
+本文只放路由与行为规则；**完整命令示例、Python API 方法表、MCP 工具清单在 [docs/skill_reference.md](../../docs/skill_reference.md)**，各系统深挖见 docs/ 对应文档（按需再读，不必全量加载）。
 
 ## 环境自检（Agent 接手第一步）
 

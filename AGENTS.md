@@ -5,7 +5,7 @@
 ## 工具入口
 
 - 项目是什么、怎么装、能做什么：[README](README.md)
-- 命令路由与行为规则（操作本工具的主文档）：[.zcode/skills/westlake-survival/SKILL.md](.zcode/skills/westlake-survival/SKILL.md)
+- 命令路由与行为规则（操作本工具的主文档）：[skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md)
 - 完整命令示例 / Python API 方法表 / MCP 注册：[docs/skill_reference.md](docs/skill_reference.md)
 - CLI / MCP / WebUI 能力变更时，同步更新 SKILL.md 与 README 能力表
 
