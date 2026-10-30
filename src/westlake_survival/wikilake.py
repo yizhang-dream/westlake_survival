@@ -310,11 +310,12 @@ def lookup(name: str) -> PageRef | None:
     return fuzzy[0] if len(fuzzy) == 1 else (fuzzy[0] if fuzzy else None)
 
 
-def page(name: str) -> dict:
-    """取单页正文。
+def page(name: str, *, refresh: bool = False) -> dict:
+    """取单页正文（带 12h 缓存与离线降级）。
 
     Args:
         name: 条目名（``音游社``）、路径（``clubs/音游社``）或完整 URL。
+        refresh: 忽略缓存强制重新拉取。
 
     Raises:
         WestlakeError: 找不到条目或抓取失败。
@@ -324,14 +325,24 @@ def page(name: str) -> dict:
     ref = lookup(name)
     if ref is None:
         raise WestlakeError(f"WikiLake 没有匹配「{name}」的条目。")
+
+    cache_key = f"wikilake/pages/{ref.path.strip('/').replace('/', '__') or 'root'}.json"
+    if not refresh:
+        cached = load_cached(cache_key, _TTL)
+        if cached and isinstance(cached, dict):
+            return cached
+
     try:
         markup = _fetch(ref.path)
     except requests.RequestException as exc:
+        stale = load_cached(cache_key, 10**9)
+        if stale and isinstance(stale, dict):
+            return stale
         raise WestlakeError(f"WikiLake 页面抓取失败：{exc}") from exc
     body = _article_text(_doc_fragment(markup), title=ref.title, category=ref.category)
     if not body:
         raise WestlakeError(f"WikiLake 页面「{ref.title}」没有可提取的正文。")
-    return {
+    result = {
         "title": ref.title,
         "category": ref.category,
         "path": ref.path,
@@ -339,6 +350,8 @@ def page(name: str) -> dict:
         "text": body,
         "source": "WikiLake（学生自建校园百科，非官方）",
     }
+    save_cached(cache_key, result)
+    return result
 
 
 # --------------------------------------------------------------------------- #
@@ -415,10 +428,11 @@ def wiki_search(query: str, deep: bool, limit: int) -> None:
 
 @cli_group.command(name="page")
 @click.argument("name")
+@click.option("--refresh", is_flag=True, help="忽略缓存强制重新拉取。")
 @_handle_errors
-def wiki_page(name: str) -> None:
+def wiki_page(name: str, refresh: bool) -> None:
     """打印单页正文（名字 / 路径 / URL 都行）。"""
-    data = page(name)
+    data = page(name, refresh=refresh)
     click.echo(f"# {data['title']}（{data['category']}）")
     click.echo(data["url"])
     click.echo("")

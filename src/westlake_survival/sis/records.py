@@ -1318,12 +1318,13 @@ def records_source_info() -> None:
 @cli_group.command(name="advisor")
 @click.option("--rotation", default=None, help="只看某轮（如 1 / 2 或 Rotation 标签关键词）")
 @click.option("--limit", default=20, show_default=True, help="每轮最多列出多少位导师")
+@click.option("--refresh", is_flag=True, help="忽略缓存重新拉取导师名单。")
 @_handle_errors
-def records_advisor(rotation: str | None, limit: int) -> None:
+def records_advisor(rotation: str | None, limit: int, refresh: bool) -> None:
     """显示学业导师分配结果与各轮名单。"""
     from westlake_survival.sis.advisor import advising
 
-    info = advising()
+    info = advising(refresh=refresh)
     if info.announcement:
         click.echo(info.announcement)
     for item in info.rotations:

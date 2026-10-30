@@ -29,7 +29,7 @@ from requests.adapters import HTTPAdapter
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from westlake_survival._cache import http_get_with_etag
+from westlake_survival._cache import http_get_with_etag, load_cached, save_cached
 from westlake_survival._net import DEFAULT_TIMEOUT, http_session
 from westlake_survival.exceptions import AuthError, ParseError, WestlakeError
 
@@ -50,6 +50,10 @@ __all__ = [
     "asset_hosts",
     "evidence_hosts",
 ]
+
+#: 门户服务大厅目录本地缓存（24 小时 TTL）。
+_PORTAL_SERVICES_CACHE = "discovery/portal_services.json"
+_PORTAL_SERVICES_TTL = 24 * 3600
 
 logger = logging.getLogger(__name__)
 
@@ -227,8 +231,8 @@ def app_directory(
     return apps
 
 
-def portal_services() -> list[dict]:
-    """登录门户取服务大厅部门/应用目录（18 项）。
+def portal_services(*, refresh: bool = False) -> list[dict]:
+    """登录门户取服务大厅部门/应用目录（18 项；带 24h 本地缓存与优雅降级）。
 
     数据源：``my.westlake.edu.cn`` 主门户 ``getSiteMap``/``getWestLakeList``
     接口。门户 API 需要 SPA 自己换到的会话（纯 requests 只拿到
@@ -239,6 +243,11 @@ def portal_services() -> list[dict]:
         WestlakeError: Playwright 缺失、登录失败或站点图为空。
         AuthError: 账号密码被拒。
     """
+    if not refresh:
+        cached = load_cached(_PORTAL_SERVICES_CACHE, _PORTAL_SERVICES_TTL)
+        if cached and isinstance(cached, list):
+            return cached
+
     import json as _json
 
     from westlake_survival.sso import read_credentials
@@ -246,11 +255,21 @@ def portal_services() -> list[dict]:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:  # pragma: no cover - 环境缺依赖
+        stale = load_cached(_PORTAL_SERVICES_CACHE, 10**9)
+        if stale and isinstance(stale, list):
+            return stale
         raise WestlakeError(
             "门户站点图需要 Playwright：pip install playwright && playwright install chromium"
         ) from exc
 
-    sid, password = read_credentials()
+    try:
+        sid, password = read_credentials()
+    except Exception as exc:
+        stale = load_cached(_PORTAL_SERVICES_CACHE, 10**9)
+        if stale and isinstance(stale, list):
+            return stale
+        raise
+
     captured: dict[str, str] = {}
 
     with sync_playwright() as playwright:
@@ -268,7 +287,10 @@ def portal_services() -> list[dict]:
         page.on("response", grab)
         try:
             page.goto("https://my.westlake.edu.cn/", timeout=60000)
-            page.wait_for_timeout(3000)
+            try:
+                page.wait_for_selector('input[placeholder*="用户名/手机号/邮箱"]', timeout=4000)
+            except Exception:
+                pass
             if "iam.westlake.edu.cn" in page.url:
                 try:
                     page.wait_for_selector(
@@ -279,10 +301,15 @@ def portal_services() -> list[dict]:
                 page.fill('input[placeholder*="用户名/手机号/邮箱"]', sid)
                 page.fill('input[placeholder*="密码"]', password)
                 page.locator('button.content_submit').first.click(timeout=10000)
-            page.wait_for_timeout(12000)
-            if "iam.westlake.edu.cn" in page.url:
-                # 登录被拒（密码错或验证码/风控锁态）：此时抓不到站点图，
-                # 报 AuthError 而不是误报「接口结构变化」。
+
+            # 轮询等待接口返回，一旦拿到数据立刻跳出，无需死等 12 秒
+            for _ in range(24):
+                if captured:
+                    page.wait_for_timeout(500)
+                    break
+                page.wait_for_timeout(500)
+
+            if "iam.westlake.edu.cn" in page.url and not captured:
                 raise AuthError("门户登录未通过（可能处于验证码/风控锁态或密码被拒）")
 
             rows: list[dict] = []
@@ -296,8 +323,17 @@ def portal_services() -> list[dict]:
                 except (ValueError, AttributeError):
                     continue
             if not rows:
+                stale = load_cached(_PORTAL_SERVICES_CACHE, 10**9)
+                if stale and isinstance(stale, list):
+                    return stale
                 raise WestlakeError("门户站点图为空（接口结构可能已变化）")
+            save_cached(_PORTAL_SERVICES_CACHE, rows)
             return rows
+        except Exception:
+            stale = load_cached(_PORTAL_SERVICES_CACHE, 10**9)
+            if stale and isinstance(stale, list):
+                return stale
+            raise
         finally:
             context.close()
             browser.close()
@@ -543,12 +579,13 @@ def _cli():
             click.echo(f"  {item.name}{dept}")
 
     @group.command(name="portal")
-    def portal_cmd() -> None:
+    @click.option("--refresh", is_flag=True, help="忽略缓存重新拉取。")
+    def portal_cmd(refresh: bool) -> None:
         """登录门户取服务大厅 18 项部门/应用目录（统一密码）。"""
         # 门户接口结构变化时 portal_services 抛 WestlakeError；这里必须收敛成
         # 一行可读错误，而不是把 traceback 甩给用户（2026-10-27 审计）。
         try:
-            rows = portal_services()
+            rows = portal_services(refresh=refresh)
         except WestlakeError as exc:
             click.secho(f"错误：{exc}", fg="red", err=True)
             raise SystemExit(1) from exc

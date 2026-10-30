@@ -9,11 +9,16 @@ import re
 
 import requests
 
+from westlake_survival._cache import load_cached, save_cached
 from westlake_survival._net import DEFAULT_TIMEOUT
 from westlake_survival.discovery import direct_session, MIRRORS_URL
 from westlake_survival.exceptions import ParseError, WestlakeError
 
 __all__ = ["MIRRORS_URL", "MirrorRepo", "repos", "cli_group"]
+
+#: 镜像目录本地缓存（公开数据，24 小时 TTL）。
+_CACHE_NAME = "mirrors/repos.json"
+_TTL = 24 * 3600
 
 
 class MirrorRepo:
@@ -23,26 +28,7 @@ class MirrorRepo:
         self.help_url = help_url
 
 
-def repos(
-    *,
-    session: requests.Session | None = None,
-    timeout: float | None = None,
-) -> list[MirrorRepo]:
-    """镜像仓库列表（含 Help 链接）。
-
-    Raises:
-        WestlakeError: 网络失败。
-        ParseError: 解析结果异常偏少。
-    """
-    session = session if session is not None else direct_session()
-    try:
-        response = session.get(MIRRORS_URL, timeout=timeout or DEFAULT_TIMEOUT, verify=False)
-    except requests.Timeout as exc:
-        raise WestlakeError("镜像站请求超时") from exc
-    except requests.RequestException as exc:
-        raise WestlakeError(f"镜像站请求失败：{exc}") from exc
-    html = response.content.decode("utf-8", errors="replace")
-
+def _parse_html(html: str) -> list[MirrorRepo]:
     items: list[MirrorRepo] = []
     seen: set[str] = set()
     for href, title in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', html, re.S):
@@ -57,8 +43,6 @@ def repos(
                     if href.startswith("http"):
                         item.help_url = href
                     else:
-                        # MIRRORS_URL 是页面地址（…/posts/mirrors.html），拼相对链接
-                        # 会出现 …/posts/mirrors.html/posts/xxx_help.html 这种坏链。
                         origin = MIRRORS_URL.split("/", 3)
                         item.help_url = "/".join(origin[:3]) + href
                     break
@@ -69,6 +53,42 @@ def repos(
     if len(items) < 6:
         raise ParseError(f"镜像仓库解析异常（仅 {len(items)} 个）")
     return items
+
+
+def repos(
+    *,
+    session: requests.Session | None = None,
+    timeout: float | None = None,
+    refresh: bool = False,
+) -> list[MirrorRepo]:
+    """镜像仓库列表（含 Help 链接；带 24h 缓存与离线降级）。
+
+    Raises:
+        WestlakeError: 网络失败。
+        ParseError: 解析结果异常偏少。
+    """
+    if not refresh:
+        cached = load_cached(_CACHE_NAME, _TTL)
+        if cached and isinstance(cached, list):
+            return [MirrorRepo(**item) for item in cached]
+
+    session = session if session is not None else direct_session()
+    try:
+        response = session.get(MIRRORS_URL, timeout=timeout or DEFAULT_TIMEOUT, verify=False)
+        html = response.content.decode("utf-8", errors="replace")
+        items = _parse_html(html)
+        save_cached(
+            _CACHE_NAME,
+            [{"name": item.name, "url": item.url, "help_url": item.help_url} for item in items],
+        )
+        return items
+    except Exception as exc:
+        stale = load_cached(_CACHE_NAME, 10**9)
+        if stale and isinstance(stale, list):
+            return [MirrorRepo(**item) for item in stale]
+        if isinstance(exc, requests.Timeout):
+            raise WestlakeError("镜像站请求超时") from exc
+        raise WestlakeError(f"镜像站请求失败：{exc}") from exc
 
 
 def _cli():
@@ -90,10 +110,11 @@ def _cli():
         return wrapper
 
     @click.command(name="mirrors", help="西湖开源镜像站仓库目录（公开）。")
+    @click.option("--refresh", is_flag=True, help="忽略缓存重新拉取。")
     @handle
-    def cli_group() -> None:
+    def cli_group(refresh: bool) -> None:
         """列出镜像仓库与地址。"""
-        for r in repos():
+        for r in repos(refresh=refresh):
             help_note = f"　Help: {r.help_url}" if r.help_url else ""
             click.echo(f"  {r.name:<16} {r.url}{help_note}")
 

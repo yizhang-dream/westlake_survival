@@ -25,6 +25,7 @@ import html
 import mimetypes
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
@@ -677,29 +678,40 @@ class CanvasClient:
         return [Assignment.from_json(item) for item in rows]
 
     def upcoming_deadlines(self, limit: int = 10) -> list[Assignment]:
-        """汇总所有 active 课程中即将到期的作业，按截止时间升序。
+        """汇总所有 active 课程中即将到期的作业，按截止时间升序（并发拉取）。
 
         遍历 active 课程的 ``bucket=upcoming`` 与 ``future`` 作业，跳过
         ``due_at`` 为 ``None`` 的条目，合并后按 ``due_at`` 升序取前 *limit* 条。
         """
+        def _fetch_course_assignments(course_id: int) -> list[Assignment]:
+            res: list[Assignment] = []
+            for bucket in ("upcoming", "future"):
+                try:
+                    for assignment in self.list_assignments(course_id, bucket=bucket):
+                        if assignment.due_at is None:
+                            continue
+                        if assignment.course_id is None:
+                            assignment.course_id = course_id
+                        res.append(assignment)
+                except Exception:
+                    continue
+            return res
+
+        active_courses = [c for c in self.list_courses(enrollment_state="active") if c.id is not None]
         collected: list[Assignment] = []
         seen: set = set()
-        for course in self.list_courses(enrollment_state="active"):
-            if course.id is None:
-                continue
-            # ``bucket=upcoming`` 只覆盖未来约 7 天；更远的截止日在 ``future`` 桶里。
-            # 只取 upcoming 会让「还有哪些作业要交」在一周以外静默漏报（2026-10-27 实测）。
-            for bucket in ("upcoming", "future"):
-                for assignment in self.list_assignments(course.id, bucket=bucket):
-                    if assignment.due_at is None:
-                        continue
-                    key = (course.id, assignment.id)
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    if assignment.course_id is None:
-                        assignment.course_id = course.id
-                    collected.append(assignment)
+
+        if active_courses:
+            with ThreadPoolExecutor(max_workers=min(8, len(active_courses))) as pool:
+                futures = [pool.submit(_fetch_course_assignments, c.id) for c in active_courses]
+                for fut in futures:
+                    for assignment in fut.result():
+                        key = (assignment.course_id, assignment.id)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        collected.append(assignment)
+
         collected.sort(key=lambda item: item.due_at)
         return collected[:limit]
 
@@ -714,11 +726,14 @@ class CanvasClient:
             course_id: 课程 id；``None`` 时遍历全部 active 课程。
         """
         if course_id is None:
+            active_courses = [c for c in self.list_courses(enrollment_state="active") if c.id is not None]
+            if not active_courses:
+                return []
             collected: list[QuizItem] = []
-            for course in self.list_courses(enrollment_state="active"):
-                if course.id is None:
-                    continue
-                collected.extend(self.quizzes(course.id))
+            with ThreadPoolExecutor(max_workers=min(8, len(active_courses))) as pool:
+                futures = [pool.submit(self.quizzes, c.id) for c in active_courses]
+                for fut in futures:
+                    collected.extend(fut.result())
             return collected
         quizzes: list[QuizItem] = []
         for row in self._paginate(f"/courses/{course_id}/assignments"):

@@ -42,11 +42,13 @@
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from enum import Enum
 from typing import Any
 
+from westlake_survival._cache import load_cached, save_cached
 from westlake_survival._net import http_session
 
 __all__ = [
@@ -160,11 +162,17 @@ class Level(str, Enum):
     VERBOSE = "verbose"  # + 天气 + AQI + Canvas 截止
 
 
+#: 天气与 AQI 本地缓存（15 分钟 TTL，优雅降级）。
+_WEATHER_CACHE = "context/weather.json"
+_AQI_CACHE = "context/aqi.json"
+_METEO_TTL = 15 * 60
+
+
 # --------------------------------------------------------------------------- #
 # 数据抓取（各返回 None 表示失败，绝不抛）
 # --------------------------------------------------------------------------- #
-def fetch_weather(now: datetime | None = None) -> dict[str, Any] | None:
-    """抓取实时天气 + 今明预报；失败返回 ``None``。
+def fetch_weather(now: datetime | None = None, *, refresh: bool = False) -> dict[str, Any] | None:
+    """抓取实时天气 + 今明预报；失败返回 ``None``（带 15min 本地缓存）。
 
     返回结构::
 
@@ -175,6 +183,11 @@ def fetch_weather(now: datetime | None = None) -> dict[str, Any] | None:
                      "tmax": float, "tmin": float, "precip_prob": int}, ...],
         }
     """
+    if not refresh:
+        cached = load_cached(_WEATHER_CACHE, _METEO_TTL)
+        if cached and isinstance(cached, dict):
+            return cached
+
     params = {
         "latitude": LATITUDE,
         "longitude": LONGITUDE,
@@ -189,9 +202,15 @@ def fetch_weather(now: datetime | None = None) -> dict[str, Any] | None:
         response = session.get(WEATHER_API, params=params, timeout=TIMEOUT)
         response.raise_for_status()
         payload = response.json()
-        return _parse_weather(payload)
+        parsed = _parse_weather(payload)
+        if parsed:
+            save_cached(_WEATHER_CACHE, parsed)
+        return parsed
     except Exception as exc:  # noqa: BLE001 - 优雅降级，任何失败都置 None
         logger.warning("抓取天气失败（%s）：%s", exc.__class__.__name__, exc)
+        stale = load_cached(_WEATHER_CACHE, 10**9)
+        if stale and isinstance(stale, dict):
+            return stale
         return None
 
 
@@ -229,14 +248,19 @@ def _parse_weather(payload: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def fetch_aqi(now: datetime | None = None) -> dict[str, Any] | None:
-    """抓取实时空气质量；失败返回 ``None``。
+def fetch_aqi(now: datetime | None = None, *, refresh: bool = False) -> dict[str, Any] | None:
+    """抓取实时空气质量；失败返回 ``None``（带 15min 本地缓存）。
 
     返回结构::
 
         {"pm10": float, "pm2_5": float, "us_aqi": int,
          "european_aqi": int, "grade": str}
     """
+    if not refresh:
+        cached = load_cached(_AQI_CACHE, _METEO_TTL)
+        if cached and isinstance(cached, dict):
+            return cached
+
     params = {
         "latitude": LATITUDE,
         "longitude": LONGITUDE,
@@ -248,9 +272,15 @@ def fetch_aqi(now: datetime | None = None) -> dict[str, Any] | None:
         response = session.get(AQI_API, params=params, timeout=TIMEOUT)
         response.raise_for_status()
         payload = response.json()
-        return _parse_aqi(payload)
+        parsed = _parse_aqi(payload)
+        if parsed:
+            save_cached(_AQI_CACHE, parsed)
+        return parsed
     except Exception as exc:  # noqa: BLE001 - 优雅降级
         logger.warning("抓取空气质量失败（%s）：%s", exc.__class__.__name__, exc)
+        stale = load_cached(_AQI_CACHE, 10**9)
+        if stale and isinstance(stale, dict):
+            return stale
         return None
 
 
@@ -343,6 +373,20 @@ class Context:
             return None
         return self._get("next_shuttles", self._compute_next_shuttles)
 
+    def _prefetch_weather_aqi(self) -> None:
+        """若 weather 或 aqi 未进实例缓存，并发拉取两者以最小化网络往返耗时。"""
+        need_weather = "weather" not in self._cache
+        need_aqi = "aqi" not in self._cache
+        if not (need_weather or need_aqi):
+            return
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fw = pool.submit(fetch_weather, self.now) if need_weather else None
+            fa = pool.submit(fetch_aqi, self.now) if need_aqi else None
+            if fw is not None:
+                self._cache["weather"] = fw.result()
+            if fa is not None:
+                self._cache["aqi"] = fa.result()
+
     @property
     def weather(self) -> dict[str, Any] | None:
         """实时天气 dict（结构见 :func:`fetch_weather`）；失败返回 ``None``。
@@ -352,14 +396,16 @@ class Context:
         """
         if self.level is Level.TERSE:
             return None
-        return self._get("weather", lambda: fetch_weather(self.now))
+        self._prefetch_weather_aqi()
+        return self._cache.get("weather")
 
     @property
     def aqi(self) -> dict[str, Any] | None:
         """实时空气质量 dict（结构见 :func:`fetch_aqi`）；失败返回 ``None``。"""
         if self.level is Level.TERSE:
             return None
-        return self._get("aqi", lambda: fetch_aqi(self.now))
+        self._prefetch_weather_aqi()
+        return self._cache.get("aqi")
 
     @property
     def next_deadlines(self) -> list[Any] | None:

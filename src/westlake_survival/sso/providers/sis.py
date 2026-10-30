@@ -25,9 +25,14 @@
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import time
+from http.cookiejar import Cookie as _Cookie
+from pathlib import Path
 
-from westlake_survival._net import AUTH_TIMEOUT
+from westlake_survival._net import AUTH_TIMEOUT, http_session
 from westlake_survival.exceptions import (
     AuthError,
     InvalidCredentials,
@@ -42,6 +47,85 @@ SIS_BASE = "https://sis.westlake.edu.cn/psc/CSPRD_3/"
 
 #: PS 登录页（GET 渲染表单，POST 提交）。
 SIS_LOGIN_URL = "https://sis.westlake.edu.cn/psc/CSPRD_3/?cmd=login&languageCd=ENG"
+
+#: 缓存会话的落盘位置（遵循 WESTLAKE_HOME 重定位约定）。
+COOKIES_FILENAME = "sis_cookies.json"
+
+#: 缓存有效期（秒）：25 分钟（与基类 SESSION_TTL 一致）。
+_TTL = 25 * 60
+
+
+def _cookies_path() -> Path:
+    override = os.environ.get("WESTLAKE_HOME")
+    root = Path(override) if override else Path.home() / ".westlake_survival"
+    return root / COOKIES_FILENAME
+
+
+def _clear_jar() -> None:
+    try:
+        p = _cookies_path()
+        if p.exists():
+            p.unlink()
+    except OSError:
+        pass
+
+
+def _save_jar(session) -> None:
+    jar = [
+        {
+            "name": c.name,
+            "value": c.value,
+            "domain": c.domain,
+            "path": c.path,
+            "expires": c.expires,
+        }
+        for c in session.cookies
+        if "westlake.edu.cn" in (c.domain or "")
+    ]
+    path = _cookies_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"ts": time.time(), "cookies": jar}, ensure_ascii=False), encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+
+
+def _load_jar():
+    path = _cookies_path()
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if time.time() - float(payload.get("ts") or 0) > _TTL:
+        return None
+    jar = payload.get("cookies") or []
+    if not jar:
+        return None
+    session = http_session()
+    for item in jar:
+        c = _Cookie(
+            version=0,
+            name=item["name"],
+            value=item["value"],
+            port=None,
+            port_specified=False,
+            domain=item.get("domain", ""),
+            domain_specified=bool(item.get("domain")),
+            domain_initial_dot=item.get("domain", "").startswith("."),
+            path=item.get("path", "/"),
+            path_specified=bool(item.get("path")),
+            secure=True,
+            expires=item.get("expires"),
+            discard=False,
+            comment=None,
+            comment_url=None,
+            rest={"HttpOnly": None},
+        )
+        session.cookies.set_cookie(c)
+    return session
 
 _INPUT_RE = re.compile(r"<input\b[^>]*>", re.IGNORECASE)
 _NAME_RE = re.compile(r'name="([^"]*)"', re.IGNORECASE)
@@ -99,6 +183,12 @@ class SISAuth(CASAuthorizer):
     LOGIN_URL = SIS_LOGIN_URL
 
     def _build_session(self):
+        # 1. 优先复用本地有效会话 Cookie（25 分钟 TTL），对标 ams.py，免每次进程重启重付 IAM 握手
+        cached = _load_jar()
+        if cached is not None and cached.cookies.get("PS_TOKEN"):
+            cached.headers["Referer"] = SIS_BASE
+            return cached
+
         sid, password = read_credentials()
 
         # 优先走统一身份认证（IAM OAuth2）：统一密码即可登 SIS，不必记 SIS 专用
@@ -111,6 +201,7 @@ class SISAuth(CASAuthorizer):
             iam_session = iam.login(sid, password)
             iam.exchange_sis_session(iam_session)
             iam_session.headers["Referer"] = SIS_BASE
+            _save_jar(iam_session)
             return iam_session
         except InvalidCredentials:
             raise
@@ -136,14 +227,17 @@ class SISAuth(CASAuthorizer):
 
         if not session.cookies.get("PS_TOKEN"):
             raise _login_failed(iam_error)
+        _save_jar(session)
         return session
 
     def _is_stale_response(self, response) -> bool:
         final_url = getattr(response, "url", "") or ""
         if "cmd=login" in final_url:
+            _clear_jar()
             return True
         body = getattr(response, "text", "") or ""
         if 'name="pwd"' in body and "cmd=login" in body:
+            _clear_jar()
             return True
         return super()._is_stale_response(response)
 

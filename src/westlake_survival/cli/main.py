@@ -28,41 +28,141 @@ from unicodedata import east_asian_width
 import click
 
 from westlake_survival._version import __version__
-from westlake_survival.calendar import AcademicCalendar
-from westlake_survival.campus import cli_group as campus_cmd
-from westlake_survival.campusmap import cli_group as map_cmd
-from westlake_survival.careers import cli_group as careers_cmd
-from westlake_survival.contact import cli_group as contact_cmd
-from westlake_survival.discovery import cli_group as affairs_cmd
-from westlake_survival.booking import cli_group as booking_cmd
-from westlake_survival.sportvenue import cli_group as sport_cmd
-from westlake_survival.hosts import cli_group as hosts_cmd
-from westlake_survival.finance import cli_group as finance_cmd
-from westlake_survival.hpc import cli_group as hpc_cmd
-from westlake_survival.mirrors import cli_group as mirrors_cmd
-from westlake_survival.institute import cli_group as institute_cmd
-from westlake_survival.schools import cli_group as schools_cmd
-from westlake_survival.sites import cli_group as sites_cmd
-from westlake_survival.vpn import cli_group as vpn_cmd
-from westlake_survival.taskcenter import cli_group as todo_cmd
-from westlake_survival.portal import cli_group as portal_cmd
-from westlake_survival.scholar import cli_group as scholar_cmd
-from westlake_survival.careersite import cli_group as careersite_cmd
-from westlake_survival.events import cli_group as events_cmd
 from westlake_survival.exceptions import AuthError, OffCampusError, WestlakeError
-from westlake_survival.faculty import cli_group as faculty_cmd
-from westlake_survival.news import cli_group as news_cmd
-from westlake_survival.program import cli_group as program_cmd
-from westlake_survival.research import cli_group as research_cmd
-from westlake_survival.search import cli_group as search_cmd
-from westlake_survival.wikilake import cli_group as wiki_cmd
-from westlake_survival.setup_cmd import setup_cmd
-from westlake_survival.sharepoint import cli_group as share_cmd
-from westlake_survival.sis.aid import cli_group as aid_cmd
-from westlake_survival.sis.evals import cli_group as evals_cmd
-from westlake_survival.sis.profile import cli_group as profile_cmd
-from westlake_survival.sis.records import cli_group as records_cmd
-from westlake_survival.transit import Campus, DayKind
+
+#: 惰性加载子命令映射：{命令名: (模块路径, 导出属性名, 短帮助文案)}
+#: 避免每次运行任意命令都顶层静态 import 全部 30+ 业务模块。
+LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
+    "setup": ("westlake_survival.setup_cmd", "setup_cmd", "首次配置：默认打开浏览器「设置」页填学号密码（终端不问密码）。"),
+    "sis-evals": ("westlake_survival.sis.evals", "cli_group", "评教中心：列出评估任务 / 待评任务。"),
+    "profile": ("westlake_survival.sis.profile", "cli_group", "个人信息：个人资料 / 学籍 / 扩展信息。"),
+    "records": ("westlake_survival.sis.records", "cli_group", "学生事务记录：住宿 / 请假 / 荣誉 / 志愿 / 实践 / 违纪 / 第二课堂..."),
+    "aid": ("westlake_survival.sis.aid", "cli_group", "学生资助 / 海外交流 / 社团：贷款、勤工助学、交流申请、社团组织与活动。"),
+    "booking": ("westlake_survival.booking", "cli_group", "预约中心：分类 / 资源 / 空闲时段 / 我的预约 / 预约与取消。"),
+    "sport": ("westlake_survival.sportvenue", "cli_group", "体育场馆/游泳预约系统（正元 sportvenue）——场景、场地、逐日可约、我的预约。"),
+    "share": ("westlake_survival.sharepoint", "cli_group", "OneDrive/SharePoint 分享文件夹：列文件、下载讲义（免账号）。"),
+    "search": ("westlake_survival.search", "cli_group", "官网全站搜索：检索西湖大学官网内容。"),
+    "news": ("westlake_survival.news", "cli_group", "西湖新闻：最新资讯与详情。"),
+    "program": ("westlake_survival.program", "cli_group", "本科培养方案（官网公开版）：培养理念 / 课程体系 / 专业设置。"),
+    "research": ("westlake_survival.research", "cli_group", "科研进展：官网 Research at Westlake 板块的研究报道与详情。"),
+    "events": ("westlake_survival.events", "cli_group", "活动预告：讲座 / 学术会议 / 演出等。"),
+    "careers": ("westlake_survival.careers", "cli_group", "人才招聘：岗位列表与详情。"),
+    "faculty": ("westlake_survival.faculty", "cli_group", "导师团队：查询西湖大学教师名录与教师主页。"),
+    "campus": ("westlake_survival.campus", "cli_group", "校园生活：食堂 / 咖啡轻食 / 公寓。"),
+    "map": ("westlake_survival.campusmap", "cli_group", "校园地图（全公开）：地址、官方地图图片、720° 全景与到校交通。"),
+    "contact": ("westlake_survival.contact", "cli_group", "联系我们：三校区地址/交通/地图，以及常用电话邮箱。"),
+    "affairs": ("westlake_survival.discovery", "cli_group", "网上办事大厅与计算/预约入口（目录免登录）。"),
+    "hosts": ("westlake_survival.hosts", "cli_group", "全量子站：清单探测与内容挖掘。"),
+    "hpc": ("westlake_survival.hpc", "cli_group", "高性能计算中心：队列配置（公开）与入口。"),
+    "finance": ("westlake_survival.finance", "cli_group", "财务部公开栏目与文章（报销/科研经费/制度）。"),
+    "mirrors": ("westlake_survival.mirrors", "cli_group", "西湖开源镜像站仓库目录（公开）。"),
+    "institute": ("westlake_survival.institute", "cli_group", "理论科学研究院官网内容（新闻/学术活动）。"),
+    "schools": ("westlake_survival.schools", "cli_group", "学院官网新闻：理学院/生科/工学/医学/理论院。"),
+    "sites": ("westlake_survival.sites", "cli_group", "全校站点内容：博达 CMS / 静态 / TRS 三类统一读取。"),
+    "wiki": ("westlake_survival.wikilake", "cli_group", "WikiLake 校园百科（学生自建）：目录、检索、单页正文（只读，无需凭据）。"),
+    "vpn": ("westlake_survival.vpn", "cli_group", "SSL VPN 会话：手动登录 / 状态 / 资源列表。"),
+    "todo": ("westlake_survival.taskcenter", "cli_group", "办事大厅个人事项：我的待办 / 进行中流程。"),
+    "portal": ("westlake_survival.portal", "cli_group", "门户个人卡片与 AI 助手入口。"),
+    "scholar": ("westlake_survival.scholar", "cli_group", "学术资源：数据库注册表 / CARSI 联盟登录 / DOI 全文。"),
+    "career": ("westlake_survival.careersite", "cli_group", "就业服务网：三区块免登录 + 登录态深列表/详情。"),
+}
+
+
+class LazyCommandDict(dict):
+    """支持按需加载的命令字典（兼容外部 cli.commands.items() 完整遍历）。"""
+
+    def __init__(self, group: LazyGroup) -> None:
+        super().__init__()
+        self.group = group
+
+    def __getitem__(self, key: str) -> click.Command:
+        if not super().__contains__(key) and key in self.group.lazy_commands:
+            self.group._load_lazy(key)
+        return super().__getitem__(key)
+
+    def get(self, key: str, default: object = None) -> click.Command | None:
+        if not super().__contains__(key) and key in self.group.lazy_commands:
+            self.group._load_lazy(key)
+        return super().get(key, default)
+
+    def __contains__(self, key: object) -> bool:
+        return super().__contains__(key) or (isinstance(key, str) and key in self.group.lazy_commands)
+
+    def items(self):
+        for name in list(self.group.lazy_commands.keys()):
+            if not super().__contains__(name):
+                self.group._load_lazy(name)
+        return super().items()
+
+    def values(self):
+        for name in list(self.group.lazy_commands.keys()):
+            if not super().__contains__(name):
+                self.group._load_lazy(name)
+        return super().values()
+
+    def keys(self):
+        return sorted(set(super().keys()) | set(self.group.lazy_commands.keys()))
+
+    def __iter__(self):
+        return iter(self.keys())
+
+    def __len__(self) -> int:
+        return len(self.keys())
+
+
+class LazyGroup(click.Group):
+    """支持按需惰性加载子命令的 Click Group。"""
+
+    def __init__(self, *args, lazy_commands: dict[str, tuple[str, str, str]] | None = None, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.lazy_commands = lazy_commands or LAZY_COMMANDS
+        old_commands = self.commands
+        self.commands = LazyCommandDict(self)
+        self.commands.update(old_commands)
+
+    def _load_lazy(self, cmd_name: str) -> click.Command:
+        mod_path, attr_name, _ = self.lazy_commands[cmd_name]
+        import importlib
+
+        mod = importlib.import_module(mod_path)
+        cmd = getattr(mod, attr_name)
+        self.commands[cmd_name] = cmd
+        return cmd
+
+    def list_commands(self, ctx: click.Context) -> list[str]:
+        base = super().list_commands(ctx)
+        return sorted(set(base) | set(self.lazy_commands.keys()))
+
+    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
+        if super(LazyCommandDict, self.commands).__contains__(cmd_name):
+            return self.commands[cmd_name]
+        if cmd_name in self.lazy_commands:
+            return self._load_lazy(cmd_name)
+        return None
+
+    def format_commands(self, ctx: click.Context, formatter: click.formatting.HelpFormatter) -> None:
+        commands = []
+        for subcommand in self.list_commands(ctx):
+            if super(LazyCommandDict, self.commands).__contains__(subcommand):
+                cmd = self.commands[subcommand]
+                if getattr(cmd, "hidden", False):
+                    continue
+                help_str = cmd.get_short_help_str()
+            elif subcommand in self.lazy_commands:
+                _, _, help_str = self.lazy_commands[subcommand]
+            else:
+                continue
+            commands.append((subcommand, help_str))
+
+        if commands:
+            limit = formatter.width - 6 - max(len(cmd[0]) for cmd in commands)
+            rows = []
+            for subcommand, help_str in commands:
+                if len(help_str) > limit:
+                    help_str = help_str[: max(0, limit - 3)] + "..."
+                rows.append((subcommand, help_str))
+            with formatter.section("Commands"):
+                formatter.write_dl(rows)
 
 #: 星期几的中文名（``date.weekday()`` 0=周一）。
 _WEEKDAY_CN = ("周一", "周二", "周三", "周四", "周五", "周六", "周日")
@@ -380,8 +480,10 @@ def calendar_cmd() -> None:
     """校历查询命令。"""
 
 
-def _load_calendar() -> AcademicCalendar:
+def _load_calendar():
     """加载校历（网络失败时由模块内部回退到内置数据）。"""
+    from westlake_survival.calendar import AcademicCalendar
+
     return AcademicCalendar.load()
 
 
@@ -463,12 +565,16 @@ def transit_cmd() -> None:
     """校园巴士命令。"""
 
 
-def _campus(value: str | None) -> Campus | None:
-    return Campus(value) if value else None
+def _campus(value: str | None):
+    if not value:
+        return None
+    from westlake_survival.transit import Campus
+
+    return Campus(value)
 
 
 @transit_cmd.command(name="next")
-@click.option("--campus", type=click.Choice([c.value for c in Campus]), default=None, help="只看某校区（始发）。")
+@click.option("--campus", type=click.Choice(["云谷", "玉皇山"]), default=None, help="只看某校区（始发）。")
 @click.option("--limit", type=int, default=3, show_default=True, help="返回条数。")
 @_handle_errors
 def transit_next(campus: str | None, limit: int) -> None:
@@ -488,12 +594,12 @@ def transit_next(campus: str | None, limit: int) -> None:
 
 
 @transit_cmd.command(name="table")
-@click.option("--campus", type=click.Choice([c.value for c in Campus]), default=None, help="校区。")
-@click.option("--day", type=click.Choice([d.value for d in DayKind]), default=None, help="日别。")
+@click.option("--campus", type=click.Choice(["云谷", "玉皇山"]), default=None, help="校区。")
+@click.option("--day", type=click.Choice(["工作日", "双休日与节假日"]), default=None, help="日别。")
 @_handle_errors
 def transit_table(campus: str | None, day: str | None) -> None:
     """显示指定校区/日别的班车时刻表。"""
-    from westlake_survival.transit import transit
+    from westlake_survival.transit import DayKind, transit
 
     data = transit()
     campus_enum = _campus(campus)
@@ -1857,10 +1963,14 @@ def probe_cmd(ctx: click.Context) -> None:
     """堵点与服务发现：不带参数跑四项常规探测；scan 做子域普查。"""
     if ctx.invoked_subcommand is not None:
         return
+    from concurrent.futures import ThreadPoolExecutor
+
     rows = []
-    for name, func in PROBE_ITEMS:
-        status, detail = _run_probe_item(func)
-        rows.append((name, status, detail))
+    with ThreadPoolExecutor(max_workers=len(PROBE_ITEMS)) as pool:
+        futures = [(name, pool.submit(_run_probe_item, func)) for name, func in PROBE_ITEMS]
+        for name, fut in futures:
+            status, detail = fut.result()
+            rows.append((name, status, detail))
     _print_table(rows, ("探测项", "状态", "说明"))
 
 
@@ -2125,6 +2235,7 @@ def find_cmd(query: str | None) -> None:
 # 顶层 group
 # --------------------------------------------------------------------------- #
 @click.group(
+    cls=LazyGroup,
     name="westlake",
     help="西湖大学生存手册命令行。使用 `westlake <子命令> --help` 查看详情。",
     invoke_without_command=True,
@@ -2162,45 +2273,13 @@ for _group in (
     doctor_cmd,
     ams_cmd,
     find_cmd,
-    setup_cmd,
     sso_cmd,
     calendar_cmd,
     transit_cmd,
     canvas_cmd,
     sis_cmd,
-    evals_cmd,
-    profile_cmd,
-    records_cmd,
-    aid_cmd,
     lib_cmd,
     pms_cmd,
-    booking_cmd,
-    sport_cmd,
-    share_cmd,
-    search_cmd,
-    news_cmd,
-    program_cmd,
-    research_cmd,
-    events_cmd,
-    careers_cmd,
-    faculty_cmd,
-    campus_cmd,
-    map_cmd,
-    contact_cmd,
-    affairs_cmd,
-    hosts_cmd,
-    hpc_cmd,
-    finance_cmd,
-    mirrors_cmd,
-    institute_cmd,
-    schools_cmd,
-    sites_cmd,
-    wiki_cmd,
-    vpn_cmd,
-    todo_cmd,
-    portal_cmd,
-    scholar_cmd,
-    careersite_cmd,
     context_cmd,
     digest_cmd,
     probe_cmd,

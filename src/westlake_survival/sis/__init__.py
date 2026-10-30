@@ -37,96 +37,96 @@
 
 from __future__ import annotations
 
-from westlake_survival.sis.client import (
-    SCHEDULE_CACHE_NAME,
-    SIS_URLS,
-    SISClient,
-    export_schedule_xls,
-    fetch_schedule_html,
-    get_schedule,
-    reset_sis,
-)
-from westlake_survival.sis.aid import (
-    ActivityRecord,
-    ExchangeRecord,
-    ExchangeSchool,
-    LoanRecord,
-    LoanRepayment,
-    OrgRecord,
-    OutboundRecord,
-    StudyJob,
-    WorkStudyTab,
-    exchange_applications,
-    exchange_schools,
-    loan_application,
-    loan_repayments,
-    loans,
-    my_clubs,
-    outbound_programs,
-    student_activities,
-    student_orgs,
-    study_jobs,
-    work_study_tabs,
-)
-from westlake_survival.sis.evals import (
-    EvalTask,
-    evaluations,
-    pending_evaluations,
-)
-from westlake_survival.sis.exams import ExamSlot, exam_schedule
-from westlake_survival.sis.cart import CartCourse, shopping_cart
-from westlake_survival.sis.grades import Grade, grades
-from westlake_survival.sis.pages import (
-    fetch_page,
-    parse_fluid_grid,
-    parse_label_values,
-)
-from westlake_survival.sis.parser import (
-    ClassSession,
-    parse_date_range,
-    parse_ps_xls,
-    parse_schedule_html,
-    parse_time_slot,
-    parse_weeks,
-)
-from westlake_survival.sis.profile import (
-    academic_record,
-    extended_info,
-    personal_info,
-)
-from westlake_survival.sis.records import (
-    DisciplineRecord,
-    DormApplication,
-    DormRecord,
-    HonorRecord,
-    LeaveRequest,
-    PracticeRecord,
-    VolunteerRecord,
-    discipline_records,
-    dormitory,
-    honors,
-    leave_requests,
-    social_practice,
-    volunteer_records,
-)
-from westlake_survival.sis.second_class import (
-    SecondClassCategory,
-    SecondClassNode,
-    SecondClassReport,
-    SecondClassRow,
-    second_classroom,
-)
-from westlake_survival.sis.advisor import (
-    Advisor,
-    AdvisorInfo,
-    AdvisorRotation,
-    advising,
-)
-from westlake_survival.sis.applications import (
-    ApplicationStatus,
-    OtherApplications,
-    other_applications,
-)
+from __future__ import annotations
+
+import importlib
+
+#: 惰性导出映射：符号名 → 子模块路径。按需动态加载，避免引入 sis 包时级联
+#: 静态导入全部 12 个子模块与全部数据模型。
+_LAZY_EXPORTS: dict[str, str] = {
+    "ActivityRecord": "westlake_survival.sis.aid",
+    "Advisor": "westlake_survival.sis.advisor",
+    "AdvisorInfo": "westlake_survival.sis.advisor",
+    "AdvisorRotation": "westlake_survival.sis.advisor",
+    "ApplicationStatus": "westlake_survival.sis.applications",
+    "CartCourse": "westlake_survival.sis.cart",
+    "ClassSession": "westlake_survival.sis.parser",
+    "DisciplineRecord": "westlake_survival.sis.records",
+    "DormApplication": "westlake_survival.sis.records",
+    "DormRecord": "westlake_survival.sis.records",
+    "EvalTask": "westlake_survival.sis.evals",
+    "ExamSlot": "westlake_survival.sis.exams",
+    "ExchangeRecord": "westlake_survival.sis.aid",
+    "ExchangeSchool": "westlake_survival.sis.aid",
+    "Grade": "westlake_survival.sis.grades",
+    "HonorRecord": "westlake_survival.sis.records",
+    "LeaveRequest": "westlake_survival.sis.records",
+    "LoanRecord": "westlake_survival.sis.aid",
+    "LoanRepayment": "westlake_survival.sis.aid",
+    "OrgRecord": "westlake_survival.sis.aid",
+    "OtherApplications": "westlake_survival.sis.applications",
+    "OutboundRecord": "westlake_survival.sis.aid",
+    "PracticeRecord": "westlake_survival.sis.records",
+    "SCHEDULE_CACHE_NAME": "westlake_survival.sis.client",
+    "SISClient": "westlake_survival.sis.client",
+    "SIS_URLS": "westlake_survival.sis.client",
+    "SecondClassCategory": "westlake_survival.sis.second_class",
+    "SecondClassNode": "westlake_survival.sis.second_class",
+    "SecondClassReport": "westlake_survival.sis.second_class",
+    "SecondClassRow": "westlake_survival.sis.second_class",
+    "StudyJob": "westlake_survival.sis.aid",
+    "VolunteerRecord": "westlake_survival.sis.records",
+    "WorkStudyTab": "westlake_survival.sis.aid",
+    "academic_record": "westlake_survival.sis.profile",
+    "advising": "westlake_survival.sis.advisor",
+    "discipline_records": "westlake_survival.sis.records",
+    "dormitory": "westlake_survival.sis.records",
+    "evaluations": "westlake_survival.sis.evals",
+    "exam_schedule": "westlake_survival.sis.exams",
+    "exchange_applications": "westlake_survival.sis.aid",
+    "exchange_schools": "westlake_survival.sis.aid",
+    "export_schedule_xls": "westlake_survival.sis.client",
+    "extended_info": "westlake_survival.sis.profile",
+    "fetch_page": "westlake_survival.sis.pages",
+    "fetch_schedule_html": "westlake_survival.sis.client",
+    "get_schedule": "westlake_survival.sis.client",
+    "grades": "westlake_survival.sis.grades",
+    "honors": "westlake_survival.sis.records",
+    "leave_requests": "westlake_survival.sis.records",
+    "loan_application": "westlake_survival.sis.aid",
+    "loan_repayments": "westlake_survival.sis.aid",
+    "loans": "westlake_survival.sis.aid",
+    "my_clubs": "westlake_survival.sis.aid",
+    "other_applications": "westlake_survival.sis.applications",
+    "outbound_programs": "westlake_survival.sis.aid",
+    "parse_date_range": "westlake_survival.sis.parser",
+    "parse_fluid_grid": "westlake_survival.sis.pages",
+    "parse_label_values": "westlake_survival.sis.pages",
+    "parse_ps_xls": "westlake_survival.sis.parser",
+    "parse_schedule_html": "westlake_survival.sis.parser",
+    "parse_time_slot": "westlake_survival.sis.parser",
+    "parse_weeks": "westlake_survival.sis.parser",
+    "pending_evaluations": "westlake_survival.sis.evals",
+    "personal_info": "westlake_survival.sis.profile",
+    "reset_sis": "westlake_survival.sis.client",
+    "second_classroom": "westlake_survival.sis.second_class",
+    "shopping_cart": "westlake_survival.sis.cart",
+    "social_practice": "westlake_survival.sis.records",
+    "student_activities": "westlake_survival.sis.aid",
+    "student_orgs": "westlake_survival.sis.aid",
+    "study_jobs": "westlake_survival.sis.aid",
+    "volunteer_records": "westlake_survival.sis.records",
+    "work_study_tabs": "westlake_survival.sis.aid",
+}
+
+
+def __getattr__(name: str) -> object:
+    if name in _LAZY_EXPORTS:
+        mod = importlib.import_module(_LAZY_EXPORTS[name])
+        val = getattr(mod, name)
+        globals()[name] = val
+        return val
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     # 客户端

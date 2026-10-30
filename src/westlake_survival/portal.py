@@ -22,11 +22,16 @@ AI 助手：``mainPortal/getAiChatbotLink`` 返回 chatbot.westlake.edu.cn
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
+from westlake_survival._cache import load_cached, save_cached
 from westlake_survival.exceptions import AuthError, WestlakeError
 
 __all__ = ["PortalCards", "fetch_cards", "chatbot_link", "cli_group"]
+
+#: 门户卡片本地缓存（15 分钟 TTL）。
+_CARDS_CACHE = "portal/cards.json"
+_CARDS_TTL = 15 * 60
 
 
 @dataclass
@@ -61,13 +66,19 @@ def _logged_in_page():
 
 def _ensure_portal(page, sid: str, password: str) -> None:
     page.goto("https://my.westlake.edu.cn/", timeout=60000)
-    page.wait_for_timeout(3000)
+    try:
+        page.wait_for_selector('input[placeholder*="用户名/手机号/邮箱"], .carditembox', timeout=5000)
+    except Exception:
+        page.wait_for_timeout(2000)
     if "iam.westlake" in page.url:
         page.wait_for_selector('input[placeholder*="用户名/手机号/邮箱"]', timeout=15000)
         page.fill('input[placeholder*="用户名/手机号/邮箱"]', sid)
         page.fill('input[placeholder*="密码"]', password)
         page.locator('span:has-text("立即登录")').first.click(force=True)
-    page.wait_for_timeout(10000)
+    try:
+        page.wait_for_selector(".carditembox, .reportCount", timeout=12000)
+    except Exception:
+        page.wait_for_timeout(3000)
     if "my.westlake" not in page.url:
         raise AuthError("门户登录失败（统一密码可能不对）")
 
@@ -98,15 +109,26 @@ def _card_dom(page) -> dict[str, str]:
         return {}
 
 
-def fetch_cards() -> PortalCards:
-    """取门户个人卡片数值（结构化 DOM 优先，行文本兜底）。
+def fetch_cards(*, refresh: bool = False) -> PortalCards:
+    """取门户个人卡片数值（结构化 DOM 优先，行文本兜底；带 15min 本地缓存）。
 
     个人四卡 DOM 顺序是「数值在前、标签在后」（一卡通余额脱敏显示
     ``**``）；待办三行才是「标签在前、数值在后」。旧版对四卡也按
     「标签后取值」解析，抓到的是下一张卡的数字（未读邮件显示 0
     实为在借图书的 0，2026-10-28 修复）。
     """
-    cm, context, page, sid, password = _logged_in_page()
+    if not refresh:
+        cached = load_cached(_CARDS_CACHE, _CARDS_TTL)
+        if cached and isinstance(cached, dict):
+            return PortalCards(**cached)
+
+    try:
+        cm, context, page, sid, password = _logged_in_page()
+    except Exception as exc:
+        stale = load_cached(_CARDS_CACHE, 10**9)
+        if stale and isinstance(stale, dict):
+            return PortalCards(**stale)
+        raise
     try:
         _ensure_portal(page, sid, password)
         dom = _card_dom(page)
@@ -127,13 +149,20 @@ def fetch_cards() -> PortalCards:
                     return lines[index - 1]
             return ""
 
-        return PortalCards(
+        cards = PortalCards(
             unread_email=dom.get("未读邮件") or value_before("未读邮件"),
             borrowed_books=dom.get("在借图书") or value_before("在借图书"),
             todo_pending=value_after("待办理"),
             todo_started=value_after("已发起"),
             todo_done=value_after("已处理"),
         )
+        save_cached(_CARDS_CACHE, asdict(cards))
+        return cards
+    except Exception:
+        stale = load_cached(_CARDS_CACHE, 10**9)
+        if stale and isinstance(stale, dict):
+            return PortalCards(**stale)
+        raise
     finally:
         context.close()
         cm.__exit__(None, None, None)
@@ -193,10 +222,11 @@ def _cli():
         """``westlake portal cards|chatbot``。"""
 
     @group.command(name="cards")
+    @click.option("--refresh", is_flag=True, help="忽略缓存重新拉取卡片数值。")
     @handle
-    def cards_cmd() -> None:
+    def cards_cmd(refresh: bool) -> None:
         """未读邮件 / 在借图书 / 待办计数。"""
-        cards = fetch_cards()
+        cards = fetch_cards(refresh=refresh)
         click.echo(f"未读邮件：{cards.unread_email or '—'}")
         click.echo(f"在借图书：{cards.borrowed_books or '—'}")
         click.echo(f"我的待办：待办理 {cards.todo_pending or '—'}　已发起 {cards.todo_started or '—'}　已处理 {cards.todo_done or '—'}")

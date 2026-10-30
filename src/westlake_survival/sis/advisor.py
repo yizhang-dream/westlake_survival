@@ -31,8 +31,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from westlake_survival._cache import load_cached, save_cached
 from westlake_survival.exceptions import ParseError
-from westlake_survival.sis import pages
+import westlake_survival.sis.pages as pages
 from westlake_survival.sis.pages import parse_fluid_grid
 
 __all__ = [
@@ -43,6 +44,10 @@ __all__ = [
     "AdvisorInfo",
     "advising",
 ]
+
+#: 导师选择数据本地缓存（1 小时 TTL）。
+_ADVISOR_CACHE = "sis/advisor.json"
+_ADVISOR_TTL = 3600
 
 #: 导师选择页组件。
 ADVISOR_COMPONENT = "WL_CUSTOMIZE_MENU.WL_ADV_CHOOSE_COM.GBL"
@@ -226,8 +231,8 @@ def _advisors(html: str) -> list[Advisor]:
     return advisors
 
 
-def advising() -> AdvisorInfo:
-    """取学业导师页：分配公告 + 各轮次名单。
+def advising(*, refresh: bool = False) -> AdvisorInfo:
+    """取学业导师页：分配公告 + 各轮次名单（带 1h 本地缓存与降级）。
 
     首次 GET 拿当前轮次；其余轮次按下拉框选项逐个 POST（回填表单状态）。
 
@@ -237,8 +242,42 @@ def advising() -> AdvisorInfo:
         ActionError: 组件对当前角色未授权。
         ParseError: 页面结构变化（找不到名单网格等）。
     """
-    session = pages._session()
-    html = pages.fetch_page(ADVISOR_COMPONENT)
+    if not refresh:
+        cached = load_cached(_ADVISOR_CACHE, _ADVISOR_TTL)
+        if cached and isinstance(cached, dict):
+            return AdvisorInfo(
+                announcement=cached.get("announcement", ""),
+                assigned=cached.get("assigned", ""),
+                rotations=[
+                    AdvisorRotation(
+                        code=r.get("code", ""),
+                        label=r.get("label", ""),
+                        advisors=[Advisor(**a) for a in r.get("advisors", [])],
+                    )
+                    for r in cached.get("rotations", [])
+                ],
+            )
+
+    try:
+        session = pages._session()
+        html = pages.fetch_page(ADVISOR_COMPONENT)
+    except Exception:
+        stale = load_cached(_ADVISOR_CACHE, 10**9)
+        if stale and isinstance(stale, dict):
+            return AdvisorInfo(
+                announcement=stale.get("announcement", ""),
+                assigned=stale.get("assigned", ""),
+                rotations=[
+                    AdvisorRotation(
+                        code=r.get("code", ""),
+                        label=r.get("label", ""),
+                        advisors=[Advisor(**a) for a in r.get("advisors", [])],
+                    )
+                    for r in stale.get("rotations", [])
+                ],
+            )
+        raise
+
     announcement, assigned = _announcement(html)
 
     options = _rotation_options(html)
@@ -261,4 +300,5 @@ def advising() -> AdvisorInfo:
         )
     if not info.rotations:
         raise ParseError("导师页没有任何轮次名单，页面结构可能已变化。")
+    save_cached(_ADVISOR_CACHE, info.to_dict())
     return info
