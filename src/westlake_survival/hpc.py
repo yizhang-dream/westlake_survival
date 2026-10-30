@@ -16,7 +16,9 @@ bundle 路径带 hash，先取首页解析出当前 JS 地址再抓（缓存一�
 
 from __future__ import annotations
 
+import os
 import re
+from pathlib import Path
 
 import requests
 
@@ -32,15 +34,25 @@ __all__ = [
     "AI_KEY_URL",
     "AI_MODELS",
     "AI_TOOL_PANELS",
+    "HPC_TOKEN_FILENAME",
+    "TOKEN_ENV_VARS",
+    "read_hpc_token",
+    "save_hpc_token",
+    "sync_hpc_token",
     "QueueSpec",
     "HpcOverview",
     "overview",
     "ai_service",
+    "ai_gateway_probe",
     "cli_group",
 ]
 
 HPC_MAIN = "https://hpc.westlake.edu.cn/"
 HPC_PORTAL = "https://hpc.westlake.edu.cn:9002/login.html"
+
+#: 令牌持久化文件名（~/.westlake_survival/hpc_token.txt）。
+HPC_TOKEN_FILENAME = "hpc_token.txt"
+TOKEN_ENV_VARS = ("WESTLAKE_HPC_TOKEN", "HPC_API_KEY")
 
 #: Westlake AI——HPC 中心运营的 OpenAI 兼容大模型网关（New API，2026-10-25
 #: 从主站 bundle 反出）。令牌凭校园 SSO 在 key_url 免费自助领取；网关
@@ -168,6 +180,91 @@ def overview(
     return HpcOverview(queues=_parse_queues(bundle), clusters=clusters)
 
 
+def _token_path() -> Path:
+    override = os.environ.get("WESTLAKE_HOME")
+    root = Path(override) if override else Path.home() / ".westlake_survival"
+    return root / HPC_TOKEN_FILENAME
+
+
+def read_hpc_token() -> str | None:
+    """读取已配置的集群 API Key（环境变量优先，其次 ~/.westlake_survival/hpc_token.txt）。"""
+    for env in TOKEN_ENV_VARS:
+        val = os.environ.get(env)
+        if val and val.strip():
+            return val.strip()
+    path = _token_path()
+    if path.exists():
+        try:
+            lines = path.read_text(encoding="utf-8").strip().splitlines()
+            if lines and lines[0].strip():
+                return lines[0].strip()
+        except OSError:
+            pass
+    return None
+
+
+def save_hpc_token(token: str) -> Path:
+    """保存集群 API Key 到配置文件（0600 权限）。"""
+    path = _token_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(token.strip() + "\n", encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+    return path
+
+
+def sync_hpc_token(sid: str | None = None, password: str | None = None) -> tuple[str, dict]:
+    """通过统一认证与 NewAPI 自动申请页面获取或读取集群私有令牌。
+
+    流程：
+    1. 读统一凭据（学号 + 密码）；
+    2. 对接 ecs.westlake.edu.cn:30300/auth/start 触发 IAM OAuth2 认证；
+    3. 跟随回调建立 newapi-auto-key 会话并提取分配的 sk- 令牌；
+    4. 自动落盘至 ~/.westlake_survival/hpc_token.txt。
+    """
+    import json
+    import urllib.parse
+    from westlake_survival import iam
+    from westlake_survival.sso import read_credentials
+
+    if not sid or not password:
+        sid, password = read_credentials()
+
+    session = direct_session()
+    start_url = (
+        "https://ecs.westlake.edu.cn:30300/auth/start?"
+        "redirect_uri=https%3A%2F%2Fhpc.westlake.edu.cn%2Fnewapi-auto-key%2Fauth%2Fcallback%3Flang%3Dzh"
+        "&state=sync-token"
+    )
+    session, location = iam.authenticate(start_url, sid, password, session=session)
+    response = session.get(location, verify=False, allow_redirects=True)
+    demo_session = session.cookies.get("westlake_demo_session")
+
+    key = ""
+    token_details: dict = {}
+    if demo_session:
+        try:
+            payload = json.loads(urllib.parse.unquote(demo_session))
+            token_details = payload.get("newApiToken") or {}
+            key = str(token_details.get("key") or "").strip()
+        except Exception:
+            pass
+
+    if not key:
+        match = re.search(r"sk-[a-zA-Z0-9_-]{20,}", response.text)
+        if match:
+            key = match.group(0)
+            token_details = {"key": key, "message": "已从页面响应提取"}
+
+    if not key:
+        raise WestlakeError("未能从集群 NewAPI 认证会话中提取到有效的 API Key。")
+
+    save_hpc_token(key)
+    return key, token_details
+
+
 # --------------------------------------------------------------------------- #
 # Westlake AI（OpenAI 兼容大模型网关）
 # --------------------------------------------------------------------------- #
@@ -190,20 +287,36 @@ def ai_service(*, session: requests.Session | None = None, timeout: float | None
 
 
 def ai_gateway_probe(
-    *, session: requests.Session | None = None, timeout: float = 8.0
+    *, session: requests.Session | None = None, token: str | None = None, timeout: float = 8.0
 ) -> dict:
-    """探测网关存活：无令牌访问 ``/v1/models``，401=new_api 网关在役。"""
+    """探测网关存活：带令牌测试 /models 返回 200，无令牌 401=在役。"""
     session = session if session is not None else direct_session()
+    key = token or read_hpc_token()
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
     try:
-        resp = session.get(f"{AI_GATEWAY}/models", timeout=timeout)
+        resp = session.get(f"{AI_GATEWAY}/models", headers=headers, timeout=timeout)
+        if resp.status_code == 200:
+            try:
+                models = [m["id"] for m in resp.json().get("data", [])]
+            except Exception:
+                models = []
+            return {
+                "alive": True,
+                "status": 200,
+                "authenticated": True,
+                "models": models,
+                "note": f"在役且认证成功（可用模型：{'、'.join(models)}）" if models else "在役且认证成功",
+            }
         body = resp.text[:160]
         return {
             "alive": resp.status_code in (401, 403),
             "status": resp.status_code,
+            "authenticated": False,
+            "models": [],
             "note": "网关在役（需令牌）" if resp.status_code in (401, 403) else body,
         }
     except requests.RequestException as exc:
-        return {"alive": False, "status": 0, "note": f"{exc.__class__.__name__}: {exc}"[:120]}
+        return {"alive": False, "status": 0, "authenticated": False, "models": [], "note": f"{exc.__class__.__name__}: {exc}"[:120]}
 
 
 # --------------------------------------------------------------------------- #
@@ -247,17 +360,50 @@ def _cli():
     @group.command(name="ai")
     @handle
     def ai_cmd() -> None:
-        """Westlake AI：OpenAI 兼容大模型网关（网关/领令牌/模型清单）。"""
+        """Westlake AI：OpenAI 兼容大模型网关（网关/领令牌/模型清单/配置状态）。"""
         info = ai_service()
-        probe = ai_gateway_probe()
-        click.echo(f"网关：{info['gateway']}（{'在役' if probe['alive'] else probe['note']}）")
-        click.echo(f"领令牌：{info['key_url']}（校园 SSO，免费）")
-        click.echo(f"模型：{'、'.join(info['models'])}")
+        token = read_hpc_token()
+        probe = ai_gateway_probe(token=token)
+        token_str = (token[:7] + "..." + token[-4:]) if (token and len(token) > 12) else ("已配置" if token else "未配置")
+
+        click.echo(f"网关端点：{info['gateway']}（{'在役' if probe['alive'] else probe['note']}）")
+        click.echo(f"私有令牌：{token_str}（领令牌入口：{info['key_url']}）")
+        if probe.get("authenticated") and probe.get("models"):
+            click.echo(f"可用模型：{'、'.join(probe['models'])}")
+        else:
+            click.echo(f"宣称模型：{'、'.join(info['models'])}")
         click.echo(f"客户端模板：{'、'.join(info['tool_panels'])}（官网 AI Campus 页生成）")
-        click.echo(f"\n示例：curl {AI_GATEWAY}/chat/completions \\")
-        click.echo("  -H 'Authorization: Bearer <你的私有令牌>' \\")
-        click.echo("  -H 'Content-Type: application/json' \\")
-        click.echo('  -d \'{"model":"GLM-5.3-Flash","messages":[{"role":"user","content":"你好"}]}\'')
+        if not token:
+            click.echo("\n提示：运行 `westlake hpc sync-key` 即可基于统一身份认证自动领取/配置令牌。")
+        else:
+            click.echo("\n--- 快速使用示例 (OpenAI API 兼容) ---")
+            click.echo(f"curl {AI_GATEWAY}/chat/completions \\")
+            click.echo(f"  -H 'Authorization: Bearer {token}' \\")
+            click.echo("  -H 'Content-Type: application/json' \\")
+            click.echo('  -d \'{"model":"deepseek-flash","messages":[{"role":"user","content":"你好"}]}\'')
+
+    @group.command(name="sync-key")
+    @handle
+    def sync_key_cmd() -> None:
+        """通过统一认证自动获取并配置 Westlake AI 私有令牌。"""
+        token, details = sync_hpc_token()
+        masked = token[:7] + "..." + token[-4:] if len(token) > 12 else "已配置"
+        click.secho(f"✔ 成功获取并配置集群 API 令牌：{masked}", fg="green", bold=True)
+        click.echo("  存储文件：~/.westlake_survival/hpc_token.txt")
+        click.echo(f"  网关端点：{AI_GATEWAY}")
+        probe = ai_gateway_probe(token=token)
+        if probe.get("authenticated") and probe.get("models"):
+            click.echo(f"  可用模型：{'、'.join(probe['models'])}")
+
+    @group.command(name="set-key")
+    @click.argument("key")
+    @handle
+    def set_key_cmd(key: str) -> None:
+        """手动保存集群 API 令牌。"""
+        save_hpc_token(key)
+        masked = key[:7] + "..." + key[-4:] if len(key) > 12 else "已配置"
+        click.secho(f"✔ 集群 API 令牌已保存：{masked}", fg="green")
+        click.echo("  存储文件：~/.westlake_survival/hpc_token.txt")
 
     return group
 

@@ -209,6 +209,27 @@ def _check_canvas_token() -> Check:
     )
 
 
+def _check_hpc_token() -> Check:
+    from westlake_survival.hpc import read_hpc_token
+
+    token = read_hpc_token()
+    if token:
+        masked = token[:7] + "..." + token[-4:] if len(token) > 12 else "已配置"
+        return Check(
+            key="hpc_token",
+            name="HPC 集群 AI 令牌（选填）",
+            status="ok",
+            detail=f"已配置（{masked}，Westlake AI 网关）",
+        )
+    return Check(
+        key="hpc_token",
+        name="HPC 集群 AI 令牌（选填）",
+        status="ok",
+        detail="未配置独立令牌；可运行 westlake hpc sync-key 自动同步",
+        fix="运行 westlake hpc sync-key 自动从 NewAPI 领取/配置",
+    )
+
+
 def _check_network() -> Check:
     """直连探一次公开站点：排除代理劫持与「根本连不上网」。"""
     import requests
@@ -243,6 +264,7 @@ def run_checks(*, network: bool = True) -> list[Check]:
     checks.append(_check_keyring())
     checks.append(_check_credentials())
     checks.append(_check_canvas_token())
+    checks.append(_check_hpc_token())
     if network:
         checks.append(_check_network())
     return checks
