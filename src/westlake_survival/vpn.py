@@ -34,7 +34,7 @@ __all__ = [
 ]
 
 VPN_URL = "https://vpn.westlake.edu.cn"
-PROFILE_DIR = Path.home() / ".westlake_survival" / "vpn_profile"
+PROFILE_DIR = config_root() / "vpn_profile"
 SESSION_FILE = config_root() / "vpn_session.json"
 
 

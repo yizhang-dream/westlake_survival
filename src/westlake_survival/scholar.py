@@ -39,7 +39,7 @@ from urllib.parse import quote, urljoin
 
 import requests
 
-from westlake_survival._cache import load_json, save_json
+from westlake_survival._cache import config_root, load_json, save_json
 from westlake_survival._net import DEFAULT_TIMEOUT, http_session
 from westlake_survival.exceptions import AuthError, WestlakeError
 
@@ -80,8 +80,8 @@ CARSI_SPLIST_URL = "https://www.carsi.edu.cn/SPlist.html"
 #: 随包的 CARSI 目录快照（公开目录数据，来源见文件内 source 字段）。
 _CARSI_FIXTURE = Path(__file__).parent / "data" / "carsi_sps.json"
 
-#: SSO 持久化浏览器 profile（IdP/IAM 会话跨命令复用）。
-PROFILE_DIR = Path.home() / ".westlake_survival" / "scholar_profile"
+#: SSO 持久化浏览器 profile（IdP/IAM 会话跨命令复用，遵循 WESTLAKE_HOME）。
+PROFILE_DIR = config_root() / "scholar_profile"
 
 
 # --------------------------------------------------------------------------- #
@@ -494,7 +494,7 @@ def fetch_pdf(doi: str, out: str | Path | None = None, *, paper: Paper | None = 
 #   （``~/.westlake_survival/scholar_cookies.json``），别的 Agent 与 requests
 #   流程直接复用，并在每次 ensure 时 touch 保活。
 # --------------------------------------------------------------------------- #
-COOKIES_PATH = Path.home() / ".westlake_survival" / "scholar_cookies.json"
+COOKIES_PATH = config_root() / "scholar_cookies.json"
 
 _IDENTITY_HOSTS = ("idp.westlake.edu.cn", "iam.westlake.edu.cn", "Shibboleth.sso")
 

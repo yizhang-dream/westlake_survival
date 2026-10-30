@@ -232,14 +232,21 @@ def sync_hpc_token(sid: str | None = None, password: str | None = None) -> tuple
     if not sid or not password:
         sid, password = read_credentials()
 
+    from westlake_survival.exceptions import OffCampusError
+
     session = direct_session()
     start_url = (
         "https://ecs.westlake.edu.cn:30300/auth/start?"
         "redirect_uri=https%3A%2F%2Fhpc.westlake.edu.cn%2Fnewapi-auto-key%2Fauth%2Fcallback%3Flang%3Dzh"
         "&state=sync-token"
     )
-    session, location = iam.authenticate(start_url, sid, password, session=session)
-    response = session.get(location, verify=False, allow_redirects=True)
+    try:
+        session, location = iam.authenticate(start_url, sid, password, session=session)
+        response = session.get(location, verify=False, allow_redirects=True)
+    except requests.RequestException as exc:
+        raise OffCampusError(
+            "集群 NewAPI 认证网关（ecs.westlake.edu.cn:30300）仅在校园网/VPN 内可达，请先连接西湖大学 VPN。"
+        ) from exc
     demo_session = session.cookies.get("westlake_demo_session")
 
     key = ""
@@ -366,7 +373,7 @@ def _cli():
         probe = ai_gateway_probe(token=token)
         token_str = (token[:7] + "..." + token[-4:]) if (token and len(token) > 12) else ("已配置" if token else "未配置")
 
-        click.echo(f"网关端点：{info['gateway']}（{'在役' if probe['alive'] else probe['note']}）")
+        click.echo(f"网关端点：{info['gateway']}（{'在役' if probe['alive'] else probe['note']}；仅校园网/VPN 可达）")
         click.echo(f"私有令牌：{token_str}（领令牌入口：{info['key_url']}）")
         if probe.get("authenticated") and probe.get("models"):
             click.echo(f"可用模型：{'、'.join(probe['models'])}")

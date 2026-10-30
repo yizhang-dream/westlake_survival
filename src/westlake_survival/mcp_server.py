@@ -39,17 +39,23 @@
 
     python -m westlake_survival.mcp_server
 
-ZCode / Claude Desktop 等 MCP 客户端接入配置（把路径换成本机实际值）::
+ZCode / Claude Desktop 等 MCP 客户端接入配置::
 
     {
       "mcpServers": {
         "westlake": {
-          "command": "D:/westlake_survival/.venv/Scripts/python.exe",
-          "args": ["-m", "westlake_survival.mcp_server"],
-          "env": {
-            "PYTHONPATH": "D:/westlake_survival/src",
-            "WESTLAKE_CANVAS_TOKEN": ""
-          }
+          "command": "westlake-mcp"
+        }
+      }
+    }
+
+或源码开发模式下指定解释器与模块::
+
+    {
+      "mcpServers": {
+        "westlake": {
+          "command": "python",
+          "args": ["-m", "westlake_survival.mcp_server"]
         }
       }
     }
