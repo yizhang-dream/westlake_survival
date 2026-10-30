@@ -569,14 +569,33 @@ def _cli():
     @group.command(name="apps")
     @click.argument("keyword", required=False)
     @click.option("--limit", type=int, default=30, show_default=True, help="最多显示条数。")
+    @click.option("--url/--no-url", "show_url", default=None, help="是否显示表单直达链接（指定关键词时默认显示）。")
     @click.option("--refresh", is_flag=True, help="忽略缓存重新拉取。")
-    def apps_cmd(keyword: str | None, limit: int, refresh: bool) -> None:
+    def apps_cmd(keyword: str | None, limit: int, show_url: bool | None, refresh: bool) -> None:
         """办事大厅流程应用目录（176 个），KEYWORD 按名称/部门过滤。"""
         items = app_directory(keyword, refresh=refresh)
         click.echo(f"办事大厅应用目录：{len(items)} 条" + (f"（关键词 {keyword!r}）" if keyword else ""))
+        should_show_url = show_url if show_url is not None else bool(keyword)
         for item in items[: max(0, limit)]:
             dept = f"　[{item.department}]" if item.department else ""
-            click.echo(f"  {item.name}{dept}")
+            url_str = f"\n    🔗 直达：{item.uri}" if (should_show_url and item.uri) else ""
+            click.echo(f"  {item.name}{dept}{url_str}")
+
+    @group.command(name="app")
+    @click.argument("name")
+    def app_cmd(name: str) -> None:
+        """查看某个办事大厅流程应用的详细说明与直达链接。"""
+        items = app_directory(name)
+        if not items:
+            click.echo(f"未找到与「{name}」匹配的办事大厅应用。")
+            return
+        item = items[0]
+        click.secho(f"\n【{item.name}】", bold=True, fg="bright_cyan")
+        click.echo(f"  归属部门：{item.department or '—'}")
+        click.echo(f"  应用编号：{item.app_id or '—'}")
+        if item.description:
+            click.echo(f"  流程说明：{item.description}")
+        click.echo(f"  直达链接：{item.uri or 'https://one.westlake.edu.cn/taskcenter/workflow/index'}\n")
 
     @group.command(name="portal")
     @click.option("--refresh", is_flag=True, help="忽略缓存重新拉取。")

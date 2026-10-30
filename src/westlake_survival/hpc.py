@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
+from typing import Iterator
 
 import requests
 
@@ -39,6 +40,7 @@ __all__ = [
     "read_hpc_token",
     "save_hpc_token",
     "sync_hpc_token",
+    "chat",
     "QueueSpec",
     "HpcOverview",
     "overview",
@@ -326,6 +328,87 @@ def ai_gateway_probe(
         return {"alive": False, "status": 0, "authenticated": False, "models": [], "note": f"{exc.__class__.__name__}: {exc}"[:120]}
 
 
+def chat(
+    prompt: str,
+    *,
+    model: str = "deepseek-flash",
+    system: str | None = None,
+    stream: bool = True,
+    token: str | None = None,
+    timeout: float = 45.0,
+) -> Iterator[dict]:
+    """与 Westlake AI 集群大模型对话（支持流式生成与思考过程）。
+
+    Yields:
+        {"type": "reasoning"|"content", "text": str}
+    """
+    from westlake_survival.exceptions import AuthError, OffCampusError
+
+    key = token or read_hpc_token()
+    if not key:
+        key, _ = sync_hpc_token()
+
+    session = direct_session()
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    try:
+        response = session.post(
+            f"{AI_GATEWAY}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": messages,
+                "stream": stream,
+            },
+            stream=stream,
+            timeout=timeout,
+        )
+    except requests.RequestException as exc:
+        raise OffCampusError("连接 Westlake AI 网关超时或失败，校外请先连接西湖大学 VPN。") from exc
+
+    if response.status_code == 401:
+        raise AuthError("集群 API 令牌失效或被吊销，请运行 `westlake hpc sync-key` 重新同步。")
+    if response.status_code != 200:
+        raise WestlakeError(f"集群网关返回错误状态码 {response.status_code}：{response.text[:200]}")
+
+    if not stream:
+        data = response.json()
+        choice = (data.get("choices") or [{}])[0]
+        msg = choice.get("message") or {}
+        if msg.get("reasoning"):
+            yield {"type": "reasoning", "text": msg["reasoning"]}
+        if msg.get("content"):
+            yield {"type": "content", "text": msg["content"]}
+        return
+
+    import json
+
+    for line in response.iter_lines():
+        if not line:
+            continue
+        decoded = line.decode("utf-8", errors="replace")
+        if not decoded.startswith("data: "):
+            continue
+        payload = decoded[6:].strip()
+        if payload == "[DONE]":
+            break
+        try:
+            chunk = json.loads(payload)
+            delta = chunk["choices"][0].get("delta") or {}
+            if delta.get("reasoning"):
+                yield {"type": "reasoning", "text": delta["reasoning"]}
+            if delta.get("content"):
+                yield {"type": "content", "text": delta["content"]}
+        except Exception:
+            continue
+
+
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
@@ -411,6 +494,35 @@ def _cli():
         masked = key[:7] + "..." + key[-4:] if len(key) > 12 else "已配置"
         click.secho(f"✔ 集群 API 令牌已保存：{masked}", fg="green")
         click.echo("  存储文件：~/.westlake_survival/hpc_token.txt")
+
+    @group.command(name="chat")
+    @click.argument("prompt")
+    @click.option(
+        "--model",
+        default="deepseek-flash",
+        type=click.Choice(["deepseek-flash", "glm-flash", "Qwen", "Qwen_claude"]),
+        help="模型选择（默认 deepseek-flash）。",
+    )
+    @click.option("--think/--no-think", default=True, help="是否显示思考/推理过程。")
+    @click.option("--system", default=None, help="系统提示词。")
+    @handle
+    def chat_cmd(prompt: str, model: str, think: bool, system: str | None) -> None:
+        """在终端直接调用学校集群 AI 模型对话（实时流式输出）。"""
+        in_thinking = False
+        for chunk in chat(prompt, model=model, system=system, stream=True):
+            if chunk["type"] == "reasoning":
+                if not think:
+                    continue
+                if not in_thinking:
+                    click.secho("\n[思考过程]", fg="bright_black", bold=True)
+                    in_thinking = True
+                click.secho(chunk["text"], fg="bright_black", nl=False)
+            elif chunk["type"] == "content":
+                if in_thinking:
+                    click.echo("\n")
+                    in_thinking = False
+                click.echo(chunk["text"], nl=False)
+        click.echo("")
 
     return group
 

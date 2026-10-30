@@ -1,6 +1,6 @@
 ---
 name: westlake-survival
-description: 西湖大学校园服务聚合工具（学业/教学/科研/生活/办事/信息六域）。学业：课表（SIS 与教学系统 AMS 两套）、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 自动建立会话）、DOI→PDF 论文全文下载、科研进展、导师名录、HPC 集群队列、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与对照见文档）；办事：办事大厅目录、我的待办、门户个人卡片；信息：新闻、讲座活动、学院动态、全站搜索、93 项服务注册表与在线普查。适用于西湖大学相关的查询或操作需求（包括查/交作业、考试安排、放假校历、班车时刻、论文全文获取、校外数据库访问、打印网点、经费制度、讲座待办、教师信息、档案记录与服务探测等）。不确定命令归属时，可先运行 westlake find <关键词> 检索（支持「论文」「借书」「放假」等关键词）。
+description: 西湖大学校园服务聚合工具（学业/教学/科研/生活/办事/信息六域）。学业：课表（SIS 与教学系统 AMS 两套）、成绩、考试安排、评教、第二课堂、个人信息/学籍/住宿/荣誉/志愿/资助/社团；Canvas：课程、作业截止、考试测验、作业详情与题目附件（含评分细则）、课程文件下载、讨论区与公告、收件箱，以及交作业/回帖/回私信三类写操作；学术科研：订阅数据库清单、CARSI 校外登录（westlake scholar ensure 自动建立会话）、DOI→PDF 论文全文下载、大型仪器共享检索（冷冻电镜/质谱/核磁）、HPC 集群队列与免费 AI 对话（westlake hpc chat，deepseek/glm/qwen）、科研进展、导师名录、报销与科研经费制度；就业：招聘岗位、招聘会、宣讲会；生活：校历周次与假期、班车时刻、食堂咖啡、公寓、校区地图与全景、自助打印、图书馆借阅、预约中心场地预约（研讨室/研习仓逐日空闲与预约、取消；体育场馆/游泳与图书馆座位在独立系统，入口与对照见文档）；办事：办事大厅目录与表单直达、我的待办、门户个人卡片与官方 AI 办事问答（westlake portal ask）；信息：新闻、讲座活动、学院动态、全站搜索、93 项服务注册表与在线普查。适用于西湖大学相关的查询或操作需求（包括查/交作业、考试安排、放假校历、班车时刻、论文全文获取、校外数据库访问、打印网点、经费制度、讲座待办、教师信息、档案记录与服务探测等）。不确定命令归属时，可先运行 westlake find <关键词> 检索（支持「论文」「借书」「放假」「大模型」「仪器」等关键词）。
 ---
 
 # 西湖大学服务工具包（westlake-survival）
@@ -44,15 +44,16 @@ description: 西湖大学校园服务聚合工具（学业/教学/科研/生活/
 | 官网全站搜索 / 站点栏目 / 全量子站 | `search <关键词>` / `sites list\|site\|detail` / `hosts list\|mine\|show` |
 | 学生百科 WikiLake | `wiki list` / `search <关键词>` / `page <条目>` |
 | 食堂 / 公寓 / 电话 / 地图全景 | `campus dining` / `housing` / `contact phones` / `map [--campus 云谷]` |
-| 什么事在哪儿办 / 我的待办 / 部门站点 | `affairs apps [关键词]` / `links` / `todo list\|doing\|done\|cc\|apps` |
-| 门户个人卡片（未读邮件/在借/待办）/ AI 助手 | `portal cards` / `portal chatbot` |
+| 什么事在哪儿办 / 表单直达 / 我的待办 | `affairs apps [关键词]`（带直达URL）/ `affairs app <名称>` / `affairs links` / `todo list\|doing` |
+| 门户个人卡片 / 官方 AI 办事问答 | `portal cards` / `portal ask <问题>`（西湖AI问答权威答疑）/ `portal chatbot` |
 | 打印网点 / 我的打印任务 | `pms stations` / `jobs` |
 | 图书馆书目 / 我的借阅 | **暂不可用**（2026-10-28 系统迁移；命令会说明现状，见 docs/library_migration_2026-10-28.md） |
 | 场地预约：分类 / 房间 / 哪天能约 / 空闲时段 | `booking types` / `list --type 图书馆` / `days <房间> --start … --end …` / `slots <房间> --date …` |
 | 预约 / 取消预约（写操作）/ 我的预约 | `booking book`（`--dry-run` 可预检）/ `cancel <预约号> --reason …` / `mine` |
 | 体育场馆 / 游泳场次（独立正元系统，只读） | `sport scenes` / `sites <场景> [--date]` / `days <场景> <场地>` / `mine` |
 | 预约类需求为什么约不了 / 从哪进 | `probe` + `affairs apps 预约`；四套系统对照 docs/module_audit_2026-10-27.md |
-| HPC 集群 / 报销制度 / 镜像站 | `hpc overview` / `finance sections\|articles` / `mirrors` |
+| HPC 集群 / 免费大模型对话 / 镜像站 | `hpc overview` / `hpc chat <内容>`（调用校内GPU集群）/ `hpc sync-key` / `mirrors` / `finance sections` |
+| 大型科研仪器检索（电镜/质谱/核磁/地点） | `instrument search <关键词>` / `instrument list`（地点/联系人/电话/预约入口） |
 | 服务是否可达 / 服务全景普查 | `probe` / `probe scan [--full]`（网页 /services、/capabilities） |
 | VPN 登录 / 状态 / 隧道资源 | `vpn login` / `status` / `resources` |
 | 启动本地完整服务 | 裸跑 `westlake`（起 WebUI 自动开浏览器，未配账号直达 /setup） |

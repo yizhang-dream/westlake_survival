@@ -27,11 +27,23 @@ from dataclasses import asdict, dataclass
 from westlake_survival._cache import load_cached, save_cached
 from westlake_survival.exceptions import AuthError, WestlakeError
 
-__all__ = ["PortalCards", "fetch_cards", "chatbot_link", "cli_group"]
+__all__ = [
+    "PortalCards",
+    "fetch_cards",
+    "chatbot_link",
+    "ask_chatbot",
+    "CHATBOT_BASE_URL",
+    "CHATBOT_APP_CODE",
+    "cli_group",
+]
 
 #: 门户卡片本地缓存（15 分钟 TTL）。
 _CARDS_CACHE = "portal/cards.json"
 _CARDS_TTL = 15 * 60
+
+#: 西湖 AI 问答助手端点与固定 AppCode（Dify 引擎，免登录）。
+CHATBOT_BASE_URL = "https://chatbot.westlake.edu.cn"
+CHATBOT_APP_CODE = "xSifJnQclqHg4BQs"
 
 
 @dataclass
@@ -169,34 +181,91 @@ def fetch_cards(*, refresh: bool = False) -> PortalCards:
 
 
 def chatbot_link() -> str:
-    """AI 助手（chatbot）聊天直链。"""
-    cm, context, page, sid, password = _logged_in_page()
-    captured: list[str] = []
-    page.on("response", lambda r: captured.append(r.text())
-            if "getAiChatbotLink" in r.url else None)
+    """AI 助手（chatbot，西湖AI问答）聊天直链。"""
+    return f"{CHATBOT_BASE_URL}/chat/{CHATBOT_APP_CODE}"
+
+
+def ask_chatbot(
+    query: str,
+    *,
+    conversation_id: str = "",
+    stream: bool = False,
+    timeout: float = 25.0,
+):
+    """调用西湖大学官方校内 AI 助手（西湖AI问答，Dify 引擎）获取权威办事与校园知识解答。
+
+    Args:
+        query: 提问内容（办事、规章、生活、图书馆、班车等）。
+        conversation_id: 续接的历史会话 ID（可选）。
+        stream: 是否流式生成。
+        timeout: 超时秒数。
+
+    Returns:
+        若 stream=False 返回完整回答文本；若 stream=True 返回文本生成器。
+    """
+    from westlake_survival.discovery import direct_session
+    from westlake_survival.exceptions import WestlakeError
+
+    session = direct_session()
+    # 1. 获取 WebApp Passport Access Token
     try:
-        _ensure_portal(page, sid, password)
+        resp = session.get(
+            f"{CHATBOT_BASE_URL}/api/passport",
+            headers={"X-App-Code": CHATBOT_APP_CODE},
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        token = resp.json().get("access_token")
+    except Exception as exc:
+        raise WestlakeError(f"获取西湖AI问答访问令牌失败：{exc}") from exc
+
+    headers = {
+        "X-App-Code": CHATBOT_APP_CODE,
+        "X-App-Passport": str(token),
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "inputs": {},
+        "query": query,
+        "response_mode": "streaming" if stream else "blocking",
+        "conversation_id": conversation_id,
+        "user": "westlake-survival-client",
+    }
+
+    try:
+        r = session.post(
+            f"{CHATBOT_BASE_URL}/api/chat-messages",
+            headers=headers,
+            json=payload,
+            stream=stream,
+            timeout=timeout,
+        )
+        r.raise_for_status()
+    except Exception as exc:
+        raise WestlakeError(f"西湖AI问答请求失败：{exc}") from exc
+
+    if not stream:
+        return r.json().get("answer") or ""
+
+    def _stream():
         import json as _json
 
-        for body in captured:
-            try:
-                link = str(_json.loads(body).get("data", {}).get("content") or "")
-                if link:
-                    return link
-            except (ValueError, AttributeError):
+        for line in r.iter_lines():
+            if not line:
                 continue
-        result = page.evaluate(
-            """async () => {
-                const r = await fetch('/service/xhdxkfzyy7882320728204987658/mainPortal/getAiChatbotLink',
-                    {headers: {'Accept': 'application/json'}});
-                const d = await r.json();
-                return (d.data || {}).content || '';
-            }"""
-        )
-        return str(result)
-    finally:
-        context.close()
-        cm.__exit__(None, None, None)
+            decoded = line.decode("utf-8", errors="replace")
+            if decoded.startswith("data: "):
+                try:
+                    data = _json.loads(decoded[6:])
+                    if data.get("event") == "message":
+                        yield data.get("answer", "")
+                    elif data.get("event") == "message_end":
+                        break
+                except Exception:
+                    continue
+
+    return _stream()
 
 
 def _cli():
@@ -234,8 +303,17 @@ def _cli():
     @group.command(name="chatbot")
     @handle
     def chatbot_cmd() -> None:
-        """AI 助手（chatbot）聊天入口。"""
+        """AI 助手（chatbot）网页入口直链。"""
         click.echo(chatbot_link())
+
+    @group.command(name="ask")
+    @click.argument("question")
+    @handle
+    def ask_cmd(question: str) -> None:
+        """向西湖大学官方 AI 助手提问（办事/规章/生活答疑，流式输出）。"""
+        for chunk in ask_chatbot(question, stream=True):
+            click.echo(chunk, nl=False)
+        click.echo("")
 
     return group
 

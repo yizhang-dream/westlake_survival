@@ -248,6 +248,18 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
     "百科": ("wiki", "wikilake", "词条", "社团简介"),
     "词条": ("wiki", "wikilake", "百科"),
     "社团": ("wiki", "aid", "orgs", "clubs"),
+    "ai": ("hpc", "chat", "chatbot", "portal", "大模型", "问答"),
+    "大模型": ("hpc", "chat", "ai", "deepseek", "glm", "qwen"),
+    "chat": ("hpc", "chat", "ai", "chatbot"),
+    "问答": ("portal", "ask", "chatbot", "ai"),
+    "仪器": ("instrument", "share", "设备", "电镜", "质谱", "核磁"),
+    "设备": ("instrument", "share", "仪器"),
+    "电镜": ("instrument", "share", "冷冻电镜", "透射电镜"),
+    "质谱": ("instrument", "share"),
+    "核磁": ("instrument", "share"),
+    "办事": ("affairs", "apps", "流程", "申请"),
+    "流程": ("affairs", "apps", "taskcenter", "todo"),
+    "表单": ("affairs", "apps", "infoplus"),
 }
 
 

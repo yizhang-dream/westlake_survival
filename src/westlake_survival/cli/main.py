@@ -65,6 +65,7 @@ LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "portal": ("westlake_survival.portal", "cli_group", "门户个人卡片与 AI 助手入口。"),
     "scholar": ("westlake_survival.scholar", "cli_group", "学术资源：数据库注册表 / CARSI 联盟登录 / DOI 全文。"),
     "career": ("westlake_survival.careersite", "cli_group", "就业服务网：三区块免登录 + 登录态深列表/详情。"),
+    "instrument": ("westlake_survival.instruments", "cli_group", "大型仪器共享平台：检索科研仪器、实验室地点、联系人与预约入口。"),
 }
 
 

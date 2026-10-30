@@ -394,11 +394,67 @@ def _tool_vpn_status(args: dict) -> Any:
 
 def _tool_hpc_ai(args: dict) -> Any:
     """Westlake AI 大模型网关：地址/领令牌/模型清单 + 网关存活探测。"""
-    from westlake_survival.hpc import ai_gateway_probe, ai_service
+    from westlake_survival.hpc import ai_gateway_probe, ai_service, read_hpc_token
 
     info = ai_service()
-    info["probe"] = ai_gateway_probe()
+    tok = read_hpc_token()
+    info["configured"] = bool(tok)
+    info["probe"] = ai_gateway_probe(token=tok)
     return info
+
+
+def _tool_hpc_chat(args: dict) -> Any:
+    """调用学校高性能计算中心 Westlake AI 大模型对话接口。"""
+    from westlake_survival.hpc import chat
+
+    prompt = _opt_str(args, "prompt") or ""
+    if not prompt:
+        raise ToolHint("需要 prompt 参数：输入你想对模型说的话")
+    model = _opt_str(args, "model") or "deepseek-flash"
+    system = _opt_str(args, "system")
+
+    reasoning_parts = []
+    content_parts = []
+    for chunk in chat(prompt, model=model, system=system, stream=False):
+        if chunk["type"] == "reasoning":
+            reasoning_parts.append(chunk["text"])
+        elif chunk["type"] == "content":
+            content_parts.append(chunk["text"])
+    return {
+        "model": model,
+        "reasoning": "".join(reasoning_parts) or None,
+        "content": "".join(content_parts),
+    }
+
+
+def _tool_portal_cards(args: dict) -> Any:
+    """门户个人卡片：未读邮件 / 在借图书 / 待办计数。"""
+    from dataclasses import asdict
+    from westlake_survival.portal import fetch_cards
+
+    cards = fetch_cards(refresh=bool(args.get("refresh")))
+    return asdict(cards)
+
+
+def _tool_portal_ask(args: dict) -> Any:
+    """向西湖大学官方 AI 助手（西湖AI问答，Dify 引擎）提问。"""
+    from westlake_survival.portal import ask_chatbot
+
+    question = _opt_str(args, "question") or ""
+    if not question:
+        raise ToolHint("需要 question 参数：提问的办事/规章/生活问题")
+    answer = ask_chatbot(question, stream=False)
+    return {"question": question, "answer": answer}
+
+
+def _tool_instrument_search(args: dict) -> Any:
+    """检索西湖大学大型科研仪器设备（冷冻电镜、质谱、核磁等设备名、房间位置、联系人、预约入口）。"""
+    from westlake_survival.instruments import search_instruments
+
+    keyword = _opt_str(args, "keyword") or ""
+    limit = _opt_int(args, "limit", 10, minimum=1, maximum=50)
+    items = search_instruments(keyword, limit=limit, refresh=bool(args.get("refresh")))
+    return [item.to_dict() for item in items]
 
 
 def _tool_sis_statuses(args: dict) -> Any:
@@ -818,7 +874,13 @@ def _tool_affairs_apps(args: dict) -> Any:
     return {
         "count": len(items),
         "apps": [
-            {"name": a.name, "department": a.department, "description": a.description}
+            {
+                "name": a.name,
+                "department": a.department,
+                "description": a.description,
+                "uri": a.uri,
+                "app_id": a.app_id,
+            }
             for a in items[:limit]
         ],
     }
@@ -1455,6 +1517,48 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "Westlake AI 大模型网关（OpenAI 兼容）：网关地址 / 领令牌入口 / 模型清单 / 存活探测。",
         "inputSchema": _schema(),
         "handler": _tool_hpc_ai,
+    },
+    {
+        "name": "hpc_chat",
+        "description": "调用西湖大学集群 Westlake AI 大模型对话（可用模型 deepseek-flash、glm-flash、Qwen、Qwen_claude）。",
+        "inputSchema": _schema(
+            {
+                "prompt": _str_param("对话输入提示词。"),
+                "model": _str_param("模型名称：deepseek-flash / glm-flash / Qwen / Qwen_claude（默认 deepseek-flash）。"),
+                "system": _str_param("系统设定提示词（选填）。"),
+            },
+            required=["prompt"],
+        ),
+        "handler": _tool_hpc_chat,
+    },
+    {
+        "name": "portal_cards",
+        "description": "获取门户个人卡片概览：未读邮件 / 在借图书 / 待办事项数量。",
+        "inputSchema": _schema({"refresh": {"type": "boolean", "description": "强制重新拉取。"}}),
+        "handler": _tool_portal_cards,
+    },
+    {
+        "name": "portal_ask",
+        "description": "向西湖大学官方 AI 助手（西湖AI问答）提问，获取校内办事规章、服务流程、生活指南等权威解答。",
+        "inputSchema": _schema(
+            {
+                "question": _str_param("提问问题。"),
+            },
+            required=["question"],
+        ),
+        "handler": _tool_portal_ask,
+    },
+    {
+        "name": "instrument_search",
+        "description": "检索西湖大学大型科研仪器设备（冷冻电镜、质谱仪、核磁共振、激光共焦等房间地点、联系人与预约入口）。",
+        "inputSchema": _schema(
+            {
+                "keyword": _str_param("仪器名称或类别关键词（如「电镜」、「质谱」、「核磁」）；为空返回综合清单。"),
+                "limit": _int_param("最多返回条数（默认 10）。", minimum=1, maximum=50),
+                "refresh": {"type": "boolean", "description": "强制忽略缓存重抓。"},
+            }
+        ),
+        "handler": _tool_instrument_search,
     },
     {
         "name": "sis_statuses",

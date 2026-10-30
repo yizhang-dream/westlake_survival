@@ -35,6 +35,12 @@ westlake sites list / sites site <key> / sites detail <url>
 westlake hosts list|mine --all|show <子域> [--render]   # 全量子站探测与栏目挖掘
 westlake wiki list --cat clubs / wiki search 班车 / wiki page 音游社
 westlake hpc ai                              # Westlake AI 大模型网关（OpenAI 兼容）
+westlake hpc chat "提示词"                    # 终端直接调用学校 GPU 集群大模型对话（deepseek/glm/qwen，免费）
+westlake hpc sync-key                        # 基于统一认证自动领取并配置集群私有令牌
+westlake portal ask "问题"                    # 向校内官方 AI 问答助手提问（办事/规章/生活答疑）
+westlake instrument search "质谱"             # 检索全校大型科学仪器设备（地点/联系人/电话/预约入口）
+westlake instrument list --limit 20          # 浏览大仪共享平台最新设备清单
+westlake affairs app <名称>                   # 查看办事大厅流程应用的详细说明与表单直达链接
 westlake pms stations / probe / scholar open cnki
 westlake cache clear --module events
 westlake webui serve --port 2018             # 本地前端；/capabilities 能力总览
