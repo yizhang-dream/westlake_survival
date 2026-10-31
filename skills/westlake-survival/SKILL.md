@@ -43,11 +43,11 @@ description: 西湖大学校园服务聚合工具（学业/教学/科研/生活/
 | 新闻 / 讲座活动 / 科研进展 / 导师名录 / 招聘 | `news` / `events` / `research` / `faculty` / `careers`；就业深列表 `career deep --kind campus\|jobfair\|teachin`、详情 `career detail <id>` |
 | 官网全站搜索 / 站点栏目 / 全量子站 | `search <关键词>` / `sites list\|site\|detail` / `hosts list\|mine\|show` |
 | 学生百科 WikiLake | `wiki list` / `search <关键词>` / `page <条目>` |
-| 食堂 / 公寓 / 电话 / 地图全景 | `campus dining` / `housing` / `contact phones` / `map [--campus 云谷]` |
+| 食堂 / 公寓 / 校园生活网点 / 电话 / 地图 | `campus dining` / `housing` / `campus services`（超市/快递/干洗/理发/打印/银行）/ `contact phones` / `map` |
 | 什么事在哪儿办 / 表单直达 / 我的待办 | `affairs apps [关键词]`（带直达URL）/ `affairs app <名称>` / `affairs links` / `todo list\|doing` |
 | 门户个人卡片 / 官方 AI 办事问答 | `portal cards` / `portal ask <问题>`（西湖AI问答权威答疑）/ `portal chatbot` |
 | 打印网点 / 我的打印任务 | `pms stations` / `jobs` |
-| 图书馆书目 / 我的借阅 | **暂不可用**（2026-10-28 系统迁移；命令会说明现状，见 docs/library_migration_2026-10-28.md） |
+| 图书馆书目检索 / 我的在借图书 | `lib search <关键词>`（新版阿法迪云平台，免鉴权公开查）/ `lib loans`（在借图书与应还日期） |
 | 场地预约：分类 / 房间 / 哪天能约 / 空闲时段 | `booking types` / `list --type 图书馆` / `days <房间> --start … --end …` / `slots <房间> --date …` |
 | 预约 / 取消预约（写操作）/ 我的预约 | `booking book`（`--dry-run` 可预检）/ `cancel <预约号> --reason …` / `mine` |
 | 体育场馆 / 游泳场次（独立正元系统，只读） | `sport scenes` / `sites <场景> [--date]` / `days <场景> <场地>` / `mine` |

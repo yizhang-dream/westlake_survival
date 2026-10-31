@@ -1578,11 +1578,9 @@ def _lib_backend_guard() -> bool:
 @click.option("--page", type=int, default=1, show_default=True, help="页码。")
 @_handle_errors
 def lib_search(keyword: str, page: int) -> None:
-    """检索图书馆书目（按题名）。"""
+    """检索图书馆书目（按题名/关键词）。"""
     from westlake_survival.lib import search
 
-    if not _lib_backend_guard():
-        raise SystemExit(1)
     books = search(keyword, page=page)
     if not books:
         click.echo("未找到匹配的书目。")
@@ -1592,14 +1590,13 @@ def lib_search(keyword: str, page: int) -> None:
 
 
 @lib_cmd.command(name="loans")
+@click.option("--refresh", is_flag=True, help="忽略缓存强制重新拉取借阅。")
 @_handle_errors
-def lib_loans() -> None:
+def lib_loans(refresh: bool) -> None:
     """列出个人当前借阅记录（需登录）。"""
     from westlake_survival.lib import my_loans
 
-    if not _lib_backend_guard():
-        raise SystemExit(1)
-    loans = my_loans()
+    loans = my_loans(force_refresh=refresh)
     if not loans:
         click.echo("当前无借阅记录。")
         return

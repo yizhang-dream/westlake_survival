@@ -260,6 +260,14 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
     "办事": ("affairs", "apps", "流程", "申请"),
     "流程": ("affairs", "apps", "taskcenter", "todo"),
     "表单": ("affairs", "apps", "infoplus"),
+    "借书": ("lib", "loans", "search", "图书", "续借"),
+    "还书": ("lib", "loans", "应还"),
+    "图书": ("lib", "search", "loans", "书目"),
+    "索书号": ("lib", "search", "callno"),
+    "快递": ("campus", "services", "驿站", "菜鸟"),
+    "超市": ("campus", "services", "罗森"),
+    "洗衣": ("campus", "services", "干洗"),
+    "理发": ("campus", "services"),
 }
 
 

@@ -864,6 +864,14 @@ def _tool_campus_housing(args: dict) -> Any:
     return _to_plain(housing(campus=campus))
 
 
+def _tool_campus_services(args: dict) -> Any:
+    """校园生活服务点（超市 / 快递驿站 / 干洗洗衣 / 理发 / 打印 / 银行等）。"""
+    from westlake_survival.campus import services
+
+    campus = _opt_str(args, "campus")
+    return _to_plain(services(campus=campus))
+
+
 def _tool_affairs_apps(args: dict) -> Any:
     """办事大厅应用目录（免登录，176 个流程应用）。"""
     from westlake_survival.discovery import app_directory
@@ -1701,6 +1709,12 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "description": "校内公寓信息（地址、配套服务、联系电话）。",
         "inputSchema": _schema({"campus": _CAMPUS_SCHEMA}),
         "handler": _tool_campus_housing,
+    },
+    {
+        "name": "campus_services",
+        "description": "校内生活服务网点（超市、快递驿站、干洗洗衣、理发服务、打印点、银行网点、自动售卖机位置与营业时间）。",
+        "inputSchema": _schema({"campus": _CAMPUS_SCHEMA}),
+        "handler": _tool_campus_services,
     },
     {
         "name": "affairs_apps",

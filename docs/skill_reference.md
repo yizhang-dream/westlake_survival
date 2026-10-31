@@ -26,6 +26,7 @@ westlake events --days 7 --type 名家讲座 / events detail <URL>
 westlake careers --category 博士后 --keyword 物理 --limit 20
 westlake faculty --school 理学院 --source all|main|science|sls|teaching
 westlake campus dining --campus 云谷 --kind 食堂 / campus housing --campus 云谷
+westlake campus services --campus 云谷       # 超市/快递/干洗/理发/打印/银行
 westlake contact --campus 云谷               # 云谷|云栖|铜鉴湖；缺省三校区
 westlake map [--campus 云谷]                 # 地址/地图图片/全景/交通
 westlake sso creds show                      # 终端显示已存教务学号/密码（忘记时找回）
@@ -34,6 +35,8 @@ westlake vpn status / vpn resources          # 状态 / 隧道推送的内网路
 westlake sites list / sites site <key> / sites detail <url>
 westlake hosts list|mine --all|show <子域> [--render]   # 全量子站探测与栏目挖掘
 westlake wiki list --cat clubs / wiki search 班车 / wiki page 音游社
+westlake lib search "数据结构"                # 新版阿法迪云平台公开检索书目（题名/作者/索书号/馆藏地）
+westlake lib loans                           # 个人在借图书与应还时间（新平台长效 JWT 会话）
 westlake hpc ai                              # Westlake AI 大模型网关（OpenAI 兼容）
 westlake hpc chat "提示词"                    # 终端直接调用学校 GPU 集群大模型对话（deepseek/glm/qwen，免费）
 westlake hpc sync-key                        # 基于统一认证自动领取并配置集群私有令牌

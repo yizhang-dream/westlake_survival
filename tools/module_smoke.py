@@ -67,6 +67,7 @@ COMMANDS: list[tuple[str, list[str], str]] = [
     ("faculty", ["faculty", "detail", "https://www.westlake.edu.cn/faculty/jianhao-zhang.html"], "教师主页详情"),
     ("campus", ["campus", "dining", "--campus", "云谷"], "食堂"),
     ("campus", ["campus", "housing", "--campus", "云谷"], "公寓"),
+    ("campus", ["campus", "services", "--campus", "云谷"], "生活服务网点（超市/快递/干洗/理发/打印/银行）"),
     ("contact", ["contact", "--campus", "云谷"], "校区联系"),
     ("contact", ["contact", "phones"], "常用电话"),
     ("map", ["map"], "校区地图"),

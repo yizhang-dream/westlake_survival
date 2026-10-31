@@ -653,3 +653,38 @@ def campus_housing(campus: str | None, lang: str) -> None:
         for house in houses
     ]
     _print_table(rows, ("校区", "名称", "位置", "电话", "服务/配套"))
+
+
+@cli_group.command(name="services")
+@click.option(
+    "--campus",
+    type=click.Choice((*CAMPUS_CHOICES, *CAMPUS_CHOICES_EN)),
+    default=None,
+    help="只看某校区（zh：云谷/云栖；en：Yungu Campus/Yunqi Campus）。",
+)
+@click.option(
+    "--lang",
+    type=click.Choice(["zh", "en"]),
+    default="zh",
+    show_default=True,
+    help="语言：zh=中文主站 en=英文主站。",
+)
+@_handle_errors
+def campus_services(campus: str | None, lang: str) -> None:
+    """列出校园生活服务（超市 / 快递驿站 / 干洗洗衣 / 理发 / 打印 / 银行等）。"""
+    from westlake_survival.cli.main import _print_table
+
+    srvs = services(campus=campus, **_lang_kwargs(lang))
+    if not srvs:
+        click.echo("未找到匹配的校园服务点。")
+        return
+    rows = [
+        (
+            s.campus or "—",
+            s.name or "—",
+            s.address or "—",
+            "；".join(s.hours) or "—",
+        )
+        for s in srvs
+    ]
+    _print_table(rows, ("校区", "服务名称", "位置", "服务与营业时间"))

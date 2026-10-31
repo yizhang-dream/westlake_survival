@@ -521,35 +521,99 @@ def parse_catalog_books(payload: Any, base_url: str = CATALOG_BASE) -> list[Book
 # --------------------------------------------------------------------------- #
 
 
+CATALOG_BASE = "https://catalog.lib.westlake.edu.cn"
+
+
+def _get_catalog_token(session) -> str:
+    from westlake_survival._cache import load_cached, save_cached
+
+    cached = load_cached("lib/catalog_token.json", ttl=3600)
+    if cached and isinstance(cached, str):
+        return cached
+    url = f"{CATALOG_BASE}/bolan-tenant/api/tenant/tenantInfo_homeindex"
+    resp = session.post(
+        url,
+        data={"homeindex": "westlake", "from": "newbook"},
+        timeout=DEFAULT_TIMEOUT,
+    )
+    resp.raise_for_status()
+    token = resp.json().get("data", {}).get("jwtToken")
+    if token:
+        save_cached("lib/catalog_token.json", token)
+        return token
+    raise WestlakeError("获取图书馆书目检索授权失败")
+
+
 def search(
     keyword: str,
     *,
     page: int = 1,
     kind: str = "title",
     session: Any = None,
-    source: str = "opac",
+    source: str = "auto",
 ) -> list[Book]:
-    """检索书目。
+    """检索书目（优先使用新版阿法迪云 catalog 检索 API，免鉴权公开可用）。
 
     Args:
         keyword: 检索词。
         page: 页码（从 1 开始）。
-        kind: 检索类型，见 :data:`_KIND_MAP`（``title``/``author``/``isbn``/``keyword``…）。
-        session: 可选注入的 :class:`requests.Session`（测试用）。
-        source: ``"opac"``（默认，公开 HTML 路线）或 ``"catalog"``（门户 JSON，需登录会话）。
+        kind: 检索类型。
+        session: 可选注入的 :class:`requests.Session`。
+        source: 数据源，默认 "auto" 自动选择新版云平台。
 
     Returns:
         :class:`Book` 列表；无结果时为空列表。
-
-    Raises:
-        ParseError: 端点不可达或页面结构无法解析。
-        OffCampusError: 被校外访问网关拦截（403）。
-        AuthError: JSON 路线会话未登录（401）。
     """
-    if source == "catalog":
-        return _search_catalog(keyword, page=page, kind=kind, session=session)
-
     session = session or _session()
+    # 1. 优先新版平台（catalog.lib.westlake.edu.cn）
+    if source != "legacy_opac":
+        try:
+            token = _get_catalog_token(session)
+            url = f"{CATALOG_BASE}/bolan-newbook/api/newbook/search/simpSearch?tenantcode=262118"
+            payload = {
+                "indexname": "newbook_batchbook",
+                "curpage": page,
+                "pagesize": 20,
+                "searchfields": [
+                    {
+                        "fieldname": "all",
+                        "keyword": keyword.strip(),
+                        "relation": "AND",
+                        "searchtype": "wildcard",
+                        "keytype": "ordinary",
+                    }
+                ],
+            }
+            resp = session.post(
+                url,
+                headers={"Authorization": token, "Content-Type": "application/json"},
+                json=payload,
+                timeout=DEFAULT_TIMEOUT,
+            )
+            if resp.status_code == 200:
+                data = resp.json().get("data", {})
+                books: list[Book] = []
+                for item in data.get("array") or []:
+                    call_no = item.get("indexnum") or item.get("callno") or ""
+                    loc = item.get("collectionname") or (item.get("importcollectionname") or [""])[0]
+                    books.append(
+                        Book(
+                            title=item.get("booktitle") or "",
+                            author=item.get("author") or "",
+                            publisher=item.get("publish") or "",
+                            publish_year=str(item.get("publishdatestr") or item.get("publishdate") or ""),
+                            call_no=call_no,
+                            isbn=item.get("isbn") or item.get("isbn2") or "",
+                            location=loc,
+                            holding_status="在馆" if loc else "",
+                            detail_url=f"{CATALOG_BASE}/bookdetail?id={item.get('id')}" if item.get("id") else "",
+                        )
+                    )
+                return books
+        except Exception:
+            if source == "catalog":
+                raise
+
     searchtype = _KIND_MAP.get(kind, kind)
     response = session.post(
         OPAC_BASE + SEARCH_PATH,
@@ -654,17 +718,16 @@ def _new_books_catalog(*, limit: int, session: Any) -> list[Book]:
     return parse_catalog_books(_json(response), CATALOG_BASE)[:limit]
 
 
-def my_loans(*, auth: Any = None, session: Any = None) -> list[Loan]:
-    """当前借阅记录（需登录）。
+def my_loans(*, auth: Any = None, session: Any = None, force_refresh: bool = False) -> list[Loan]:
+    """当前借阅记录（需登录，优先对接 mylib 新系统）。"""
+    try:
+        from westlake_survival.lib.mylib import get_reader_loans
 
-    使用 :class:`westlake_survival.sso.LibAuth` 单例的已认证会话，遍历
-    :data:`READER_LOAN_PATHS` 候选路径，命中第一个可解析的读者页。
+        return get_reader_loans(force_refresh=force_refresh, session=session)
+    except Exception as exc:
+        if isinstance(exc, (AuthError, OffCampusError)):
+            raise
 
-    Raises:
-        AuthError: 会话未登录（命中登录页）。
-        ParseError: 所有候选路径均不可达/不可解析（当前 OPAC 上下文离线，
-            需有账号后在真实读者端点上校准 :data:`READER_LOAN_PATHS`）。
-    """
     auth = auth if auth is not None else _lib_auth()
     get = auth.get if hasattr(auth, "get") else (session or _session()).get
 
