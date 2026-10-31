@@ -59,6 +59,7 @@ __all__ = [
     "BOOKING_BASE",
     "BOOKING_HOME",
     "Booking",
+    "Recommendation",
     "Resource",
     "ResourceType",
     "Slot",
@@ -71,6 +72,7 @@ __all__ = [
     "find",
     "free_slots",
     "my_bookings",
+    "recommend_available",
     "resources",
     "visible_types",
 ]
@@ -273,6 +275,36 @@ class Booking:
         }
 
 
+@dataclass
+class Recommendation:
+    """复合求解推荐的一段连续可用空闲场地。"""
+
+    resource_id: str
+    resource_name: str
+    type_name: str
+    campus: str
+    building: str
+    day: str
+    start: str
+    end: str
+    duration_minutes: int
+    command_hint: str
+
+    def to_dict(self) -> dict:
+        return {
+            "resource_id": self.resource_id,
+            "resource": self.resource_name,
+            "type_name": self.type_name,
+            "campus": self.campus,
+            "building": self.building,
+            "date": self.day,
+            "start": self.start,
+            "end": self.end,
+            "duration_minutes": self.duration_minutes,
+            "command_hint": self.command_hint,
+        }
+
+
 def visible_types() -> list[ResourceType]:
     """我能预约的分类（首页可见卡片）。"""
     data = _gql(
@@ -322,8 +354,16 @@ def _all_resources() -> list[Resource]:
     return out
 
 
+_TYPE_ALIASES: dict[str, list[str]] = {
+    "研讨室": ["讨论室", "图书馆"],
+    "会议室": ["内部会议室"],
+    "排练室": ["戏曲排练室", "歌房乐队排练室"],
+    "健身": ["瑜伽室", "舞蹈室", "H5 舞蹈室"],
+}
+
+
 def resources(type_name: str | None = None, keyword: str | None = None) -> list[Resource]:
-    """我能预约的资源；``type_name`` 按分类名精确匹配，``keyword`` 模糊匹配名称。
+    """我能预约的资源；``type_name`` 按分类名精确/模糊匹配，``keyword`` 模糊匹配名称。
 
     只返回 :func:`visible_types` 里的分类（即真有权限的分类），避免把
     「全校有但你没权限」的场地误当成可约。
@@ -331,12 +371,21 @@ def resources(type_name: str | None = None, keyword: str | None = None) -> list[
     allowed = {t.name for t in visible_types()}
     items = _all_resources()
     if type_name:
-        if type_name not in allowed:
+        target_types = set()
+        if type_name in allowed:
+            target_types = {type_name}
+        elif type_name in _TYPE_ALIASES:
+            target_types = {t for t in _TYPE_ALIASES[type_name] if t in allowed}
+        else:
+            fuzzy = {t for t in allowed if type_name in t or t in type_name}
+            if fuzzy:
+                target_types = fuzzy
+        if not target_types:
             raise WestlakeError(
-                f"账号没有「{type_name}」的预约权限；当前可约分类："
+                f"账号没有「{type_name}」对应分类的预约权限；当前可约分类："
                 + "、".join(sorted(allowed))
             )
-        items = [i for i in items if i.type_name == type_name]
+        items = [i for i in items if i.type_name in target_types]
     else:
         items = [i for i in items if i.type_name in allowed]
     if keyword:
@@ -462,6 +511,83 @@ def check(resource_id: str, day: str, start: str, end: str) -> dict:
         {"r": resource_id, "bd": day, "bs": start, "be": end, "src": "pc"},
     )
     return data.get("checkResourceBookDateAndBookTime") or {}
+
+
+def recommend_available(
+    day: str = "",
+    *,
+    time_range: str = "",
+    min_hours: float = 1.0,
+    type_keyword: str = "",
+    name_keyword: str = "",
+    limit: int = 10,
+) -> list[Recommendation]:
+    """复合求解推荐空闲场地（避免多次轮询）。
+
+    自动并发拉取候选资源的当日空闲网格并计算连续空闲块，
+    直接输出满足时长要求的推荐方案与一键预检/预约命令。
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from datetime import date, timedelta
+
+    target_day = day.strip() if day else ""
+    if not target_day or target_day.lower() in ("today", "今天"):
+        target_day = date.today().isoformat()
+    elif target_day.lower() in ("tomorrow", "明天"):
+        target_day = (date.today() + timedelta(days=1)).isoformat()
+
+    range_start, range_end = None, None
+    if time_range and "-" in time_range:
+        parts = time_range.split("-")
+        range_start, range_end = parts[0].strip(), parts[1].strip()
+
+    candidate_resources = resources(
+        type_name=type_keyword if type_keyword else None,
+        keyword=name_keyword if name_keyword else None,
+    )
+    if not candidate_resources:
+        return []
+
+    pool = candidate_resources[:10]
+    duration_min = int(min_hours * 60)
+    results: list[Recommendation] = []
+
+    def _eval_one(res: Resource) -> list[Recommendation]:
+        sub: list[Recommendation] = []
+        try:
+            windows = free_slots(
+                res.id,
+                target_day,
+                start=range_start,
+                end=range_end,
+                duration=duration_min,
+            )
+            for w in windows:
+                cmd = f"westlake booking book {res.name} --date {target_day} --start {w.start} --end {w.end} --dry-run"
+                sub.append(
+                    Recommendation(
+                        resource_id=res.id,
+                        resource_name=res.name,
+                        type_name=res.type_name,
+                        campus=res.campus,
+                        building=res.building,
+                        day=target_day,
+                        start=w.start,
+                        end=w.end,
+                        duration_minutes=duration_min,
+                        command_hint=cmd,
+                    )
+                )
+        except Exception:
+            pass
+        return sub
+
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        for chunk in ex.map(_eval_one, pool):
+            results.extend(chunk)
+
+    results.sort(key=lambda r: (r.start, r.resource_name))
+    return results[:limit]
 
 
 def book(
@@ -690,6 +816,37 @@ def _cli():
             click.echo(f"  {b.day} {b.start}-{b.end} {b.resource_name}"
                        f" [{_state_label(b.state)}] {b.id}")
 
+    @group.command(name="recommend")
+    @click.option("--date", "day", default="today", help="目标日期（today/tomorrow/YYYY-MM-DD，缺省今天）")
+    @click.option("--time", "time_range", default="", help="期望时段范围（如 14:00-18:00）")
+    @click.option("--min-hours", type=float, default=1.0, help="最小连续可用小时数（如 1.5，缺省 1.0）")
+    @click.option("--type", "type_keyword", default="", help="场地类型关键词（如 研讨室/自习）")
+    @click.option("--keyword", "name_keyword", default="", help="房间名称关键词（如 云谷/301）")
+    @click.option("--limit", type=int, default=8, help="最大返回数量（缺省 8）")
+    @click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出")
+    @handle
+    def recommend_cmd(day, time_range, min_hours, type_keyword, name_keyword, limit, as_json) -> None:
+        """场景级复合求解：智能推荐空闲连续时段（避免多次轮询）。"""
+        recs = recommend_available(
+            day=day,
+            time_range=time_range,
+            min_hours=min_hours,
+            type_keyword=type_keyword,
+            name_keyword=name_keyword,
+            limit=limit,
+        )
+        if as_json:
+            click.echo(json.dumps([r.to_dict() for r in recs], ensure_ascii=False, indent=2))
+            return
+        if not recs:
+            click.echo(f"未找到满足条件（{day} 连续≥{min_hours}小时）的可用空闲场地。")
+            return
+        click.secho(f"=== 场地空闲推荐求解结果（{day} 连续≥{min_hours}h，共 {len(recs)} 项）===", fg="cyan", bold=True)
+        for idx, r in enumerate(recs, 1):
+            where = f"{r.campus} {r.building}".strip() or "主校区"
+            click.echo(f"{idx}. [{r.start}-{r.end}] {r.resource_name} ({r.type_name} | {where})")
+            click.secho(f"   预约指令: {r.command_hint}", fg="yellow")
+
     @group.command(name="book")
     @click.argument("selector")
     @click.option("--date", "day", required=True, help="YYYY-MM-DD")
@@ -697,14 +854,24 @@ def _cli():
     @click.option("--end", required=True, help="结束 HH:MM")
     @click.option("--theme", default="", help="主题")
     @click.option("--remark", default="", help="备注")
-    @click.option("--dry-run", is_flag=True, help="只校验不提交")
+    @click.option("--dry-run", is_flag=True, help="只校验不提交（输出事务预览卡片）")
+    @click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket")
     @click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
     @handle
-    def book_cmd(selector, day, start, end, theme, remark, dry_run, skip_confirm) -> None:
-        """预约一段（写操作；--dry-run 预检 / --yes 执行）。"""
+    def book_cmd(selector, day, start, end, theme, remark, dry_run, ticket, skip_confirm) -> None:
+        """预约一段（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
         from westlake_survival.consequence import gate_cli
 
-        gate_cli("booking.book", confirmed=skip_confirm, dry_run=dry_run)
+        target_desc = f"{selector} ({day} {start}-{end})"
+        payload_desc = {"date": day, "start": start, "end": end, "theme": theme or "场地预约", "remark": remark}
+        gate_cli(
+            "booking.book",
+            confirmed=skip_confirm,
+            dry_run=dry_run,
+            ticket=ticket,
+            target=target_desc,
+            payload=payload_desc,
+        )
         result = book(selector, day, start, end, theme=theme, remark=remark, dry_run=dry_run)
         click.echo("校验通过（未提交）：" + json.dumps(result, ensure_ascii=False)
                    if dry_run else "预约成功：" + json.dumps(result, ensure_ascii=False))
@@ -712,13 +879,20 @@ def _cli():
     @group.command(name="cancel")
     @click.argument("appointment_id")
     @click.option("--reason", default="")
+    @click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket")
     @click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
     @handle
-    def cancel_cmd(appointment_id, reason, skip_confirm) -> None:
-        """取消预约（写操作；--yes 执行）。"""
+    def cancel_cmd(appointment_id, reason, ticket, skip_confirm) -> None:
+        """取消预约（写操作；--ticket 或 --yes 执行）。"""
         from westlake_survival.consequence import gate_cli
 
-        gate_cli("booking.cancel", confirmed=skip_confirm)
+        gate_cli(
+            "booking.cancel",
+            confirmed=skip_confirm,
+            ticket=ticket,
+            target=f"预约ID: {appointment_id}",
+            payload={"reason": reason},
+        )
         click.echo(json.dumps(cancel(appointment_id, reason=reason), ensure_ascii=False))
 
     @group.command(name="sports")
@@ -728,7 +902,7 @@ def _cli():
         click.echo(json.dumps(diagnose_sports(), ensure_ascii=False, indent=2))
         click.echo(
             "提示：游泳/球场的真实入口是独立的正元场馆系统——"
-            "用 westlake sport scenes 查（见 docs/sportvenue_notes.md）。",
+            "用 westlake sport scenes 查（见 docs/sports.md）。",
             err=True,
         )
 

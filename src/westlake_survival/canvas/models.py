@@ -77,6 +77,33 @@ def parse_datetime(value: Any) -> datetime | None:
     return parsed.astimezone(CHINA_TZ)
 
 
+def format_remaining(dt: datetime | None) -> str:
+    """计算距离目标时间的精确倒计时可读文本（如 '1 小时 34 分钟后' 或 '已逾期'）。"""
+    if dt is None:
+        return "—"
+    now = datetime.now(dt.tzinfo or CHINA_TZ)
+    delta = dt - now
+    total_seconds = int(delta.total_seconds())
+    if total_seconds < 0:
+        over = abs(total_seconds)
+        if over < 3600:
+            return f"已逾期 {over // 60} 分"
+        elif over < 86400:
+            return f"已逾期 {over // 3600} 小时"
+        else:
+            return f"已逾期 {over // 86400} 天"
+    if total_seconds < 3600:
+        return f"{total_seconds // 60} 分钟后"
+    elif total_seconds < 86400:
+        hours = total_seconds // 3600
+        mins = (total_seconds % 3600) // 60
+        return f"{hours} 小时 {mins} 分钟后"
+    else:
+        days = total_seconds // 86400
+        hours = (total_seconds % 86400) // 3600
+        return f"{days} 天 {hours} 小时后"
+
+
 def _as_dict(data: Any) -> Mapping[str, Any]:
     """把 API 返回项规整为 Mapping；非 Mapping 时返回空字典。"""
     return data if isinstance(data, Mapping) else {}
@@ -427,6 +454,7 @@ __all__ = [
     "Submission",
     "TodoItem",
     "User",
+    "format_remaining",
     "html_to_text",
     "parse_datetime",
 ]

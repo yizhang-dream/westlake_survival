@@ -27,13 +27,14 @@ import requests
 from westlake_survival._cache import config_root, load_cached, save_cached
 from westlake_survival._net import DEFAULT_TIMEOUT
 from westlake_survival.discovery import direct_session
-from westlake_survival.exceptions import AuthError, OffCampusError, WestlakeError
+from westlake_survival.exceptions import AuthError, NotFound, OffCampusError, WestlakeError
 from westlake_survival.lib.models import Loan
 
 __all__ = [
     "MYLIB_BASE_URL",
     "get_mylib_jwt",
     "get_reader_loans",
+    "renew_loan",
 ]
 
 logger = logging.getLogger(__name__)
@@ -216,3 +217,48 @@ def get_reader_loans(*, force_refresh: bool = False, session: requests.Session |
         )
 
     return loans
+
+
+def renew_loan(barcode: str, *, dry_run: bool = False, session: requests.Session | None = None) -> dict:
+    """在借图书在线续借（写操作，带 dry-run 校验）。"""
+    loans = get_reader_loans(session=session)
+    matched = [item for item in loans if item.barcode == barcode]
+    if not matched:
+        raise NotFound(f"在借图书中未找到条码为 [{barcode}] 的图书。")
+    book = matched[0]
+    if not book.renewable:
+        raise WestlakeError(f"图书《{book.title}》（条码 {barcode}）不可续借（已达续借上限或超期）。")
+
+    if dry_run:
+        return {
+            "dry_run": True,
+            "barcode": barcode,
+            "title": book.title,
+            "current_due_date": book.due_date,
+            "renewable": True,
+            "msg": "校验通过，符合续借条件",
+        }
+
+    jwt = get_mylib_jwt()
+    session = session or direct_session()
+    url = f"{MYLIB_BASE_URL}/westlakesearch/thirdPart/renewBook"
+    headers = {
+        "PrimoAuthorization": f"Bearer {jwt}",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    data = {"itemBarcode": barcode}
+    try:
+        resp = session.post(url, headers=headers, data=data, timeout=DEFAULT_TIMEOUT, verify=False)
+        resp.raise_for_status()
+        payload = resp.json()
+    except Exception as exc:
+        raise WestlakeError(f"续借请求网络失败：{exc}") from exc
+
+    if payload.get("code") != 200:
+        raise WestlakeError(f"续借失败：{payload.get('msg') or payload}")
+
+    return {
+        "barcode": barcode,
+        "title": book.title,
+        "result": payload.get("data") or "续借成功",
+    }

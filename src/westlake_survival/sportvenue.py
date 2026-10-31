@@ -5,7 +5,7 @@
 预约中心（``booking``）只覆盖自习室/研讨室/琴房等 17 类场地；**体育场馆与游泳
 不在这里**（``booking types`` 看不到「体育场馆」，接口对无权限分类只返回空）。
 2026-10-27 实测，真实入口是正元智慧的多租户场馆系统 ``sportvenue``。
-完整侦查记录见 ``docs/sportvenue_notes.md``。
+完整侦查记录见 ``docs/sports.md``。
 
 登录（四步，全部 requests 可自动化）
 ====================================
@@ -472,7 +472,7 @@ def _cli():
             click.echo("", err=True)
             click.echo(
                 "提示：全部不可约且原因一致时，多半是服务端没有配置预约表单，"
-                "与本机环境无关（见 docs/sportvenue_notes.md）。",
+                "与本机环境无关（见 docs/sports.md）。",
                 err=True,
             )
 

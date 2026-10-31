@@ -48,13 +48,14 @@ __all__ = [
 _instance: TransitData | None = None
 
 
-def transit(refresh: bool = False) -> TransitData:
+def transit(refresh: bool = False, offline: bool = False) -> TransitData:
     """返回进程内单例 :class:`TransitData`（惰性加载）。
 
     Args:
         refresh: 为 ``True`` 时强制重新从官网加载。
+        offline: 为 ``True`` 时直接使用内置离线快照。
     """
     global _instance
-    if _instance is None or refresh:
-        _instance = TransitData.load(refresh=refresh)
+    if _instance is None or refresh or offline:
+        _instance = TransitData.load(refresh=refresh, offline=offline)
     return _instance

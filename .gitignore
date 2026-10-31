@@ -27,6 +27,7 @@ site/
 *.log
 .idea/
 .vscode/
+.cursorrules
 
 # 过程产物（截图/验证码/浏览器工具目录/out 下的探测与截图）
 out/

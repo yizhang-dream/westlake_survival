@@ -1130,7 +1130,7 @@ def _wiki_context(query: str = "", category: str = "", deep: bool = False) -> di
 def _sport_context(day: str | None = None) -> dict:
     """场馆页：场景 × 当日场地可约状态 + 我的预约（独立正元系统）。
 
-    体育场馆/游泳不在预约中心（``booking``），见 docs/sportvenue_notes.md。
+    体育场馆/游泳不在预约中心（``booking``），见 docs/sports.md。
     每次刷新要打 15 个场景接口，所以按日期做 10 分钟磁盘缓存。
     """
     from datetime import date as _date
@@ -2437,6 +2437,66 @@ def create_app() -> Flask:
     # --（API 说明页已并入 /capabilities；裸接口 /api/* 与 /ical/* 保留）-- #
 
     # -- JSON API --------------------------------------------------------- #
+    @app.route("/timeline")
+    def timeline_page():
+        from westlake_survival.timeline import build_timeline
+
+        offline = request.args.get("offline") == "1"
+        try:
+            report = build_timeline(offline=offline)
+        except Exception:
+            report = build_timeline(offline=True)
+        return render_template("timeline.html", report=report)
+
+    @app.route("/api/timeline")
+    def api_timeline():
+        from westlake_survival.timeline import build_timeline
+
+        offline = request.args.get("offline") == "1"
+        try:
+            report = build_timeline(offline=offline)
+            return jsonify(report.to_dict())
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 500
+
+    @app.route("/api/timeline/memo/add", methods=["POST"])
+    def api_timeline_memo_add():
+        from westlake_survival.timeline import add_memo
+
+        payload = request.get_json(silent=True) or {}
+        text = str(payload.get("text") or "").strip()
+        time_str = str(payload.get("time") or "").strip()
+        if not text:
+            return jsonify({"error": "text required"}), 400
+        memo = add_memo(text, time_str=time_str)
+        return jsonify(memo.to_dict())
+
+    @app.route("/api/timeline/memo/done", methods=["POST"])
+    def api_timeline_memo_done():
+        from westlake_survival.timeline import toggle_memo
+
+        payload = request.get_json(silent=True) or {}
+        memo_id = str(payload.get("memo_id") or "").strip()
+        done = bool(payload.get("done", True))
+        if not memo_id:
+            return jsonify({"error": "memo_id required"}), 400
+        try:
+            memo = toggle_memo(memo_id, done=done)
+            return jsonify(memo.to_dict())
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 404
+
+    @app.route("/api/timeline/memo/delete", methods=["POST"])
+    def api_timeline_memo_delete():
+        from westlake_survival.timeline import delete_memo
+
+        payload = request.get_json(silent=True) or {}
+        memo_id = str(payload.get("memo_id") or "").strip()
+        if not memo_id:
+            return jsonify({"error": "memo_id required"}), 400
+        ok = delete_memo(memo_id)
+        return jsonify({"ok": ok, "memo_id": memo_id})
+
     @app.route("/api/context")
     def api_context():
         try:

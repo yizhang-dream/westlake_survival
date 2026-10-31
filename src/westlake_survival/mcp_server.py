@@ -1302,6 +1302,161 @@ def _tool_canvas_submit(args: dict) -> Any:
     )
 
 
+def _tool_timeline(args: dict) -> Any:
+    """今日时空行动流（跨系统日程融合、冲突检测与个人备忘）。"""
+    from datetime import date
+    from westlake_survival.timeline import build_timeline
+
+    target_d = None
+    date_str = _opt_str(args, "date")
+    if date_str:
+        try:
+            target_d = date.fromisoformat(date_str)
+        except Exception:
+            pass
+    offline = bool(args.get("offline"))
+    report = build_timeline(target_date=target_d, offline=offline)
+    return report.to_dict()
+
+
+def _tool_booking_recommend(args: dict) -> Any:
+    """场景级复合求解：智能推荐空闲连续时段（避免多次轮询）。"""
+    from westlake_survival.booking import recommend_available
+
+    day = _opt_str(args, "date") or "today"
+    time_range = _opt_str(args, "time") or ""
+    min_hours = float(args.get("min_hours") or 1.0)
+    type_kw = _opt_str(args, "type") or ""
+    keyword = _opt_str(args, "keyword") or ""
+    limit = _opt_int(args, "limit", 8, minimum=1, maximum=50)
+    recs = recommend_available(
+        day=day,
+        time_range=time_range,
+        min_hours=min_hours,
+        type_keyword=type_kw,
+        name_keyword=keyword,
+        limit=limit,
+    )
+    return [r.to_dict() for r in recs]
+
+
+def _tool_canvas_star(args: dict) -> Any:
+    """将课程加入个人收藏/星标（置顶于面板）。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.consequence import require_confirmation
+
+    course = _opt_str(args, "course")
+    if not course:
+        raise ValueError("参数 course 不能为空")
+    confirm = bool(args.get("confirm"))
+    client = canvas()
+    found = client.find_course(course)
+    _, card = require_confirmation(
+        "canvas.star",
+        confirmed=confirm,
+        dry_run=not confirm,
+        target=f"{found.course_code or ''} {found.name}",
+        payload={"course_id": found.id, "name": found.name},
+    )
+    if not confirm:
+        return {
+            "confirm": False,
+            "action_card": card.to_dict() if card else None,
+            "hint": "预检通过。带 confirm=true 即可真正执行加入收藏。",
+        }
+    client.star_course(found.id)
+    return {"starred": True, "course_id": found.id, "name": found.name}
+
+
+def _tool_canvas_unstar(args: dict) -> Any:
+    """取消课程个人收藏/星标。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.consequence import require_confirmation
+
+    course = _opt_str(args, "course")
+    if not course:
+        raise ValueError("参数 course 不能为空")
+    confirm = bool(args.get("confirm"))
+    client = canvas()
+    found = client.find_course(course)
+    _, card = require_confirmation(
+        "canvas.unstar",
+        confirmed=confirm,
+        dry_run=not confirm,
+        target=f"{found.course_code or ''} {found.name}",
+        payload={"course_id": found.id, "name": found.name},
+    )
+    if not confirm:
+        return {
+            "confirm": False,
+            "action_card": card.to_dict() if card else None,
+            "hint": "预检通过。带 confirm=true 即可真正执行取消收藏。",
+        }
+    client.unstar_course(found.id)
+    return {"unstarred": True, "course_id": found.id, "name": found.name}
+
+
+def _tool_lib_renew(args: dict) -> Any:
+    """在借图书在线续借。"""
+    from westlake_survival.consequence import require_confirmation
+    from westlake_survival.lib.mylib import renew_loan
+
+    barcode = _opt_str(args, "barcode")
+    if not barcode:
+        raise ValueError("参数 barcode 不能为空（图书条形码）")
+    confirm = bool(args.get("confirm"))
+    _, card = require_confirmation(
+        "lib.renew",
+        confirmed=confirm,
+        dry_run=not confirm,
+        target=f"条码: {barcode}",
+        payload={"barcode": barcode},
+    )
+    res = renew_loan(barcode, dry_run=not confirm)
+    if not confirm:
+        return {
+            "confirm": False,
+            "action_card": card.to_dict() if card else None,
+            "result": res,
+            "hint": "续借预检通过。带 confirm=true 重新调用即可完成在线续借。",
+        }
+    return res
+
+
+def _tool_timeline_add_memo(args: dict) -> Any:
+    """添加个人日程生活备忘。"""
+    from westlake_survival.timeline import add_memo
+
+    text = _opt_str(args, "text")
+    if not text:
+        raise ValueError("参数 text 不能为空")
+    time_str = _opt_str(args, "time") or ""
+    memo = add_memo(text, time_str=time_str)
+    return memo.to_dict()
+
+
+def _tool_timeline_done_memo(args: dict) -> Any:
+    """标记个人生活备忘完成。"""
+    from westlake_survival.timeline import toggle_memo
+
+    memo_id = _opt_str(args, "memo_id")
+    if not memo_id:
+        raise ValueError("参数 memo_id 不能为空")
+    memo = toggle_memo(memo_id, done=True)
+    return memo.to_dict()
+
+
+def _tool_timeline_delete_memo(args: dict) -> Any:
+    """删除指定个人生活备忘。"""
+    from westlake_survival.timeline import delete_memo
+
+    memo_id = _opt_str(args, "memo_id")
+    if not memo_id:
+        raise ValueError("参数 memo_id 不能为空")
+    ok = delete_memo(memo_id)
+    return {"ok": ok, "memo_id": memo_id}
+
+
 # --------------------------------------------------------------------------- #
 # 工具清单（name / description / inputSchema / handler）
 # --------------------------------------------------------------------------- #
@@ -1983,6 +2138,102 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             {"refresh": {"type": "boolean", "description": "true 时强制重新探测。"}}
         ),
         "handler": _tool_scholar_campus,
+    },
+    {
+        "name": "timeline",
+        "description": "今日时空行动流：跨系统日程编排（课表/Canvas/预约/班车）、冲突检测与个人备忘（支持离线）。",
+        "inputSchema": _schema(
+            {
+                "date": _str_param("目标日期 YYYY-MM-DD，缺省今天。"),
+                "offline": {"type": "boolean", "description": "是否使用离线快照模式（无网秒出）。"},
+            }
+        ),
+        "handler": _tool_timeline,
+    },
+    {
+        "name": "booking_recommend",
+        "description": "场景级复合求解：智能推荐空闲连续时段（避免多次轮询）。",
+        "inputSchema": _schema(
+            {
+                "date": _str_param("目标日期，默认 today。"),
+                "time": _str_param("期望时段范围，如 14:00-18:00。"),
+                "min_hours": {"type": "number", "description": "最小连续可用小时数，如 1.5。"},
+                "type": _str_param("场地类型关键词，如 研讨室/自习。"),
+                "keyword": _str_param("房间名称关键词，如 云谷/301。"),
+                "limit": _int_param("最大返回条数，默认 8。", minimum=1, maximum=50),
+            }
+        ),
+        "handler": _tool_booking_recommend,
+    },
+    {
+        "name": "canvas_star",
+        "description": "将课程加入个人收藏/星标（置顶于课程面板，写操作）。",
+        "inputSchema": _schema(
+            {
+                "course": _str_param("课程 id 或名称关键词。"),
+                "confirm": {"type": "boolean", "description": "true 时真正执行，缺省仅预检。"},
+            },
+            ["course"],
+        ),
+        "handler": _tool_canvas_star,
+    },
+    {
+        "name": "canvas_unstar",
+        "description": "取消课程个人收藏/星标（写操作）。",
+        "inputSchema": _schema(
+            {
+                "course": _str_param("课程 id 或名称关键词。"),
+                "confirm": {"type": "boolean", "description": "true 时真正执行，缺省仅预检。"},
+            },
+            ["course"],
+        ),
+        "handler": _tool_canvas_unstar,
+    },
+    {
+        "name": "lib_renew",
+        "description": "在借图书在线续借（写操作，带校验门禁）。",
+        "inputSchema": _schema(
+            {
+                "barcode": _str_param("图书条形码。"),
+                "confirm": {"type": "boolean", "description": "true 时真正提交续借，缺省仅预检。"},
+            },
+            ["barcode"],
+        ),
+        "handler": _tool_lib_renew,
+    },
+    {
+        "name": "timeline_add_memo",
+        "description": "添加个人日程生活备忘事项（写操作）。",
+        "inputSchema": _schema(
+            {
+                "text": _str_param("备忘内容。"),
+                "time": _str_param("指定时间点，如 15:00。"),
+            },
+            ["text"],
+        ),
+        "handler": _tool_timeline_add_memo,
+    },
+    {
+        "name": "timeline_done_memo",
+        "description": "标记个人生活备忘为已完成（写操作）。",
+        "inputSchema": _schema(
+            {
+                "memo_id": _str_param("备忘唯一 ID。"),
+            },
+            ["memo_id"],
+        ),
+        "handler": _tool_timeline_done_memo,
+    },
+    {
+        "name": "timeline_delete_memo",
+        "description": "删除指定个人生活备忘（写操作）。",
+        "inputSchema": _schema(
+            {
+                "memo_id": _str_param("待删除备忘的唯一 ID。"),
+            },
+            ["memo_id"],
+        ),
+        "handler": _tool_timeline_delete_memo,
     },
 )
 

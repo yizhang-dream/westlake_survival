@@ -25,30 +25,32 @@ Westlake University campus services are split across dozens of isolated portals:
 
 Three core principles:
 
-1. **Read-only by default.** Only five write operations exist across the entire toolkit—submitting an assignment, replying to a discussion, sending a message, booking a venue, and cancelling a booking—and each requires explicit per-execution confirmation via a safety gate (`--yes`). No automated course-sniping, no seat-grabbing, and no permission bypasses.
-2. **Credentials stay local.** Stored in your native OS keychain, saved exactly once, never logged to terminals or committed to git, and never synced across machines. Enter your credentials once via the local web settings UI. See [Credentials & Privacy](#credentials--privacy).
-3. **Independent community project.** Structurally inspired by [sustech_survival](https://github.com/dumixthestpd/sustech_survival); not officially affiliated with or endorsed by Westlake University.
+1. **Read-only by default & Action Card verification.** Write operations are strictly restricted to a safe whitelist (Canvas assignment submission, replies, direct messages, course starring; venue booking & cancellation; library loan renewals; local timeline memos). Each write operation is guarded by `consequence.py`, generating a structured **Action Card** with an ephemeral single-use confirmation ticket (`--ticket`) or explicit per-execution confirmation (`--yes`). No automated course-sniping, no seat-grabbing, and no permission bypasses.
+2. **Offline-first architecture (SWR).** Low-frequency datasets such as class schedules, academic calendar weeks, and shuttle timetables support Stale-While-Revalidate caching and `--offline` flags. Lookups return instant local snapshots even in basements, offline environments, or outside campus without VPN.
+3. **Credentials stay local.** Stored in your native OS keychain, saved exactly once, never logged to terminals or committed to git, and never synced across machines. Enter your credentials once via the local web settings UI. See [Credentials & Privacy](#credentials--privacy).
+4. **Independent community project.** Structurally inspired by [sustech_survival](https://github.com/dumixthestpd/sustech_survival); not officially affiliated with or endorsed by Westlake University.
 
 ## Feature Overview
 
 | Domain | Coverage | Account |
 | --- | --- | --- |
+| Action Timeline | Multi-source full-day briefing (timetable, Canvas DDLs, reservations, shuttles), schedule conflict solver, personal daily memos (offline-ready) | partly none |
 | Academics (SIS) | class timetable, grades, exam seating, enrollment cart, course evaluations, co-curricular records, status changes, advisor info, ICS calendar export | unified password |
 | Teaching (AMS) | secondary timetable, academic calendar week numbering, course registration status | unified password |
-| Canvas | courses, deadlines & quizzes, to-dos, modules, file downloads, discussions, announcements, inbox, assignment specifications (attachments & rubrics); submit / reply / send message | personal token or unified password |
-| Venue booking | 17 venue categories (study rooms, seminar rooms, piano rooms, etc.): real-time availability, slot discovery, active reservations, booking & cancellation | unified password |
+| Canvas | courses, deadlines & quizzes, to-dos, modules, file downloads, discussions, announcements, inbox, assignment specifications (attachments & rubrics); submit / reply / send message / star course | personal token or unified password |
+| Venue booking | 17 venue categories (study rooms, seminar rooms, piano rooms, etc.): composite availability solver (`booking recommend`), slot discovery, active reservations, booking & cancellation | unified password |
 | Sports venues | facilities, courts, daily availability, personal bookings (read-only) | unified password |
 | Tasks & portal | administrative service catalog, pending tasks, portal dashboard cards (unread mail, book loans, pending approvals) | unified password |
 | Research | subscribed database registry, CARSI off-campus SSO (`scholar ensure`), DOI→PDF full text, research news, faculty directory, HPC clusters, reimbursement rules | most require none |
 | Careers | job postings, campus fairs, employer info sessions: recent digests and detailed listings | none |
 | Curriculum | major requirements & degree roadmaps, course system, general education catalog, cross-department course search | none |
-| Campus life | academic calendar, shuttle schedules & ICS export, daily status summaries (`context`/`digest`), dining halls & cafés, residential buildings, campus map & panoramas, cloud printing stations | none |
+| Campus life | academic calendar, shuttle schedules & ICS export, daily status summaries (`context`/`digest`), dining halls & cafés, residential buildings, campus services (supermarket, deliveries, dry cleaning, barbershop, banking), campus map & panoramas, cloud printing stations | none |
 | Lecture notes | shared OneDrive/SharePoint course folders, public index browsing & file downloads (requires optional `[browser]` extra) | none |
 | Information | university-wide search, news feeds, academic lectures, announcements, WikiLake student encyclopedia | none |
 | System inventory | directory of 90+ internal services, subdomain mapping, endpoint reachability probes, Sangfor VPN status & routing | none |
-| Library | migrated to the Afadi Cloud eLibrary platform on 2026-10-28; circulation queries are temporarily suspended ([migration notes](docs/library_migration_2026-10-28.md), Chinese) | — |
+| Library | Afadi Cloud eLibrary search (`lib search`), active loans & due dates (`lib loans`), online loan renewal (`lib renew`, guarded write) | partly none |
 
-Sports facilities and library seating reside on distinct upstream backends; see [docs/module_audit_2026-10-27.md](docs/module_audit_2026-10-27.md) (Chinese) for architecture details. Over 20 additional read-only commands expose student records (academic status, dorm assignments, honors, volunteer hours, financial aid, club directory)—all discoverable via `westlake find`.
+Sports facilities and library seating reside on distinct upstream backends; see [docs/module_audit.md](docs/module_audit.md) (Chinese) for architecture details. Over 20 additional read-only commands expose student records (academic status, dorm assignments, honors, volunteer hours, financial aid, club directory)—all discoverable via `westlake find`.
 
 ## Quick Start
 
@@ -70,11 +72,12 @@ For complete startup specifications, see [docs/first_run.md](docs/first_run.md) 
 This repository is engineered agent-first. You can integrate via three primary methods:
 
 1. **Instruction-driven agents via `AGENTS.md`** (ZCode, DSH, Codex, Claude Code, Cursor, etc.): Clone and start. The root [AGENTS.md](AGENTS.md) outlines operating rules, execution boundaries, and verification procedures. Agents read this file automatically on session initialization and invoke the `westlake` CLI directly once credentials are configured.
-2. **Skill-based agents**: The packaged skill definition is located at [skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md). Copy it into your agent's skills directory:
+2. **Skill-based agents & SkillVM toolchain**: The packaged skill definition is located at [skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md). To install or compile across heterogeneous harnesses and machines, run:
    ```bash
-   git clone https://github.com/yizhang-dream/westlake_survival.git
-   cp -r westlake_survival/skills/westlake-survival ~/.zcode/skills/    # for ZCode; adapt to ~/.agents/skills/, ~/.claude/skills/, etc.
+   westlake skill install --target all    # automatically detects ZCode, Claude Code, and Cursor on your machine
+   westlake skill compile --target all    # AOT compiles tailored specs (supporting -O0 frontier and -Os compact profiles)
    ```
+   Or manually copy `skills/westlake-survival` into your agent framework directory (`~/.zcode/skills/`, `~/.claude/skills/`, etc.).
 3. **Model Context Protocol (MCP)**: Register the `westlake-mcp` entry point in your client configuration. See [docs/skill_reference.md](docs/skill_reference.md) (Chinese) for client configuration snippets and the complete MCP tool catalog.
 
 An agent's standard health check should always begin with **`westlake doctor`** (or `westlake doctor --json` for structured output). Agents must never request or write credentials directly; users configure authentication once via the local web Settings UI.

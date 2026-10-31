@@ -5,11 +5,16 @@
 ## 免凭据命令示例（可直接执行）
 
 ```bash
-westlake calendar today                      # 今日日期/学期/周次/事件
+westlake timeline                            # 今日时空行动流：跨系统全天日程融合、冲突预警与个人备忘
+westlake timeline --offline                  # 强制离线快照模式（无网秒出）
+westlake timeline add "组会准备" --time 15:00  # 本地生活备忘（写操作，带 Action Card）
+westlake timeline done memo-xxxx             # 标记生活备忘完成
+westlake booking recommend --date today --min-hours 1.5 # 复合求解：智能推荐空闲连续场地
+westlake calendar today                      # 今日日期/学期/周次/事件（支持 --offline）
 westlake calendar week 4                     # 第 4 周起止日期
 westlake calendar events                     # 本学期校历事件
 westlake transit next --campus 云谷 --limit 3
-westlake transit table --campus 云谷 --day 工作日
+westlake transit table --campus 云谷 --day 工作日 # （支持 --offline）
 westlake transit ical --days 14 --out bus.ics
 # 网页订阅：校历页有班车/课表 ICS 一键复制（/ical/shuttle、/ical/schedule）
 westlake context --level terse               # terse|normal|verbose
@@ -90,9 +95,11 @@ westlake canvas reply --course … --topic … --text "……"          # 写操
 westlake canvas inbox --limit 20 [--unread]                      # 打开会话即标已读
 westlake canvas conversation 2041 --download ./资料
 westlake canvas send --conversation 2041 --text "……"             # 写操作
+westlake canvas star 2183 / canvas unstar 2183                   # 课程收藏/星标置顶（写操作）
 westlake canvas submit --course 概率论 --assignment 作业3 --file hw3.pdf [--dry-run|--yes]
 westlake canvas submit --course … --assignment … --text "……"     # 文本提交
 westlake canvas submission --course 概率论 --assignment 作业3
+westlake lib renew 12345678                                      # 在借图书在线续借（写操作，带 Action Card 校验）
 ```
 
 - 课程/作业接受 id 或名称关键词（子串唯一命中才执行；命中多个列候选；搜不到先查全名——「物理学实验 Ⅱ」搜「物理实验」搜不到）。
@@ -164,8 +171,8 @@ for course in c.list_courses():                                 # 扫当前可�
 
 ## 深挖注记（按需）
 
-- **图书馆（2026-10-28 迁移）**：老阿法迪 OPAC `/opac/*` 整体下线，学校换「阿法迪云 eLibrary」（内网 `172.16.10.223:8180/page/login.jsp`，平台自有账号；公网别名只剩首页快照）。`lib` 命令会说明现状并退出、不再试已失效的 CAS 登录（反复失败有锁号风险）；WebUI 图书馆页已下线。接新平台需本人浏览器登录一次后重探接口——docs/library_migration_2026-10-28.md。
-- **预约四套系统**（2026-10-27 审计）：预约中心 17 类场地；体育场馆/游泳在 sportvenue（登录已通、卡服务端「表单规则未找到」，docs/sportvenue_notes.md）；图书馆座位在 seats.library（企业微信微应用，浏览器拿不到 accessToken）；办事大厅另有 CGYY/ResourceReservation 两个流程表单（发起即建流程实例，属写操作）。对照表 docs/module_audit_2026-10-27.md。
+- **图书馆接入架构**：老阿法迪 OPAC 下线后，已全面适配「阿法迪云 eLibrary」（`mylib.westlake.edu.cn`），打通公开书目检索（`lib search`）、在借图书（`lib loans`）与在线续借（`lib renew`，受控写操作），详见 docs/library.md。
+- **预约四套系统**：预约中心 17 类场地；体育场馆/游泳在 sportvenue（登录已通、卡服务端「表单规则未找到」，docs/sports.md）；图书馆座位在 seats.library（企业微信微应用，浏览器拿不到 accessToken）；办事大厅另有 CGYY/ResourceReservation 两个流程表单。对照表 docs/module_audit.md。
 - **学术资源**：本校是 CARSI 联盟成员，统一密码可登录各出版社；校园网内按 IP 认账。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url」两级取全文。
 - **门户服务目录 `affairs portal`**：2026-10-27 实测服务端接口疑似变化暂报错，网页区块自动降级。
 - **Canvas 事实口径**：待办/讨论时间是 UTC；作业对象无 attachments 字段，题目附件在描述 HTML 的文件链接；题目文件可能挂三处（描述/文件区/模块）。

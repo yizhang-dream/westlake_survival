@@ -40,7 +40,7 @@ CONTENT_TTL = 24 * 3600
 #: 2026-10-27 审计：按「校园里存在什么服务」补功能词——场馆/座位/就诊/
 #: 缴费/快递/报修/洗衣/教室/考试/评教。此前只有主机名式缩写，sportvenue
 #: 与 seats.library 两个真实系统因此从未进入普查（详见
-#: docs/module_audit_2026-10-27.md）。
+#: docs/module_audit.md）。
 _EXTRA_CANDIDATES = (
     "library", "opac", "print", "my-sls", "mail", "webmail", "git", "wiki", "cloud",
     "course", "lms", "exam", "jw", "jwc", "yjs", "yjsy", "job", "foundation",

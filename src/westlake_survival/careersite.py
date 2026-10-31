@@ -514,7 +514,10 @@ def detail(ref: str) -> CareerDetail:
                 return parsed
         if auth_error is not None:
             raise auth_error
-        raise ParseError(f"详情 {ref} 在四类详情页中都解析失败——id 可能不存在")
+        raise ParseError(
+            f"详情 {ref} 在四类详情页中都解析失败——id 可能已过期下线或不存在。"
+            "可用 'westlake career deep --kind news' 查看最新条目或使用 'zpxz' 查看招聘指南。"
+        )
     if match:
         if match.group(1):
             kind = match.group(1)

@@ -178,8 +178,10 @@ class TransitData:
         return results[:limit]
 
     @classmethod
-    def load(cls, refresh: bool = False) -> "TransitData":
+    def load(cls, refresh: bool = False, offline: bool = False) -> "TransitData":
         """从官网加载并解析；网络或解析失败时回退到内置 :data:`FALLBACK_TABLES`。"""
+        if offline:
+            return cls(tables=FALLBACK_TABLES)
         if refresh:
             try:
                 cache_path(CACHE_NAME).unlink(missing_ok=True)

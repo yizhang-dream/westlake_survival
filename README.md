@@ -25,18 +25,20 @@
 
 核心设计原则：
 
-1. **默认只读**。写操作严格限制为五项（Canvas 作业提交、讨论回帖、发送私信，以及场地预约与取消预约），且均须凭使用者明确指令执行；不提供选课、抢课功能，不绕过权限系统。
-2. **凭据仅存本地**。优先采用系统钥匙串并保持单一持久化存储，不打印、不提交、不跨设备同步；账号信息由使用者在本地网页「设置」页面录入，终端默认不提示输入明文密码。详见[凭据与隐私](#凭据与隐私)。
-3. **无官方背书**。本项目为开源社区工具，项目结构参考 [sustech_survival](https://github.com/dumixthestpd/sustech_survival)，与西湖大学官方无关。
+1. **默认只读与受控写操作**。写操作严格收敛在安全白名单内（Canvas 作业提交/回帖/私信/课程收藏置顶、场地预约/取消、图书馆在借续借、本地日常备忘），统一经由 `consequence.py` 事务门拦截并生成 Action Card（事务预览卡片与单次确认 Ticket）；不提供选课、抢课功能，不绕过权限系统。
+2. **离线优先与优雅降级**。课表、校历周次、班车时刻表等低频数据全面走 SWR（Stale-While-Revalidate）架构，支持 `--offline` 离线快照直出，断网或无校内 VPN 依然秒级查阅。
+3. **凭据仅存本地**。优先采用系统钥匙串并保持单一持久化存储，不打印、不提交、不跨设备同步；账号信息由使用者在本地网页「设置」页面录入，终端默认不提示输入明文密码。详见[凭据与隐私](#凭据与隐私)。
+4. **无官方背书**。本项目为开源社区工具，项目结构参考 [sustech_survival](https://github.com/dumixthestpd/sustech_survival)，与西湖大学官方无关。
 
 ## 功能总览
 
 | 领域 | 覆盖 | 需账号 |
 | --- | --- | --- |
+| 时空行动流 | 跨系统全天日程融合（课表/作业DDL/预约/班车）、时间冲突检测预警、个人生活备忘（支持离线快照秒出） | 部分免账号 |
 | 学业（SIS） | 课表、成绩、考试安排、选课车、评教、第二课堂成绩单、学籍异动、学业导师、课表 ICS | 统一密码 |
 | 教学（AMS） | 另一套课表、教学周次、学籍与选课入口 | 统一密码 |
-| Canvas | 课程、截止与测验、待办、模块、课程文件下载、讨论区、公告、收件箱、作业详情（题目附件＋评分细则）；交作业、回帖、回私信 | 令牌或统一密码 |
-| 场地预约 | 17 类场地（自习室/研讨室/琴房/活动用房…）：分类、逐日可约、逐格空闲、我的预约、预约与取消 | 统一密码 |
+| Canvas | 课程、截止与测验、待办、模块、课程文件下载、讨论区、公告、收件箱、作业详情（题目附件＋评分细则）；交作业、回帖、回私信、课程收藏置顶 | 令牌或统一密码 |
+| 场地预约 | 17 类场地（自习室/研讨室/琴房/活动用房…）：空闲时段复合推荐求解（`booking recommend`）、分类、逐日可约、逐格空闲、我的预约、预约与取消 | 统一密码 |
 | 体育场馆 | 场景、场地、逐日可约、我的预约（只读） | 统一密码 |
 | 任务与门户 | 办事大厅目录、我的待办/进行中/抄送、门户个人卡片（未读邮件/在借/待办计数） | 统一密码 |
 | 学术科研 | 订阅数据库注册表、CARSI 校外 SSO（`scholar ensure` 建立会话）、DOI→PDF 全文下载、科研进展、导师名录、HPC 集群、报销与经费制度 | 部分免账号 |
@@ -46,9 +48,9 @@
 | 讲义下载 | OneDrive/SharePoint 分享讲义免账号直读与下载（需 `[browser]` 可选增强） | 免账号 |
 | 信息检索 | 官网全站搜索、新闻、讲座活动、学院动态、学生百科 WikiLake | 免账号 |
 | 系统盘点 | 90+ 项服务注册表、子站在线普查、站点栏目、服务可达性、VPN 状态与隧道路由 | 免账号 |
-| 图书馆 | 系统于 2026-10-28 迁移至「阿法迪云 eLibrary」，借阅查询暂不可用（[迁移说明](docs/library_migration_2026-10-28.md)） | — |
+| 图书馆 | 新版阿法迪云平台书目检索（`lib search`）、在借图书与应还查询（`lib loans`）、在借图书在线续借（`lib renew`，受控写操作） | 部分免账号 |
 
-体育场馆与图书馆座位属于独立系统，与预约中心的对照见 [docs/module_audit_2026-10-27.md](docs/module_audit_2026-10-27.md)；办事门户 `affairs portal` 接口近期因服务端变更暂不可用。个人档案类（学籍/住宿/荣誉/志愿/资助/社团）相关只读命令可通过 `westlake find` 检索。
+体育场馆与图书馆座位属于独立系统，与预约中心的对照见 [docs/module_audit.md](docs/module_audit.md)；办事门户 `affairs portal` 接口近期因服务端变更暂不可用。个人档案类（学籍/住宿/荣誉/志愿/资助/社团）相关只读命令可通过 `westlake find` 检索。
 
 ## 快速开始
 
@@ -105,9 +107,10 @@ python tools/pii_scan.py       # 提交前扫描敏感个人信息
 | [docs/doctor.md](docs/doctor.md) | 环境自检逐项说明 |
 | [docs/skill_reference.md](docs/skill_reference.md) | 命令示例、Python API 方法表、MCP 注册 |
 | [docs/credential_single_store.md](docs/credential_single_store.md) | 「凭据只存一份」的设计与实现 |
-| [docs/ams.md](docs/ams.md) / [docs/sportvenue_notes.md](docs/sportvenue_notes.md) / [docs/wikilake.md](docs/wikilake.md) / [docs/clubwiki.md](docs/clubwiki.md) | 各系统深挖注记 |
-| [docs/library_migration_2026-10-28.md](docs/library_migration_2026-10-28.md) | 图书馆系统迁移说明 |
-| [docs/module_audit_2026-10-27.md](docs/module_audit_2026-10-27.md) | 各模块「做不了」归因审计 |
+| [docs/ams.md](docs/ams.md) / [docs/sports.md](docs/sports.md) / [docs/wikilake.md](docs/wikilake.md) / [docs/clubwiki.md](docs/clubwiki.md) | 各系统深挖注记 |
+| [docs/library.md](docs/library.md) | 图书馆新旧系统与阿法迪云接入 |
+| [docs/module_audit.md](docs/module_audit.md) | 各系统边界与归因审计 |
+| [docs/performance.md](docs/performance.md) / [docs/portability.md](docs/portability.md) | 性能架构与跨平台规范 |
 
 ## 许可与致谢
 

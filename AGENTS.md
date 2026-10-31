@@ -2,7 +2,7 @@
 
 任何在本仓库工作的 AI 编码代理（ZCode、DSH、Codex、Claude Code、Cursor……）请先读本文，再动手。
 
-> **English TL;DR** — Read README first; the operating manual for driving this toolkit is [skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md), full command/API/MCP reference in [docs/skill_reference.md](docs/skill_reference.md). Hard rules: access only data the user is entitled to (no permission bypassing, no course-grabbing); never print or commit credentials or real student IDs; keep SKILL.md / README / skill_reference in sync when capabilities change; verify end-to-end (`tools/module_smoke.py`, `tools/webui_smoke.py`), no unit tests; run `tools/pii_scan.py` before committing. Write ops are exactly five, all behind the consequence gate. Docs site: https://yizhang-dream.github.io/westlake_survival/
+> **English TL;DR** — Read README first; the operating manual for driving this toolkit is [skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md), full command/API/MCP reference in [docs/skill_reference.md](docs/skill_reference.md). Hard rules: access only data the user is entitled to (no permission bypassing, no course-grabbing); never print or commit credentials or real student IDs; keep SKILL.md / README / skill_reference in sync when capabilities change; verify end-to-end (`tools/module_smoke.py`, `tools/webui_smoke.py`), no unit tests; run `tools/pii_scan.py` before committing. Write operations are strictly guarded behind Action Card consequence gates. Docs site: https://yizhang-dream.github.io/westlake_survival/
 
 ## 工具入口
 

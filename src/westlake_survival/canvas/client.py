@@ -309,6 +309,22 @@ class CanvasClient:
         self._raise_for_status(response)
         return response
 
+    def _delete(
+        self,
+        path: str,
+        *,
+        timeout: float = DEFAULT_TIMEOUT,
+    ) -> requests.Response:
+        """带认证的 DELETE；错误映射同 :meth:`_get`。"""
+        self._require_token()
+        response = self._session.delete(
+            self._url(path),
+            headers=self._auth_headers(),
+            timeout=timeout,
+        )
+        self._raise_for_status(response)
+        return response
+
     def _paginate(self, path: str, params: Mapping[str, Any] | None = None) -> Iterator[dict]:
         """按 Link 响应头 ``rel=next`` 翻页，逐条 yield 字典。
 
@@ -1122,6 +1138,18 @@ class CanvasClient:
                 )
             )
         )
+
+    def star_course(self, course_id: int | str) -> dict:
+        """把课程加入个人收藏（置顶于课程面板）。"""
+        cid = self._coerce_int(course_id)
+        resp = self._post(f"/users/self/favorites/courses/{cid}")
+        return self._json(resp)
+
+    def unstar_course(self, course_id: int | str) -> dict:
+        """从个人收藏中移除课程。"""
+        cid = self._coerce_int(course_id)
+        resp = self._delete(f"/users/self/favorites/courses/{cid}")
+        return self._json(resp)
 
     @staticmethod
     def _coerce_int(value: Any) -> int | None:

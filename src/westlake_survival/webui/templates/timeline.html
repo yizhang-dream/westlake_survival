@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}今日时空行动流 · 西湖生存手册{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+  <div>
+    <h1 style="margin:0 0 .3rem; font-size:1.8rem; font-weight:800; color:var(--heading);">今日时空行动流</h1>
+    <div style="color:var(--muted); font-size:.95rem;">
+      {{ report.date_str }} · <strong>{{ report.term_info }}</strong>
+      {% if report.meta.is_stale %}
+      <span class="chip warn" style="margin-left:.6rem;">离线快照</span>
+      {% else %}
+      <span class="chip ok" style="margin-left:.6rem;">实时编排</span>
+      {% endif %}
+    </div>
+  </div>
+  <div style="display:flex; gap:.5rem;">
+    <button onclick="location.reload()" style="font:inherit; font-size:.85rem; padding:.4rem .9rem; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer;">刷新行动流</button>
+  </div>
+</div>
+
+{% if report.conflicts %}
+<div class="note" style="border-left-color:#e53e3e; background:rgba(229,62,62,0.08); color:#c53030; margin-bottom:1.5rem;">
+  <strong style="display:block; margin-bottom:.3rem;">⚠️ 检测到日程冲突预警：</strong>
+  <ul style="margin:0; padding-left:1.2rem;">
+    {% for c in report.conflicts %}
+    <li>{{ c }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div style="display:grid; grid-template-columns:minmax(0, 1fr) 320px; gap:1.8rem; align-items:start;">
+  <!-- 时间轴主日程 -->
+  <div>
+    <h2 style="font-size:1.15rem; font-weight:700; margin:0 0 1rem; color:var(--heading); display:flex; align-items:center; gap:.5rem;">
+      <span style="width:4px; height:16px; border-radius:2px; background:var(--accent); display:inline-block;"></span>
+      全天编排事件 ({{ report.items|length }})
+    </h2>
+
+    {% if not report.items %}
+    <div class="empty" style="padding:2rem; text-align:center; background:var(--surface-2); border-radius:12px;">今日无日程安排或待办事项。</div>
+    {% else %}
+    <div style="display:flex; flex-direction:column; gap:.8rem;">
+      {% for it in report.items %}
+      <div style="display:flex; gap:1rem; align-items:flex-start; padding:.9rem 1.1rem; background:var(--surface-2); border-radius:12px; border:1px solid {{ 'rgba(229,62,62,0.4)' if it.is_conflict else 'var(--line)' }}; position:relative;">
+        <div style="min-width:90px; font-variant-numeric:tabular-nums; font-weight:700; font-size:1rem; color:var(--accent);">
+          {{ it.time_str }}
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.2rem;">
+            {% if it.category == 'course' %}
+            <span class="chip ok">课程</span>
+            {% elif it.category == 'canvas' %}
+            <span class="chip warn">作业DDL</span>
+            {% elif it.category == 'booking' %}
+            <span class="chip plain">场地</span>
+            {% elif it.category == 'transit' %}
+            <span class="chip" style="background:#e9d8fd; color:#6b46c1;">班车建议</span>
+            {% elif it.category == 'holiday' %}
+            <span class="chip star">校历假期</span>
+            {% else %}
+            <span class="chip plain">记事</span>
+            {% endif %}
+
+            <strong style="font-size:1rem; color:var(--heading);">{{ it.title }}</strong>
+            {% if it.is_conflict %}
+            <span class="chip" style="background:#fed7d7; color:#9b2c2c; font-weight:700;">时间冲突</span>
+            {% endif %}
+          </div>
+          {% if it.location %}
+          <div style="font-size:.85rem; color:var(--muted); margin-bottom:.15rem;">📍 地点/平台: {{ it.location }}</div>
+          {% endif %}
+          {% if it.details %}
+          <div style="font-size:.82rem; color:var(--muted); opacity:.85;">ℹ️ {{ it.details }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 右侧：个人备忘与快速记事 -->
+  <div style="background:var(--card); border:1px solid var(--line); border-radius:14px; padding:1.2rem; box-shadow:0 4px 16px var(--shadow);">
+    <h3 style="margin:0 0 .9rem; font-size:1.05rem; font-weight:700; color:var(--heading); display:flex; justify-content:space-between; align-items:center;">
+      <span>个人生活备忘</span>
+      <span class="chip plain" style="font-size:.75rem;">{{ report.memos|length }} 项</span>
+    </h3>
+
+    <!-- 添加备忘表单 -->
+    <form id="memoForm" style="display:flex; flex-direction:column; gap:.6rem; margin-bottom:1.2rem;">
+      <input type="text" id="memoText" placeholder="添加待办/备忘事项..." required style="padding:.5rem .7rem; border-radius:8px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); font-size:.9rem;">
+      <div style="display:flex; gap:.5rem;">
+        <input type="text" id="memoTime" placeholder="时段 (如 14:00)" style="flex:1; padding:.4rem .6rem; border-radius:8px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); font-size:.85rem;">
+        <button type="submit" style="padding:.4rem .9rem; border-radius:8px; background:var(--accent); color:#fff; border:none; font-weight:600; cursor:pointer;">添加</button>
+      </div>
+    </form>
+
+    <!-- 备忘列表 -->
+    <div id="memosList" style="display:flex; flex-direction:column; gap:.5rem;">
+      {% if not report.memos %}
+      <div style="font-size:.85rem; color:var(--muted); text-align:center; padding:1rem 0;">暂无生活备忘。</div>
+      {% else %}
+      {% for m in report.memos %}
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:.5rem .7rem; background:var(--surface-2); border-radius:8px; font-size:.88rem; gap:.5rem;">
+        <label style="display:flex; align-items:center; gap:.5rem; cursor:pointer; flex:1; min-width:0; {{ 'text-decoration:line-through; opacity:0.6;' if m.done else '' }}">
+          <input type="checkbox" onchange="toggleMemo('{{ m.id }}', this.checked)" {{ 'checked' if m.done else '' }}>
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ m.text }}{% if m.time_str %} <small style="color:var(--muted);">({{ m.time_str }})</small>{% endif %}</span>
+        </label>
+        <button type="button" onclick="deleteMemo('{{ m.id }}')" title="删除此备忘" style="background:transparent; border:none; color:var(--muted); cursor:pointer; padding:2px 6px; border-radius:4px; font-size:.9rem; line-height:1;" onmouseover="this.style.color='#e53e3e'" onmouseout="this.style.color='var(--muted)'">✕</button>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('memoForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const text = document.getElementById('memoText').value.trim();
+  const time = document.getElementById('memoTime').value.trim();
+  if (!text) return;
+  const res = await fetch('/api/timeline/memo/add', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text: text, time: time})
+  });
+  if (res.ok) {
+    location.reload();
+  } else {
+    alert('添加失败，请重试');
+  }
+});
+
+async function toggleMemo(id, done) {
+  const res = await fetch('/api/timeline/memo/done', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({memo_id: id, done: done})
+  });
+  if (res.ok) {
+    location.reload();
+  }
+}
+
+async function deleteMemo(id) {
+  if (!confirm('确认删除此条备忘？')) return;
+  const res = await fetch('/api/timeline/memo/delete', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({memo_id: id})
+  });
+  if (res.ok) {
+    location.reload();
+  }
+}
+</script>
+{% endblock %}

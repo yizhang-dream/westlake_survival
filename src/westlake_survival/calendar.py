@@ -256,7 +256,7 @@ class AcademicCalendar:
 
     # -- 加载 -------------------------------------------------------------- #
     @classmethod
-    def load(cls, refresh: bool = False, lang: str = "zh") -> "AcademicCalendar":
+    def load(cls, refresh: bool = False, lang: str = "zh", offline: bool = False) -> "AcademicCalendar":
         """抓取并解析校历主页；网络或解析失败时回退到内置常量。
 
         与 ``transit.schedule.TransitData.load`` 同口径：网络不可达与页面
@@ -265,13 +265,11 @@ class AcademicCalendar:
 
         Args:
             refresh: 为 ``True`` 时先清掉本地 ETag 缓存再请求，强制拿最新内容。
-            lang: ``"zh"``（默认）中文主站；``"en"`` 英文主站——学期名与事件
-                标题直接是英文（如 ``"Fall 2026"`` / ``"Classes Begin"``）。
-                注意 :data:`FALLBACK_DATA` 只有中文一份，en 模式离线/解析失败
-                时同样回退到这份中文数据（不做英文兜底）；``makeup_days`` /
-                ``holiday_events`` / ``exams`` 等辅助方法按中文关键词匹配，
-                在英文数据上不会命中（返回空）。
+            lang: ``"zh"``（默认）中文主站；``"en"`` 英文主站。
+            offline: 为 ``True`` 时直接使用内置离线快照，不发起网络请求。
         """
+        if offline:
+            return cls.from_fallback()
         if refresh:
             _drop_etag_cache(lang)
         try:

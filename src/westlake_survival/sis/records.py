@@ -1157,6 +1157,18 @@ def _print_table(rows, headers) -> None:
     _impl(rows, headers)
 
 
+def _mask_sensitive_value(key: str, val: str) -> str:
+    """对输出中的学号、身份证号等敏感信息实施严格脱敏（防 PII 泄露）。"""
+    if not val or not isinstance(val, str):
+        return val
+    s = val.strip()
+    if re.fullmatch(r"202\d{8}", s) or ("学号" in key and re.search(r"202\d{8}", s)):
+        return re.sub(r"202\d{8}", lambda m: m.group(0)[:4] + "****" + m.group(0)[-3:], s)
+    if "身份证" in key or re.search(r"\b\d{17}[\dXx]\b", s):
+        return re.sub(r"\b(\d{4})\d{10}([\dXx]{4})\b", r"\1**********\2", s)
+    return val
+
+
 @click.group(name="records", help="学生事务记录：住宿 / 请假 / 荣誉 / 志愿 / 实践 / 违纪 / 第二课堂 / 学业导师 / 异动 / 注册 / 预约等。")
 def cli_group() -> None:
     """``westlake records`` 命令组（注册由 ``cli.main`` 后续完成）。"""
@@ -1169,7 +1181,7 @@ def records_dorm() -> None:
     record = dormitory()
     if record.info:
         for key, value in record.info.items():
-            click.echo(f"{key}: {value}")
+            click.echo(f"{key}: {_mask_sensitive_value(key, value)}")
     if not record.applications:
         click.echo("暂无记录")
         return
@@ -1279,7 +1291,7 @@ def records_registration() -> None:
     """显示学期注册缴费状态。"""
     record = registration()
     for key, value in record.fields.items():
-        click.echo(f"{key}: {value}")
+        click.echo(f"{key}: {_mask_sensitive_value(key, value)}")
     if record.notice:
         click.echo(f"提示：{record.notice}")
 

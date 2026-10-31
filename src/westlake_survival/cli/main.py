@@ -66,6 +66,8 @@ LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "scholar": ("westlake_survival.scholar", "cli_group", "学术资源：数据库注册表 / CARSI 联盟登录 / DOI 全文。"),
     "career": ("westlake_survival.careersite", "cli_group", "就业服务网：三区块免登录 + 登录态深列表/详情。"),
     "instrument": ("westlake_survival.instruments", "cli_group", "大型仪器共享平台：检索科研仪器、实验室地点、联系人与预约入口。"),
+    "timeline": ("westlake_survival.cli.timeline_cmd", "cli_group", "今日时空行动流：跨系统日程编排、冲突检测与个人备忘。"),
+    "skill": ("westlake_survival.cli.skill_cmd", "cli_group", "SkillVM 工具链：AOT 静态编译、JIT 运行时探测与跨机一键挂载。"),
 }
 
 
@@ -481,20 +483,22 @@ def calendar_cmd() -> None:
     """校历查询命令。"""
 
 
-def _load_calendar():
-    """加载校历（网络失败时由模块内部回退到内置数据）。"""
+def _load_calendar(offline: bool = False):
+    """加载校历（网络失败时由模块内部回退到内置数据，支持显式 offline）。"""
     from westlake_survival.calendar import AcademicCalendar
 
-    return AcademicCalendar.load()
+    return AcademicCalendar.load(offline=offline)
 
 
 @calendar_cmd.command(name="today")
+@click.option("--offline", is_flag=True, help="离线模式：使用本地离线快照数据。")
 @_handle_errors
-def calendar_today() -> None:
+def calendar_today(offline: bool) -> None:
     """显示今天的日期、星期、学期、周次与当日事件。"""
-    calendar = _load_calendar()
+    calendar = _load_calendar(offline=offline)
     today = date.today()
-    click.echo(f"日期：{today.isoformat()}（{_WEEKDAY_CN[today.weekday()]}）")
+    tag = " [离线]" if offline else ""
+    click.echo(f"日期：{today.isoformat()}（{_WEEKDAY_CN[today.weekday()]}）{tag}")
 
     semester = calendar.current(today)
     if semester is None:
@@ -516,10 +520,11 @@ def calendar_today() -> None:
 
 
 @calendar_cmd.command(name="events")
+@click.option("--offline", is_flag=True, help="离线模式：使用本地离线快照数据。")
 @_handle_errors
-def calendar_events() -> None:
+def calendar_events(offline: bool) -> None:
     """列出当前学期（或最近学期）的全部校历事件。"""
-    calendar = _load_calendar()
+    calendar = _load_calendar(offline=offline)
     semester = calendar.current(date.today())
     if semester is None and calendar.semesters:
         semester = calendar.semesters[-1]
@@ -527,7 +532,8 @@ def calendar_events() -> None:
         click.secho("未找到任何学期数据。", fg="red", err=True)
         raise SystemExit(1)
 
-    click.echo(f"学期：{semester.name}（{semester.start.isoformat()} ~ {semester.end.isoformat()}）")
+    tag = " [离线]" if offline else ""
+    click.echo(f"学期：{semester.name}（{semester.start.isoformat()} ~ {semester.end.isoformat()}）{tag}")
     rows = [
         (e.start.isoformat(), (e.end.isoformat() if e.end else "—"), e.title)
         for e in semester.events
@@ -537,10 +543,11 @@ def calendar_events() -> None:
 
 @calendar_cmd.command(name="week")
 @click.argument("n", type=int)
+@click.option("--offline", is_flag=True, help="离线模式：使用本地离线快照数据。")
 @_handle_errors
-def calendar_week(n: int) -> None:
+def calendar_week(n: int, offline: bool) -> None:
     """显示本学期第 N 周的起止日期（周一 ~ 周日）。"""
-    calendar = _load_calendar()
+    calendar = _load_calendar(offline=offline)
     semester = calendar.current(date.today())
     if semester is None and calendar.semesters:
         semester = calendar.semesters[-1]
@@ -577,12 +584,13 @@ def _campus(value: str | None):
 @transit_cmd.command(name="next")
 @click.option("--campus", type=click.Choice(["云谷", "玉皇山"]), default=None, help="只看某校区（始发）。")
 @click.option("--limit", type=int, default=3, show_default=True, help="返回条数。")
+@click.option("--offline", is_flag=True, help="离线模式：使用本地快照数据。")
 @_handle_errors
-def transit_next(campus: str | None, limit: int) -> None:
+def transit_next(campus: str | None, limit: int, offline: bool) -> None:
     """显示下一批发车时刻（默认取前 3 班）。"""
     from westlake_survival.transit import transit
 
-    data = transit()
+    data = transit(offline=offline)
     departures = data.next_departures(campus=_campus(campus), limit=limit)
     if not departures:
         click.echo("暂无后续班车信息。")
@@ -597,12 +605,13 @@ def transit_next(campus: str | None, limit: int) -> None:
 @transit_cmd.command(name="table")
 @click.option("--campus", type=click.Choice(["云谷", "玉皇山"]), default=None, help="校区。")
 @click.option("--day", type=click.Choice(["工作日", "双休日与节假日"]), default=None, help="日别。")
+@click.option("--offline", is_flag=True, help="离线模式：使用本地快照数据。")
 @_handle_errors
-def transit_table(campus: str | None, day: str | None) -> None:
+def transit_table(campus: str | None, day: str | None, offline: bool) -> None:
     """显示指定校区/日别的班车时刻表。"""
     from westlake_survival.transit import DayKind, transit
 
-    data = transit()
+    data = transit(offline=offline)
     campus_enum = _campus(campus)
     day_enum = DayKind(day) if day else None
     tables = [
@@ -726,27 +735,30 @@ def canvas_courses() -> None:
 @click.option("--limit", type=int, default=10, show_default=True, help="返回条数。")
 @_handle_canvas_errors
 def canvas_deadlines(limit: int) -> None:
-    """列出即将到期的作业截止时间。"""
+    """列出即将到期的作业截止时间与精确倒计时。"""
     from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import format_remaining
 
     items = canvas().upcoming_deadlines(limit=limit)
     rows = [
         (
             a.due_at.strftime("%Y-%m-%d %H:%M") if a.due_at else "—",
+            format_remaining(a.due_at),
             a.name or "—",
             a.html_url or "",
         )
         for a in items
     ]
-    _print_table(rows, ("截止时间", "作业", "链接"))
+    _print_table(rows, ("截止时间", "倒计时", "作业", "链接"))
 
 
 @canvas_cmd.command(name="todo")
 @click.option("--limit", type=int, default=20, show_default=True, help="返回条数。")
 @_handle_canvas_errors
 def canvas_todo(limit: int) -> None:
-    """列出 Canvas 待办（users/self/todo）。"""
+    """列出 Canvas 待办（users/self/todo）与精确倒计时。"""
     from westlake_survival.canvas import canvas
+    from westlake_survival.canvas.models import format_remaining
 
     items = canvas().todo(limit=limit)
     if not items:
@@ -755,13 +767,14 @@ def canvas_todo(limit: int) -> None:
     rows = [
         (
             item.due_at.strftime("%Y-%m-%d %H:%M") if item.due_at else "—",
+            format_remaining(item.due_at),
             item.course or "—",
             item.title or "—",
             item.url or "",
         )
         for item in items
     ]
-    _print_table(rows, ("截止", "课程", "事项", "链接"))
+    _print_table(rows, ("截止时间", "倒计时", "课程", "事项", "链接"))
 
 
 @canvas_cmd.command(name="modules")
@@ -952,13 +965,20 @@ def canvas_conversation(conversation_id: int, download_dir: str | None) -> None:
 @canvas_cmd.command(name="send")
 @click.option("--conversation", "conversation_id", type=int, required=True, help="会话 id（canvas inbox 可见）。")
 @click.option("--text", required=True, help="回复正文（纯文本）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
 @click.option("--yes", "skip_confirm", is_flag=True, help="跳过确认直接发送。")
 @_handle_canvas_errors
-def canvas_send(conversation_id: int, text: str, skip_confirm: bool) -> None:
-    """在已有会话里回一条消息（写操作；统一确认门，--yes 才执行）。"""
+def canvas_send(conversation_id: int, text: str, ticket: str | None, skip_confirm: bool) -> None:
+    """在已有会话里回一条消息（写操作；统一确认门，--ticket 或 --yes 才执行）。"""
     from westlake_survival.consequence import gate_cli
 
-    gate_cli("canvas.send", confirmed=skip_confirm)
+    gate_cli(
+        "canvas.send",
+        confirmed=skip_confirm,
+        ticket=ticket,
+        target=f"会话 ID: {conversation_id}",
+        payload={"conversation_id": conversation_id, "text": text},
+    )
     from westlake_survival.canvas import canvas
 
     client = canvas()
@@ -1038,13 +1058,20 @@ def canvas_entries(course: str, topic: str, limit: int, full: bool) -> None:
 @click.option("--course", required=True, help="课程 id 或名称关键词。")
 @click.option("--topic", required=True, help="讨论主题 id 或标题关键词。")
 @click.option("--text", required=True, help="回帖正文（纯文本）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
 @click.option("--yes", "skip_confirm", is_flag=True, help="跳过确认直接发布。")
 @_handle_canvas_errors
-def canvas_reply(course: str, topic: str, text: str, skip_confirm: bool) -> None:
-    """在讨论主题下回帖（写操作；统一确认门，--yes 才执行）。"""
+def canvas_reply(course: str, topic: str, text: str, ticket: str | None, skip_confirm: bool) -> None:
+    """在讨论主题下回帖（写操作；统一确认门，--ticket 或 --yes 才执行）。"""
     from westlake_survival.consequence import gate_cli
 
-    gate_cli("canvas.reply", confirmed=skip_confirm)
+    gate_cli(
+        "canvas.reply",
+        confirmed=skip_confirm,
+        ticket=ticket,
+        target=f"课程 {course} / 主题 {topic}",
+        payload={"course": course, "topic": topic, "text": text},
+    )
     from westlake_survival.canvas import canvas
 
     client = canvas()
@@ -1222,6 +1249,7 @@ def _print_submission(submission) -> None:
 @click.option("--text", default=None, help="文本提交（online_text_entry）内容。")
 @click.option("--url", default=None, help="链接提交（online_url）地址。")
 @click.option("--dry-run", "dry_run", is_flag=True, help="只预检并显示提交计划，不实际上传/提交。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
 @click.option("--yes", "skip_confirm", is_flag=True, help="跳过交互确认直接提交。")
 @_handle_canvas_errors
 def canvas_submit(
@@ -1231,12 +1259,26 @@ def canvas_submit(
     text: str | None,
     url: str | None,
     dry_run: bool,
+    ticket: str | None,
     skip_confirm: bool,
 ) -> None:
-    """提交作业（写操作；统一确认门：--dry-run 预检 / --yes 执行）。"""
+    """提交作业（写操作；统一确认门：--dry-run 预检 / --ticket 或 --yes 执行）。"""
     from westlake_survival.consequence import gate_cli
 
-    gate_cli("canvas.submit", confirmed=skip_confirm, dry_run=dry_run)
+    target_desc = f"课程 {course} / 作业 {assignment}"
+    payload_desc = {
+        "files": list(files),
+        "text": text[:60] + "..." if text and len(text) > 60 else text,
+        "url": url,
+    }
+    gate_cli(
+        "canvas.submit",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=target_desc,
+        payload=payload_desc,
+    )
     from westlake_survival.canvas import canvas
 
     client = canvas()
@@ -1271,6 +1313,52 @@ def canvas_submit(
     )
     click.secho("已提交。", fg="green")
     _print_submission(submission)
+
+
+@canvas_cmd.command(name="star")
+@click.argument("course")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
+@_handle_canvas_errors
+def canvas_star(course: str, ticket: str | None, skip_confirm: bool) -> None:
+    """将课程加入个人收藏/星标（写操作：置顶面板，--ticket 或 --yes 执行）。"""
+    from westlake_survival.consequence import gate_cli
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    found = client.find_course(course)
+    gate_cli(
+        "canvas.star",
+        confirmed=skip_confirm,
+        ticket=ticket,
+        target=f"{found.course_code or ''} {found.name} (id={found.id})",
+        payload={"course_id": found.id, "name": found.name},
+    )
+    client.star_course(found.id)
+    click.secho(f"已将课程 [{found.name}] 加入收藏置顶。", fg="green")
+
+
+@canvas_cmd.command(name="unstar")
+@click.argument("course")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
+@_handle_canvas_errors
+def canvas_unstar(course: str, ticket: str | None, skip_confirm: bool) -> None:
+    """取消课程个人收藏/星标（写操作：--ticket 或 --yes 执行）。"""
+    from westlake_survival.consequence import gate_cli
+    from westlake_survival.canvas import canvas
+
+    client = canvas()
+    found = client.find_course(course)
+    gate_cli(
+        "canvas.unstar",
+        confirmed=skip_confirm,
+        ticket=ticket,
+        target=f"{found.course_code or ''} {found.name} (id={found.id})",
+        payload={"course_id": found.id, "name": found.name},
+    )
+    client.unstar_course(found.id)
+    click.secho(f"已将课程 [{found.name}] 移出收藏列表。", fg="green")
 
 
 @canvas_cmd.command(name="submission")
@@ -1612,6 +1700,32 @@ def lib_loans(refresh: bool) -> None:
     _print_table(rows, ("题名", "应还日期", "续借", "馆藏地"))
 
 
+@lib_cmd.command(name="renew")
+@click.argument("barcode")
+@click.option("--dry-run", is_flag=True, help="只预检不提交续借（输出事务预览卡片）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行续借（受控写操作确认门）。")
+@_handle_errors
+def lib_renew(barcode: str, dry_run: bool, ticket: str | None, skip_confirm: bool) -> None:
+    """在借图书在线续借（写操作：--dry-run 预检 / --ticket 或 --yes 执行）。"""
+    from westlake_survival.consequence import gate_cli
+    from westlake_survival.lib.mylib import renew_loan
+
+    gate_cli(
+        "lib.renew",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=f"图书条形码: {barcode}",
+        payload={"barcode": barcode},
+    )
+    result = renew_loan(barcode, dry_run=dry_run)
+    if dry_run:
+        click.secho(f"续借校验通过（未提交）：{result.get('title')}（条码 {barcode}）可续借", fg="green")
+    else:
+        click.secho(f"续借成功：{result.get('title')}（条码 {barcode}）", fg="green")
+
+
 # --------------------------------------------------------------------------- #
 # pms —— 自助文印
 # --------------------------------------------------------------------------- #
@@ -1933,7 +2047,7 @@ def _probe_venue_entries() -> tuple[str, str]:
     note = "在线：" + "、".join(alive)
     if dead:
         note += "；不可达：" + "、".join(dead)
-    return "在线（独立系统，需登录）", note + "；游泳卡点见 docs/sportvenue_notes.md"
+    return "在线（独立系统，需登录）", note + "；游泳卡点见 docs/sports.md"
 
 
 #: probe 各项：(中文名, 探测函数)。探测函数返回 ``(状态, 说明)``。

@@ -78,6 +78,123 @@ def save_cached(name: str, data: Any) -> Path:
     return save_json(name, {"ts": time.time(), "data": data})
 
 
+def snapshots_dir() -> Path:
+    """返回持久化业务快照目录（离线优先，不随简单 cache clear 轻易抹除）。"""
+    path = config_root() / "snapshots"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def save_snapshot(namespace: str, key: str, data: Any) -> Path:
+    """保存业务数据快照（含时间戳与版本）。"""
+    clean_ns = namespace.strip("/\\")
+    clean_k = key.strip("/\\")
+    path = snapshots_dir() / clean_ns / f"{clean_k}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "ts": time.time(),
+        "namespace": namespace,
+        "key": key,
+        "data": data,
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def load_snapshot(namespace: str, key: str) -> tuple[Any, float | None]:
+    """读取业务数据快照。返回 (data, saved_timestamp)；不存在或损坏返回 (None, None)。"""
+    clean_ns = namespace.strip("/\\")
+    clean_k = key.strip("/\\")
+    path = snapshots_dir() / clean_ns / f"{clean_k}.json"
+    if not path.exists():
+        return None, None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict) and "data" in payload:
+            return payload.get("data"), float(payload.get("ts") or 0)
+    except Exception:
+        pass
+    return None, None
+
+
+def fetch_with_swr(
+    namespace: str,
+    key: str,
+    fetcher: Any,
+    *,
+    offline: bool = False,
+    max_stale_age: float = 86400 * 30,
+) -> tuple[Any, dict[str, Any]]:
+    """Stale-While-Revalidate（离线优先与快照优雅降级）。
+
+    Args:
+        namespace: 业务命名空间（如 "schedule", "calendar", "transit"）
+        key: 快照键（如 "current", "terms", "bus_table"）
+        fetcher: 实时拉取函数
+        offline: 显式离线模式（直接使用本地快照，不发网络请求）
+        max_stale_age: 允许的最大过期时长（秒，默认 30 天）
+
+    Returns:
+        (data, meta_info_dict)
+    """
+    from datetime import datetime
+
+    if offline:
+        data, ts = load_snapshot(namespace, key)
+        if data is not None:
+            ts_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M") if ts else "未知"
+            return data, {
+                "source": "offline_snapshot",
+                "is_stale": True,
+                "snapshot_time": ts,
+                "snapshot_time_str": ts_str,
+            }
+        from westlake_survival.exceptions import WestlakeError
+
+        raise WestlakeError(
+            f"离线模式下未找到 [{namespace}/{key}] 的本地快照，请先在联网环境下运行一次以建立快照。"
+        )
+
+    # 尝试联网获取
+    try:
+        live_data = fetcher()
+        # 序列化友好检查或转换
+        serializable = live_data
+        if hasattr(live_data, "to_dict"):
+            serializable = live_data.to_dict()
+        elif isinstance(live_data, list) and live_data and hasattr(live_data[0], "to_dict"):
+            serializable = [item.to_dict() for item in live_data]
+        elif isinstance(live_data, (dict, list, str, int, float, bool)) or live_data is None:
+            serializable = live_data
+
+        try:
+            save_snapshot(namespace, key, serializable)
+        except Exception:
+            pass
+
+        now_ts = time.time()
+        now_str = datetime.fromtimestamp(now_ts).strftime("%Y-%m-%d %H:%M")
+        return live_data, {
+            "source": "live",
+            "is_stale": False,
+            "snapshot_time": now_ts,
+            "snapshot_time_str": now_str,
+        }
+    except Exception as exc:
+        # 网络异常，尝试回退到本地快照
+        data, ts = load_snapshot(namespace, key)
+        if data is not None and (ts is None or (time.time() - ts) <= max_stale_age):
+            ts_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M") if ts else "未知"
+            return data, {
+                "source": "stale_snapshot",
+                "is_stale": True,
+                "snapshot_time": ts,
+                "snapshot_time_str": ts_str,
+                "fallback_reason": str(exc),
+            }
+        raise
+
+
 def clear(prefix: str | None = None) -> int:
     """删除缓存文件（可选只删某个模块/前缀），返回删除的文件数。
 

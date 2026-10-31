@@ -52,6 +52,7 @@ AUTH_GROUPS = {
 #: WebUI 页面清单：路径、标题、说明、是否需要凭据。
 WEB_PAGES = (
     ("/", "仪表盘", "日期 / 周次 / 天气 / 最近事件 / 下班车 / 作业", False),
+    ("/timeline", "时空流", "今日时空行动流：跨系统日程编排、冲突预警与个人生活备忘（支持离线）", False),
     ("/shuttle", "班车", "三校区班车时刻与下一班", False),
     ("/calendar", "校历", "学期周次与校历事件；班车/课表 ICS 订阅入口", False),
     ("/events", "讲座活动", "讲座 / 会议 / 演出预告", False),
@@ -268,6 +269,16 @@ SYNONYMS: dict[str, tuple[str, ...]] = {
     "超市": ("campus", "services", "罗森"),
     "洗衣": ("campus", "services", "干洗"),
     "理发": ("campus", "services"),
+    "行动流": ("timeline", "时空流", "日程", "今日", "冲突", "备忘"),
+    "timeline": ("timeline", "行动流", "今日", "日程", "冲突", "备忘"),
+    "日程": ("timeline", "sis", "grid", "ams", "schedule", "冲突"),
+    "冲突": ("timeline", "sis", "grid", "日程", "时间冲突"),
+    "备忘": ("timeline", "memo", "待办", "记事"),
+    "推荐": ("booking", "recommend", "场地", "空闲"),
+    "续借": ("lib", "renew", "借书", "在借"),
+    "收藏": ("canvas", "star", "unstar", "置顶"),
+    "星标": ("canvas", "star", "unstar"),
+    "离线": ("offline", "timeline", "calendar", "transit"),
 }
 
 
