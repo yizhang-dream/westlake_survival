@@ -25,7 +25,7 @@
 
 核心设计原则：
 
-1. **默认只读与受控写操作**。写操作严格收敛在安全白名单内（Canvas 作业提交/回帖/私信/课程收藏置顶、场地预约/取消、图书馆在借续借、本地日常备忘），统一经由 `consequence.py` 事务门拦截并生成 Action Card（事务预览卡片与单次确认 Ticket）；不提供选课、抢课功能，不绕过权限系统。
+1. **默认只读与受控写操作**。写操作严格收敛在安全白名单内（Canvas 作业提交/回帖/私信/课程收藏/个人云盘上传/待办归档、联创文印云上传/作业取消、场地预约/取消、图书馆在借续借、日历导出、本地日常备忘），统一经由 `consequence.py` 事务门拦截并生成 Action Card（事务预览卡片与单次确认 Ticket）；不提供选课、抢课功能，不绕过权限系统。
 2. **离线优先与优雅降级**。课表、校历周次、班车时刻表等低频数据全面走 SWR（Stale-While-Revalidate）架构，支持 `--offline` 离线快照直出，断网或无校内 VPN 依然秒级查阅。
 3. **凭据仅存本地**。优先采用系统钥匙串并保持单一持久化存储，不打印、不提交、不跨设备同步；账号信息由使用者在本地网页「设置」页面录入，终端默认不提示输入明文密码。详见[凭据与隐私](#凭据与隐私)。
 4. **无官方背书**。本项目为开源社区工具，项目结构参考 [sustech_survival](https://github.com/dumixthestpd/sustech_survival)，与西湖大学官方无关。
@@ -49,6 +49,7 @@
 | 信息检索 | 官网全站搜索、新闻、讲座活动、学院动态、学生百科 WikiLake | 免账号 |
 | 系统盘点 | 90+ 项服务注册表、子站在线普查、站点栏目、服务可达性、VPN 状态与隧道路由 | 免账号 |
 | 图书馆 | 新版阿法迪云平台书目检索（`lib search`）、在借图书与应还查询（`lib loans`）、在借图书在线续借（`lib renew`，受控写操作） | 部分免账号 |
+| 自助文印 | 联创云打印网点列表、待打印作业、文件上传云打印（`pms print`）与作业取消（`pms cancel`，受控写操作） | 部分免账号 |
 
 体育场馆与图书馆座位属于独立系统，与预约中心的对照见 [docs/module_audit.md](docs/module_audit.md)；办事门户 `affairs portal` 接口近期因服务端变更暂不可用。个人档案类（学籍/住宿/荣誉/志愿/资助/社团）相关只读命令可通过 `westlake find` 检索。
 
@@ -109,6 +110,7 @@ python tools/pii_scan.py       # 提交前扫描敏感个人信息
 | [docs/credential_single_store.md](docs/credential_single_store.md) | 「凭据只存一份」的设计与实现 |
 | [docs/ams.md](docs/ams.md) / [docs/sports.md](docs/sports.md) / [docs/wikilake.md](docs/wikilake.md) / [docs/clubwiki.md](docs/clubwiki.md) | 各系统深挖注记 |
 | [docs/library.md](docs/library.md) | 图书馆新旧系统与阿法迪云接入 |
+| [docs/write_actions_expansion.md](docs/write_actions_expansion.md) | 受控写操作扩充与 Action Card 安全门全栈闭环报告 |
 | [docs/module_audit.md](docs/module_audit.md) | 各系统边界与归因审计 |
 | [docs/performance.md](docs/performance.md) / [docs/portability.md](docs/portability.md) | 性能架构与跨平台规范 |
 

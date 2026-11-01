@@ -16,7 +16,12 @@
 - ``canvas.star``: 收藏/星标 Canvas 课程（置顶仪表盘）
 - ``canvas.unstar``: 取消收藏/星标 Canvas 课程
 - ``lib.renew``: 图书馆在借图书在线续借
-- ``timeline.memo``: 本地个人日程生活备忘写入/完成
+- ``timeline.memo``: 本地个人日程生活备忘写入/完成/删除
+- ``pms.print``: 联创自助文印文件上传与建任务
+- ``pms.cancel``: 联创自助文印待打印作业取消与删除
+- ``canvas.upload``: 上传文件至 Canvas 个人文件云盘
+- ``canvas.dismiss_todo``: 忽略/归档 Canvas 个人待办事项
+- ``calendar.export``: 导出融合时空行动流/日历到本地 .ics 文件
 """
 from __future__ import annotations
 
@@ -117,8 +122,43 @@ CONSEQUENCES: dict[str, Consequence] = {
     ),
     "timeline.memo": Consequence(
         "timeline.memo",
-        "在本地日程行动流中新增或修改个人备忘与待办标记",
+        "在本地日程行动流中新增、完成或删除个人备忘与待办标记",
         "写入本地日常行动流数据，支持删除或标记完成",
+        Severity.LOW,
+        irreversible=False,
+    ),
+    "pms.print": Consequence(
+        "pms.print",
+        "将本地文件上传到联创自助文印云队列并创建待打印作业",
+        "文件进入学校打印服务器队列（保留一定时长），在终端网点刷卡取件时才发生扣费结算",
+        Severity.LOW,
+        irreversible=False,
+    ),
+    "pms.cancel": Consequence(
+        "pms.cancel",
+        "从联创自助文印云队列中取消并删除指定未打印作业",
+        "该打印作业将被移除，如需打印需重新上传文件",
+        Severity.LOW,
+        irreversible=True,
+    ),
+    "canvas.upload": Consequence(
+        "canvas.upload",
+        "将本地文件上传到 Canvas 个人云盘/文件存储区",
+        "占用个人 Canvas 存储配额，上传后可在 Canvas 文件管理中删除",
+        Severity.LOW,
+        irreversible=False,
+    ),
+    "canvas.dismiss_todo": Consequence(
+        "canvas.dismiss_todo",
+        "忽略/归档一条 Canvas 个人待办事项",
+        "该事项将从个人待办列表中移除，课程作业/考试本身的截止时间不受影响",
+        Severity.LOW,
+        irreversible=False,
+    ),
+    "calendar.export": Consequence(
+        "calendar.export",
+        "将融合多源（课表、DDL、预约）日程导出并写入本地 .ics 日历文件",
+        "将覆盖目标文件路径（若已存在），支持直接导入 Apple Calendar / Outlook / 手机日历",
         Severity.LOW,
         irreversible=False,
     ),

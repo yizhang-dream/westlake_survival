@@ -1010,6 +1010,97 @@ class CanvasClient:
         except AuthError:
             return self._upload_file("/users/self/files", file_path)
 
+    def upload_user_file(
+        self,
+        file_path: Path | str,
+        *,
+        dry_run: bool = False,
+    ) -> File | dict[str, Any]:
+        """把本地文件上传到 Canvas 个人云盘/文件存储区（/users/self/files）。
+
+        支持 dry_run 预检模式（校验文件存在、计算大小与类型）。
+        """
+        path = Path(file_path).resolve()
+        if not path.is_file():
+            raise NotFound(f"待上传文件不存在：{path}")
+        size = path.stat().st_size
+        if size == 0:
+            raise ActionError(f"待上传文件为空：{path.name}")
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "msg": f"文件 [{path.name}] 校验通过，符合上传条件",
+                "file": path.name,
+                "size_kb": round(size / 1024, 1),
+                "content_type": content_type,
+            }
+        uploaded = self._upload_file("/users/self/files", path)
+        return uploaded
+
+    def dismiss_todo(
+        self,
+        keyword_or_id: str | int,
+        *,
+        permanent: bool = False,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """忽略/归档一条 Canvas 待办事项。
+
+        支持按作业 id、标题关键词或 ignore_url 匹配待办条目。
+        """
+        todos = self.todo(limit=50)
+        matched_item: TodoItem | None = None
+        key_str = str(keyword_or_id).strip().lower()
+
+        for it in todos:
+            if it.assignment_id and str(it.assignment_id) == key_str:
+                matched_item = it
+                break
+
+        if not matched_item:
+            for it in todos:
+                if key_str in (it.title or "").lower() or key_str in (it.course or "").lower():
+                    matched_item = it
+                    break
+
+        if not matched_item:
+            raise NotFound(f"未在当前 Canvas 待办中找到匹配「{keyword_or_id}」的事项。")
+
+        target_ignore = matched_item.ignore_url
+        if not target_ignore and matched_item.raw:
+            target_ignore = matched_item.raw.get("ignore_permanently" if permanent else "ignore")
+
+        if not target_ignore:
+            raise ActionError(f"待办条目 [{matched_item.title}] 服务端未返回 ignore 操作接口。")
+
+        summary = {
+            "title": matched_item.title,
+            "course": matched_item.course,
+            "due_at": matched_item.due_at.isoformat() if matched_item.due_at else None,
+            "ignore_url": target_ignore,
+        }
+        if dry_run:
+            return {
+                "dry_run": True,
+                "msg": f"待办条目 [{matched_item.title}] 匹配成功，允许忽略/归档",
+                **summary,
+            }
+
+        if target_ignore.startswith("http"):
+            resp = self._session.delete(
+                target_ignore, headers=self._auth_headers(), timeout=DEFAULT_TIMEOUT
+            )
+        else:
+            resp = self._delete(target_ignore)
+        self._raise_for_status(resp)
+        return {
+            "success": True,
+            "msg": f"已成功忽略/归档 Canvas 待办：[{matched_item.title}]",
+            **summary,
+        }
+
     def _upload_file(self, context_path: str, file_path: Path) -> File:
         """Canvas 三步文件上传：预检（notify）→ 上传本体 → 服务端落位。
 

@@ -565,6 +565,49 @@ def calendar_week(n: int, offline: bool) -> None:
     )
 
 
+@calendar_cmd.command(name="export")
+@click.option(
+    "--output",
+    "-o",
+    default="schedule.ics",
+    help="输出 .ics 文件路径（默认 schedule.ics）。",
+)
+@click.option("--dry-run", is_flag=True, help="只预检不写入（输出事务预览卡片）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
+@_handle_errors
+def calendar_export(
+    output: str, dry_run: bool, ticket: str | None, skip_confirm: bool
+) -> None:
+    """将课表导出为标准 iCalendar (.ics) 文件（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
+    from pathlib import Path
+    from westlake_survival.consequence import gate_cli
+    from westlake_survival.ical import save_ics
+    from westlake_survival.sis import get_schedule
+
+    dest = Path(output).resolve()
+    target_desc = f"{dest.name} ({dest})"
+    payload = {"output_path": str(dest)}
+    gate_cli(
+        "calendar.export",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=target_desc,
+        payload=payload,
+    )
+    sessions = get_schedule()
+    if not sessions:
+        click.secho("课表为空，无法导出日历。", fg="yellow")
+        return
+    if dry_run:
+        click.secho(f"预检通过：准备将 {len(sessions)} 门课程节次导出至 {dest.name}。", fg="cyan")
+        click.echo(f"  • 输出路径: {dest}")
+        return
+    target = save_ics(sessions, dest)
+    click.secho(f"日历导出成功！已写入：{target}（共 {len(sessions)} 门课程节次）。", fg="green")
+
+
 # --------------------------------------------------------------------------- #
 # transit —— 校园巴士
 # --------------------------------------------------------------------------- #
@@ -1361,6 +1404,74 @@ def canvas_unstar(course: str, ticket: str | None, skip_confirm: bool) -> None:
     click.secho(f"已将课程 [{found.name}] 移出收藏列表。", fg="green")
 
 
+@canvas_cmd.command(name="upload")
+@click.argument("file_path", type=click.Path(exists=True, dir_okay=False))
+@click.option("--dry-run", is_flag=True, help="只预检不上传（输出事务预览卡片）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
+@_handle_canvas_errors
+def canvas_upload(
+    file_path: str, dry_run: bool, ticket: str | None, skip_confirm: bool
+) -> None:
+    """上传文件至 Canvas 个人文件云盘（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
+    from pathlib import Path
+    from westlake_survival.consequence import gate_cli
+    from westlake_survival.canvas import canvas
+
+    path = Path(file_path).resolve()
+    target_desc = f"{path.name} ({round(path.stat().st_size / 1024, 1)} KB)"
+    payload = {"file": str(path), "size_bytes": path.stat().st_size}
+    gate_cli(
+        "canvas.upload",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=target_desc,
+        payload=payload,
+    )
+    client = canvas()
+    result = client.upload_user_file(path, dry_run=dry_run)
+    if dry_run:
+        click.secho(f"预检通过：{result['msg']}", fg="cyan")
+        click.echo(f"  • 文件: {result['file']} ({result['size_kb']} KB, {result['content_type']})")
+    else:
+        click.secho(f"上传成功！文件已保存至 Canvas 个人文件区（ID: {result.id}）。", fg="green")
+
+
+@canvas_cmd.command(name="dismiss-todo")
+@click.argument("keyword_or_id")
+@click.option("--dry-run", is_flag=True, help="只预检不忽略（输出事务预览卡片）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
+@_handle_canvas_errors
+def canvas_dismiss_todo(
+    keyword_or_id: str, dry_run: bool, ticket: str | None, skip_confirm: bool
+) -> None:
+    """忽略/归档 Canvas 个人待办事项（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
+    from westlake_survival.consequence import gate_cli
+    from westlake_survival.canvas import canvas
+
+    target_desc = f"待办匹配: {keyword_or_id}"
+    payload = {"query": keyword_or_id}
+    gate_cli(
+        "canvas.dismiss_todo",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=target_desc,
+        payload=payload,
+    )
+    client = canvas()
+    result = client.dismiss_todo(keyword_or_id, dry_run=dry_run)
+    if dry_run:
+        click.secho(f"预检通过：{result['msg']}", fg="cyan")
+        click.echo(f"  • 待办事项目标: [{result['course']}] {result['title']}")
+        if result.get("due_at"):
+            click.echo(f"  • 截止时间: {result['due_at']}")
+    else:
+        click.secho(result["msg"], fg="green")
+
+
 @canvas_cmd.command(name="submission")
 @click.option("--course", required=True, help="课程 id 或名称关键词。")
 @click.option("--assignment", required=True, help="作业 id 或名称关键词。")
@@ -1492,18 +1603,45 @@ def sis_grid() -> None:
 
 
 @sis_cmd.command(name="ical")
-@click.option("--out", type=click.Path(dir_okay=False, path_type=Path), default="schedule.ics", show_default=True, help="写入 .ics 文件。")
+@click.option(
+    "--out",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default="schedule.ics",
+    show_default=True,
+    help="写入 .ics 文件。",
+)
+@click.option("--dry-run", is_flag=True, help="只预检不写入（输出事务预览卡片）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
 @_handle_errors
-def sis_ical(out: Path) -> None:
-    """把课表导出为 .ics 日历文件。"""
+def sis_ical(
+    out: Path, dry_run: bool, ticket: str | None, skip_confirm: bool
+) -> None:
+    """把课表导出为 .ics 日历文件（写操作：--dry-run 预检 / --ticket 或 --yes 执行）。"""
+    from westlake_survival.consequence import gate_cli
     from westlake_survival.ical import save_ics
     from westlake_survival.sis import get_schedule
 
+    dest = out.resolve()
+    target_desc = f"{dest.name} ({dest})"
+    payload = {"output_path": str(dest)}
+    gate_cli(
+        "calendar.export",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=target_desc,
+        payload=payload,
+    )
     sessions = get_schedule()
     if not sessions:
-        click.secho("课表为空，未生成日历文件。", fg="red", err=True)
-        raise SystemExit(1)
-    target = save_ics(sessions, out)
+        click.secho("课表为空，未生成日历文件。", fg="yellow")
+        return
+    if dry_run:
+        click.secho(f"预检通过：准备将 {len(sessions)} 门课程节次导出至 {dest.name}。", fg="cyan")
+        click.echo(f"  • 输出路径: {dest}")
+        return
+    target = save_ics(sessions, dest)
     click.secho(f"已写入：{target}", fg="green")
 
 
@@ -1777,6 +1915,98 @@ def pms_jobs() -> None:
         for job in jobs
     ]
     _print_table(rows, ("文件", "份数", "页数", "状态"))
+
+
+@pms_cmd.command(name="print")
+@click.argument("file_path", type=click.Path(exists=True, dir_okay=False))
+@click.option("--copies", default=1, type=int, help="打印份数（默认 1）。")
+@click.option("--duplex/--single", default=False, help="是否双面打印（默认单面）。")
+@click.option("--color/--mono", default=False, help="是否彩色打印（默认黑白）。")
+@click.option("--from-page", default=0, type=int, help="起始页码（默认全部）。")
+@click.option("--to-page", default=0, type=int, help="截止页码（默认全部）。")
+@click.option("--dry-run", is_flag=True, help="只预检不提交云队列（输出事务预览卡片）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
+@_handle_errors
+def pms_print(
+    file_path: str,
+    copies: int,
+    duplex: bool,
+    color: bool,
+    from_page: int,
+    to_page: int,
+    dry_run: bool,
+    ticket: str | None,
+    skip_confirm: bool,
+) -> None:
+    """上传本地文件并创建自助文印作业（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
+    from pathlib import Path
+    from westlake_survival.consequence import gate_cli
+    from westlake_survival.pms import pms
+
+    path = Path(file_path).resolve()
+    duplex_code = 2 if duplex else 1
+    color_code = 2 if color else 1
+    target_desc = f"{path.name} ({copies} 份，{'双面' if duplex else '单面'}，{'彩色' if color else '黑白'})"
+    payload = {
+        "file": str(path),
+        "copies": copies,
+        "duplex": "双面(长边)" if duplex else "单面",
+        "color": "彩色" if color else "黑白",
+        "page_range": f"{from_page}-{to_page}" if from_page or to_page else "全部",
+    }
+    gate_cli(
+        "pms.print",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=target_desc,
+        payload=payload,
+    )
+    client = pms()
+    result = client.submit_print_job_safe(
+        file_path=path,
+        copies=copies,
+        duplex=duplex_code,
+        color=color_code,
+        page_from=from_page,
+        page_to=to_page,
+        dry_run=dry_run,
+    )
+    if dry_run:
+        click.secho(f"预检通过：{result['msg']}", fg="cyan")
+        click.echo(f"  • 文件: {result['file']} ({result['size_kb']} KB)")
+        click.echo(f"  • 设置: {result['copies']} 份 / {result['duplex']} / {result['color']}")
+    else:
+        click.secho(result["msg"], fg="green")
+
+
+@pms_cmd.command(name="cancel")
+@click.argument("job_id", type=int)
+@click.option("--dry-run", is_flag=True, help="只预检不删除（输出事务预览卡片）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
+@_handle_errors
+def pms_cancel(job_id: int, dry_run: bool, ticket: str | None, skip_confirm: bool) -> None:
+    """取消并从云打印队列中删除指定作业（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
+    from westlake_survival.consequence import gate_cli
+    from westlake_survival.pms import pms
+
+    gate_cli(
+        "pms.cancel",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=f"文印作业 ID: {job_id}",
+        payload={"job_id": job_id},
+    )
+    client = pms()
+    result = client.cancel_print_job_safe(job_id=job_id, dry_run=dry_run)
+    if dry_run:
+        click.secho(f"预检通过：{result['msg']}", fg="cyan")
+        click.echo(f"  • 作业: {result['name']} (ID: {result['job_id']})")
+    else:
+        click.secho(result["msg"], fg="green")
 
 
 # --------------------------------------------------------------------------- #

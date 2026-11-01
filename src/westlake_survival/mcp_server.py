@@ -1302,6 +1302,135 @@ def _tool_canvas_submit(args: dict) -> Any:
     )
 
 
+def _tool_canvas_upload(args: dict) -> Any:
+    """上传本地文件到 Canvas 个人云盘/文件区（写操作）；confirm=true 才真正上传，否则只预检。"""
+    from westlake_survival.canvas import canvas, resolve_token
+
+    if resolve_token() is None:
+        raise ToolHint("未配置 Canvas API token，无法上传文件。")
+    file_path = _opt_str(args, "file_path")
+    if not file_path:
+        raise ValueError("参数 file_path 必填（本地文件绝对路径）。")
+    confirm = bool(args.get("confirm"))
+
+    client = canvas()
+    result = client.upload_user_file(file_path, dry_run=not confirm)
+    if not confirm:
+        result["hint"] = "文件预检通过。确认无误后带 confirm=true 重新调用才会真正上传至 Canvas 个人文件区。"
+        return result
+    return {
+        "success": True,
+        "id": result.id,
+        "display_name": result.display_name,
+        "size": result.size,
+        "url": result.url,
+    }
+
+
+def _tool_canvas_dismiss_todo(args: dict) -> Any:
+    """忽略/归档一条 Canvas 个人待办事项（写操作）；confirm=true 才真正忽略，否则只预检。"""
+    from westlake_survival.canvas import canvas, resolve_token
+
+    if resolve_token() is None:
+        raise ToolHint("未配置 Canvas API token，无法操作待办。")
+    keyword_or_id = _opt_str(args, "keyword_or_id")
+    if not keyword_or_id:
+        raise ValueError("参数 keyword_or_id 必填（待办作业 ID 或标题/课程关键词）。")
+    confirm = bool(args.get("confirm"))
+
+    client = canvas()
+    result = client.dismiss_todo(keyword_or_id, dry_run=not confirm)
+    if not confirm:
+        result["hint"] = "待办匹配成功。确认无误后带 confirm=true 重新调用才会真正从待办列表中忽略/归档。"
+    return result
+
+
+def _tool_pms_stations(args: dict) -> Any:
+    """自助文印网点查询（无需登录）。"""
+    from westlake_survival.pms import pms
+
+    stations = pms().list_stations()
+    campus_filter = _opt_str(args, "campus")
+    result = []
+    for s in stations:
+        if campus_filter and s.campus_display != campus_filter:
+            continue
+        result.append(
+            {
+                "name": s.name,
+                "campus": s.campus_display,
+                "position": s.position_display,
+                "status": s.status_text or ("空闲" if s.is_idle else "—"),
+                "is_idle": s.is_idle,
+                "papers": s.papers,
+                "supports_color": s.supports_color,
+            }
+        )
+    return result
+
+
+def _tool_pms_jobs(args: dict) -> Any:
+    """自助文印待打印作业列表（需登录）。"""
+    from westlake_survival.pms import pms
+
+    jobs = pms().list_print_jobs()
+    return [
+        {
+            "id": j.id,
+            "name": j.name,
+            "copies": j.copies,
+            "pages": j.pages,
+            "status": j.status_text,
+            "attribute": j.attribute,
+        }
+        for j in jobs
+    ]
+
+
+def _tool_pms_print(args: dict) -> Any:
+    """上传本地文件并创建自助文印作业（写操作）；confirm=true 才真正提交，否则只预检。"""
+    from westlake_survival.pms import pms
+
+    file_path = _opt_str(args, "file_path")
+    if not file_path:
+        raise ValueError("参数 file_path 必填（待打印文件的本地绝对路径）。")
+    copies = int(args.get("copies") or 1)
+    duplex = int(args.get("duplex") or 1)
+    color = int(args.get("color") or 1)
+    confirm = bool(args.get("confirm"))
+
+    client = pms()
+    result = client.submit_print_job_safe(
+        file_path=file_path,
+        copies=copies,
+        duplex=duplex,
+        color=color,
+        dry_run=not confirm,
+    )
+    if not confirm:
+        result["hint"] = "文印预检通过。确认无误后带 confirm=true 重新调用才会真正上传并进入打印队列。"
+    return result
+
+
+def _tool_pms_cancel(args: dict) -> Any:
+    """从自助文印云队列中删除指定作业（写操作）；confirm=true 才真正删除，否则只预检。"""
+    from westlake_survival.pms import pms
+
+    job_id = args.get("job_id")
+    if job_id is None:
+        raise ValueError("参数 job_id 必填（打印作业 ID）。")
+    confirm = bool(args.get("confirm"))
+
+    client = pms()
+    result = client.cancel_print_job_safe(
+        job_id=int(job_id),
+        dry_run=not confirm,
+    )
+    if not confirm:
+        result["hint"] = f"作业 ID {job_id} 存在于待打印队列。带 confirm=true 重新调用将正式从队列删除。"
+    return result
+
+
 def _tool_timeline(args: dict) -> Any:
     """今日时空行动流（跨系统日程融合、冲突检测与个人备忘）。"""
     from datetime import date
@@ -1317,6 +1446,38 @@ def _tool_timeline(args: dict) -> Any:
     offline = bool(args.get("offline"))
     report = build_timeline(target_date=target_d, offline=offline)
     return report.to_dict()
+
+
+def _tool_calendar_export(args: dict) -> Any:
+    """把课表/融合日程导出为 .ics 文件（写操作）；confirm=true 才真正写入，否则只预检。"""
+    from pathlib import Path
+    from westlake_survival.ical import save_ics
+    from westlake_survival.sis import get_schedule
+
+    output_path = _opt_str(args, "output_path") or "schedule.ics"
+    dest = Path(output_path).resolve()
+    confirm = bool(args.get("confirm"))
+
+    sessions = get_schedule()
+    if not sessions:
+        raise ValueError("当前课表为空，无法导出日历文件。")
+
+    if not confirm:
+        return {
+            "dry_run": True,
+            "msg": f"课表包含 {len(sessions)} 门课程节次，符合导出条件。",
+            "sessions_count": len(sessions),
+            "output_path": str(dest),
+            "hint": "预检通过。确认无误后带 confirm=true 重新调用将正式写入 .ics 文件。",
+        }
+
+    target = save_ics(sessions, dest)
+    return {
+        "success": True,
+        "msg": f"已成功导出课表至 {target}（共 {len(sessions)} 个事件）。",
+        "output_path": str(target),
+        "sessions_count": len(sessions),
+    }
 
 
 def _tool_booking_recommend(args: dict) -> Any:
@@ -1480,9 +1641,11 @@ def _schema(properties: dict[str, Any] | None = None,
     return schema
 
 
-def _int_param(description: str, *, minimum: int, maximum: int | None = None) -> dict[str, Any]:
+def _int_param(description: str, *, minimum: int | None = None, maximum: int | None = None) -> dict[str, Any]:
     """构造一个整数参数 schema。"""
-    param: dict[str, Any] = {"type": "integer", "minimum": minimum, "description": description}
+    param: dict[str, Any] = {"type": "integer", "description": description}
+    if minimum is not None:
+        param["minimum"] = minimum
     if maximum is not None:
         param["maximum"] = maximum
     return param
@@ -2044,6 +2207,114 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             ["course", "assignment"],
         ),
         "handler": _tool_canvas_submit,
+    },
+    {
+        "name": "canvas_upload",
+        "description": (
+            "上传本地文件至 Canvas 个人文件云盘（写操作，需 Canvas API token）："
+            "缺省只预检文件大小与类型；confirm=true 才真正上传。"
+        ),
+        "inputSchema": _schema(
+            {
+                "file_path": _str_param("本地文件的绝对路径。"),
+                "confirm": {
+                    "type": "boolean",
+                    "description": "true 时真正执行上传；缺省只预检。",
+                },
+            },
+            ["file_path"],
+        ),
+        "handler": _tool_canvas_upload,
+    },
+    {
+        "name": "canvas_dismiss_todo",
+        "description": (
+            "忽略/归档一条 Canvas 个人待办事项（写操作，需 Canvas API token）："
+            "支持按作业 ID 或标题/课程关键词匹配；confirm=true 才真正执行忽略。"
+        ),
+        "inputSchema": _schema(
+            {
+                "keyword_or_id": _str_param("待办作业 ID 或标题/课程关键词。"),
+                "confirm": {
+                    "type": "boolean",
+                    "description": "true 时真正忽略/归档该待办；缺省只预检。",
+                },
+            },
+            ["keyword_or_id"],
+        ),
+        "handler": _tool_canvas_dismiss_todo,
+    },
+    {
+        "name": "pms_stations",
+        "description": "图书馆自助文印（联创云打印）可用网点列表，含校区、位置、状态与支持纸型（无需登录）。",
+        "inputSchema": _schema(
+            {
+                "campus": _str_param("校区过滤（如「云栖」或「云谷」）。"),
+            }
+        ),
+        "handler": _tool_pms_stations,
+    },
+    {
+        "name": "pms_jobs",
+        "description": "图书馆自助文印个人未打印作业列表（需登录）。",
+        "inputSchema": _schema({}),
+        "handler": _tool_pms_jobs,
+    },
+    {
+        "name": "pms_print",
+        "description": (
+            "上传本地文档并创建自助文印作业（写操作，联创云打印）："
+            "支持设置份数、单双面、色彩。缺省只预检；confirm=true 才真正上传并入队。"
+        ),
+        "inputSchema": _schema(
+            {
+                "file_path": _str_param("待打印文件的本地绝对路径（如 .pdf, .docx 等）。"),
+                "copies": _int_param("打印份数，默认 1。", minimum=1, maximum=100),
+                "duplex": _int_param("单双面：1 单面，2 双面长边，3 双面短边；默认 1。", minimum=1, maximum=3),
+                "color": _int_param("颜色：1 黑白，2 彩色；默认 1。", minimum=1, maximum=2),
+                "confirm": {
+                    "type": "boolean",
+                    "description": "true 时真正上传提交云队列；缺省只预检。",
+                },
+            },
+            ["file_path"],
+        ),
+        "handler": _tool_pms_print,
+    },
+    {
+        "name": "pms_cancel",
+        "description": (
+            "从自助文印云打印队列中删除指定作业（写操作）："
+            "缺省只校验作业存在性并输出预检结果；confirm=true 才真正删除。"
+        ),
+        "inputSchema": _schema(
+            {
+                "job_id": _int_param("打印作业 ID（dwJobId）。"),
+                "confirm": {
+                    "type": "boolean",
+                    "description": "true 时真正删除作业；缺省只预检。",
+                },
+            },
+            ["job_id"],
+        ),
+        "handler": _tool_pms_cancel,
+    },
+    {
+        "name": "calendar_export",
+        "description": (
+            "将 SIS 课表导出为标准 iCalendar (.ics) 日历文件（写操作）："
+            "缺省只校验课表节次并返回预检计划；confirm=true 才真正写入指定路径。"
+        ),
+        "inputSchema": _schema(
+            {
+                "output_path": _str_param("输出文件路径（默认 schedule.ics）。"),
+                "confirm": {
+                    "type": "boolean",
+                    "description": "true 时真正写入 .ics 文件；缺省只预检。",
+                },
+            }
+        ),
+        "handler": _tool_calendar_export,
     },
     {
         "name": "career_latest",

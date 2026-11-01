@@ -109,6 +109,16 @@ def _as_dict(data: Any) -> Mapping[str, Any]:
     return data if isinstance(data, Mapping) else {}
 
 
+def _as_int(value: Any) -> int | None:
+    """把值规整为 int；失败返回 None。"""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def html_to_text(fragment: str) -> str:
     """把 Canvas 富文本（作业描述、公告正文）压成可读纯文本。
 
@@ -246,6 +256,9 @@ class TodoItem:
     title: str | None = None
     due_at: datetime | None = None
     url: str | None = None
+    ignore_url: str | None = None
+    assignment_id: int | None = None
+    raw: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_json(cls, data: Any) -> "TodoItem":
@@ -257,6 +270,9 @@ class TodoItem:
             title=assignment.get("name") or obj.get("title"),
             due_at=parse_datetime(assignment.get("due_at") or obj.get("due_at")),
             url=obj.get("html_url") or assignment.get("html_url"),
+            ignore_url=obj.get("ignore") or obj.get("ignore_permanently"),
+            assignment_id=_as_int(assignment.get("id")),
+            raw=dict(obj),
         )
 
 

@@ -166,9 +166,25 @@ def memo_list_cmd() -> None:
 
 @cli_group.command(name="delete")
 @click.argument("memo_id")
+@click.option("--dry-run", is_flag=True, help="只预检不删除（输出事务预览卡片）。")
+@click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
+@click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
 @_handle_errors
-def memo_delete_cmd(memo_id: str) -> None:
-    """删除指定个人备忘。"""
+def memo_delete_cmd(
+    memo_id: str, dry_run: bool, ticket: str | None, skip_confirm: bool
+) -> None:
+    """删除指定个人备忘（写操作：--dry-run 预检 / --ticket 或 --yes 执行）。"""
+    gate_cli(
+        "timeline.memo",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=f"备忘ID: {memo_id}",
+        payload={"memo_id": memo_id, "action": "delete"},
+    )
+    if dry_run:
+        click.secho(f"预检通过：准备删除备忘 [{memo_id}]。", fg="cyan")
+        return
     ok = delete_memo(memo_id)
     if ok:
         click.secho(f"已删除备忘 [{memo_id}]。", fg="green")

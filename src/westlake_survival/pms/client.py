@@ -771,6 +771,90 @@ class PMSClient:
             "GET", f"{_PRINTJOB}/TakeOut", params=params or None, context="PrintJob/TakeOut"
         )
 
+    def submit_print_job_safe(
+        self,
+        file_path: str | Path,
+        *,
+        copies: int = 1,
+        paper_id: int = PAPER_AUTO,
+        duplex: int = 1,
+        color: int = 1,
+        page_from: int = 0,
+        page_to: int = 0,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """安全上传并创建云打印任务（支持 dry_run 预检模式）。"""
+        path = Path(file_path).resolve()
+        if not path.is_file():
+            raise NotFound(f"待打印文件不存在：{path}")
+        size_bytes = path.stat().st_size
+        if size_bytes == 0:
+            raise WestlakeError(f"待打印文件为空：{path.name}")
+        if size_bytes > 100 * 1024 * 1024:
+            raise WestlakeError(f"文件大小超出限制（最大 100MB，当前 {size_bytes / (1024*1024):.1f}MB）")
+
+        duplex_desc = "单面" if duplex == 1 else ("双面(长边)" if duplex == 2 else "双面(短边)")
+        color_desc = "黑白" if color == 1 else "彩色"
+        summary = {
+            "file": path.name,
+            "size_kb": round(size_bytes / 1024, 1),
+            "copies": copies,
+            "duplex": duplex_desc,
+            "color": color_desc,
+            "page_range": f"{page_from}-{page_to}" if page_from or page_to else "全部页面",
+        }
+        if dry_run:
+            return {
+                "dry_run": True,
+                "msg": "文印上传校验通过（未提交至队列）",
+                **summary,
+            }
+        self.upload(
+            file_path=path,
+            copies=copies,
+            paper_id=paper_id,
+            duplex=duplex,
+            color=color,
+            page_from=page_from,
+            page_to=page_to,
+        )
+        return {
+            "success": True,
+            "msg": f"文件 [{path.name}] 已成功上传至联创云打印队列，可在任意自助文印机刷卡取件！",
+            **summary,
+        }
+
+    def cancel_print_job_safe(
+        self,
+        job_id: int,
+        *,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """安全取消/删除未打印作业（支持 dry_run 预检模式）。"""
+        jobs = self.list_print_jobs()
+        matched = [j for j in jobs if j.id == job_id]
+        if not matched:
+            raise NotFound(f"未在当前未打印队列中找到作业 ID [{job_id}]")
+        target_job = matched[0]
+        summary = {
+            "job_id": job_id,
+            "name": target_job.name,
+            "copies": target_job.copies,
+            "pages": target_job.pages,
+        }
+        if dry_run:
+            return {
+                "dry_run": True,
+                "msg": f"作业 [{target_job.name}] (ID: {job_id}) 存在于待打印队列，允许删除",
+                **summary,
+            }
+        self.delete_print_job(job_id=job_id)
+        return {
+            "success": True,
+            "msg": f"已成功从云打印队列中删除作业 [{target_job.name}] (ID: {job_id})",
+            **summary,
+        }
+
     # -- 扫描任务 -------------------------------------------------------
     def list_scan_jobs(self) -> list[ScanJob]:
         """``GET /api/client/Scan/Get``：我的扫描文档列表。"""

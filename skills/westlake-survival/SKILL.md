@@ -45,10 +45,15 @@ description: 面向西湖大学师生的校园服务聚合工具（学业/教学
 | `canvas.send` | `canvas send --conversation … --text …` | MEDIUM | 发送后收件人立即可见，无法撤回 |
 | `canvas.star` | `canvas star <课程>` | LOW | 仅改变个人视图展示，可随时取消收藏 |
 | `canvas.unstar` | `canvas unstar <课程>` | LOW | 仅改变个人视图，不影响选课与作业提交 |
+| `canvas.upload` | `canvas upload <文件路径>` | LOW | 上传本地文件至个人 Canvas 文件云盘，占用个人配额 |
+| `canvas.dismiss_todo` | `canvas dismiss-todo <作业ID或关键词>` | LOW | 忽略/归档个人待办事项，不影响作业本身截止时间 |
+| `pms.print` | `pms print <文件路径> [--copies N] [--duplex] [--color]` | LOW | 上传至联创云打印队列，终端刷卡取件时才扣费结算 |
+| `pms.cancel` | `pms cancel <作业ID>` | LOW | 从云打印队列中取消并删除指定未打印作业 |
 | `booking.book` | `booking book <房间> --date … --start … --end …` | MEDIUM | 占用他人可用名额，爽约可能影响信用 |
 | `booking.cancel` | `booking cancel <预约号>` | LOW | 释放名额，原时段需重新预约才能恢复 |
 | `lib.renew` | `lib renew <图书条形码>` | LOW | 延长图书应还日期，每本书通常限续借 1 次 |
-| `timeline.memo` | `timeline add <备忘内容> [--time ...] / timeline done <ID>` | LOW | 写入本地行动流，随时可增删改 |
+| `calendar.export` | `calendar export [-o schedule.ics]` | LOW | 导出课表至标准 iCalendar (.ics) 文件，写入本地磁盘 |
+| `timeline.memo` | `timeline add … / timeline done <ID> / timeline delete <ID>` | LOW | 写入本地行动流，支持增/删/改/勾选完成 |
 
 ## 执行建议与最佳实践
 

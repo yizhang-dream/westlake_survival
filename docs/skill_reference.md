@@ -68,7 +68,10 @@ westlake aid loans|jobs|claim|outbound|exchange|orgs|activities
 westlake aid orgs --wiki                     # 社团目录 + WikiLake 改写简介
 westlake ams status / ams schedule --json / ams menus / ams notices
 westlake lib search 数据结构 --page 1 / lib loans   # 2026-10-28 起迁移暂不可用
-westlake pms jobs
+westlake pms stations                           # 打印网点列表（无需登录）
+westlake pms jobs                               # 我的未打印作业（需登录）
+westlake pms print doc.pdf [--copies 2] [--duplex] [--color]  # 上传并创建云打印作业（写操作，带 Action Card）
+westlake pms cancel 12345                       # 取消并删除未打印作业（写操作，带 Action Card）
 ```
 
 ## 门户 / 场馆 / 就业
@@ -96,6 +99,8 @@ westlake canvas inbox --limit 20 [--unread]                      # 打开会话�
 westlake canvas conversation 2041 --download ./资料
 westlake canvas send --conversation 2041 --text "……"             # 写操作
 westlake canvas star 2183 / canvas unstar 2183                   # 课程收藏/星标置顶（写操作）
+westlake canvas upload ./notes.pdf                               # 上传本地文件至个人 Canvas 云盘（写操作）
+westlake canvas dismiss-todo 8857                                # 忽略/归档 Canvas 个人待办事项（写操作）
 westlake canvas submit --course 概率论 --assignment 作业3 --file hw3.pdf [--dry-run|--yes]
 westlake canvas submit --course … --assignment … --text "……"     # 文本提交
 westlake canvas submission --course 概率论 --assignment 作业3

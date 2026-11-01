@@ -1342,8 +1342,11 @@ def _pms_context() -> dict:
         try:
             context["jobs"] = [
                 {
-                    "name": job.name, "status": job.status_text or "—",
-                    "pages": job.pages, "copies": job.copies,
+                    "id": job.id,
+                    "name": job.name,
+                    "status": job.status_text or "—",
+                    "pages": job.pages,
+                    "copies": job.copies,
                     "created": f"{job.created_date or ''} {job.created_time or ''}".strip(),
                 }
                 for job in client.list_print_jobs()
@@ -2496,6 +2499,67 @@ def create_app() -> Flask:
             return jsonify({"error": "memo_id required"}), 400
         ok = delete_memo(memo_id)
         return jsonify({"ok": ok, "memo_id": memo_id})
+
+    @app.route("/api/pms/print", methods=["POST"])
+    def api_pms_print():
+        from westlake_survival.pms import pms
+
+        payload = request.get_json(silent=True) or {}
+        file_path = str(payload.get("file_path") or "").strip()
+        if not file_path:
+            return jsonify({"error": "file_path 必填（待打印文件的本地绝对路径）"}), 400
+        copies = int(payload.get("copies") or 1)
+        duplex = int(payload.get("duplex") or 1)
+        color = int(payload.get("color") or 1)
+        dry_run = bool(payload.get("dry_run", False))
+        try:
+            client = pms()
+            result = client.submit_print_job_safe(
+                file_path=file_path,
+                copies=copies,
+                duplex=duplex,
+                color=color,
+                dry_run=dry_run,
+            )
+            return jsonify(result)
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 400
+
+    @app.route("/api/pms/cancel", methods=["POST"])
+    def api_pms_cancel():
+        from westlake_survival.pms import pms
+
+        payload = request.get_json(silent=True) or {}
+        job_id = payload.get("job_id")
+        if job_id is None:
+            return jsonify({"error": "job_id 必填（作业编号）"}), 400
+        dry_run = bool(payload.get("dry_run", False))
+        try:
+            client = pms()
+            result = client.cancel_print_job_safe(job_id=int(job_id), dry_run=dry_run)
+            return jsonify(result)
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 400
+
+    @app.route("/api/calendar/export")
+    def api_calendar_export():
+        from westlake_survival.ical.gen import courses_to_ical
+        from westlake_survival.sis import get_schedule
+
+        try:
+            sessions = get_schedule()
+            if not sessions:
+                return jsonify({"error": "课表为空，无法生成日历"}), 404
+            ics_text = courses_to_ical(sessions)
+            return Response(
+                ics_text,
+                mimetype="text/calendar",
+                headers={
+                    "Content-Disposition": "attachment; filename=westlake_schedule.ics"
+                },
+            )
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 500
 
     @app.route("/api/context")
     def api_context():

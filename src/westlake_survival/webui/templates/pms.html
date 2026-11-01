@@ -30,10 +30,15 @@
 <h2 class="section">我的打印任务（{{ jobs | length }}）</h2>
 {% if jobs %}
 <table class="data">
-  <thead><tr><th>任务</th><th>状态</th><th>页数</th><th>份数</th><th>创建</th></tr></thead>
+  <thead><tr><th>任务</th><th>状态</th><th>页数</th><th>份数</th><th>创建</th><th>操作</th></tr></thead>
   <tbody>{% for j in jobs %}<tr>
     <td>{{ j.name or '—' }}</td><td>{{ j.status }}</td><td>{{ j.pages or '—' }}</td>
     <td>{{ j.copies or '—' }}</td><td class="time">{{ j.created or '—' }}</td>
+    <td>
+      {% if j.id %}
+      <button class="btn btn-sm btn-danger" onclick="cancelJob({{ j.id }}, '{{ j.name }}')">取消作业</button>
+      {% else %}—{% endif %}
+    </td>
   </tr>{% endfor %}</tbody>
 </table>
 {% elif jobs_error %}
@@ -42,6 +47,95 @@
 <div class="callout mute"><span>当前无打印任务。</span></div>
 {% endif %}
 </section>
+
+<section id="pms-upload-box" class="reveal">
+<h2 class="section">云打印任务提交（写操作受控安全门）</h2>
+<div class="card" style="padding: 1.25rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+  <p class="mute" style="margin-top:0;">通过联创自助文印云服务提交打印作业。文件将暂存于队列中，在校园任意文印机刷校园卡即可扣费取件。</p>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+    <div>
+      <label style="font-size: 0.85rem; color: var(--mute);">文件绝对路径：</label>
+      <input type="text" id="pms-file-path" placeholder="如 D:\report.pdf" style="width: 100%; padding: 0.4rem 0.6rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: inherit;" />
+    </div>
+    <div>
+      <label style="font-size: 0.85rem; color: var(--mute);">打印份数：</label>
+      <input type="number" id="pms-copies" value="1" min="1" max="100" style="width: 100%; padding: 0.4rem 0.6rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: inherit;" />
+    </div>
+    <div>
+      <label style="font-size: 0.85rem; color: var(--mute);">单双面设置：</label>
+      <select id="pms-duplex" style="width: 100%; padding: 0.4rem 0.6rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: inherit;">
+        <option value="1">单面打印</option>
+        <option value="2">双面打印（长边翻转）</option>
+        <option value="3">双面打印（短边翻转）</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size: 0.85rem; color: var(--mute);">色彩设置：</label>
+      <select id="pms-color" style="width: 100%; padding: 0.4rem 0.6rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.2); color: inherit;">
+        <option value="1">黑白打印</option>
+        <option value="2">彩色打印</option>
+      </select>
+    </div>
+  </div>
+  <div style="display: flex; gap: 0.75rem; align-items: center;">
+    <button class="btn" onclick="submitPmsJob(true)">预检（事务预览）</button>
+    <button class="btn btn-primary" onclick="submitPmsJob(false)">确认提交队列</button>
+    <span id="pms-action-msg" style="font-size: 0.9rem;"></span>
+  </div>
+</div>
+</section>
+
+<script>
+async function submitPmsJob(dryRun) {
+  const filePath = document.getElementById('pms-file-path').value.trim();
+  const copies = parseInt(document.getElementById('pms-copies').value) || 1;
+  const duplex = parseInt(document.getElementById('pms-duplex').value) || 1;
+  const color = parseInt(document.getElementById('pms-color').value) || 1;
+  const msgEl = document.getElementById('pms-action-msg');
+  if (!filePath) {
+    alert('请输入本地待打印文件绝对路径');
+    return;
+  }
+  msgEl.innerText = dryRun ? '正在预检...' : '正在上传提交...';
+  try {
+    const res = await fetch('/api/pms/print', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({file_path: filePath, copies, duplex, color, dry_run: dryRun})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '请求失败');
+    if (dryRun) {
+      alert(`[预检通过 Action Card 校验]\n文件: ${data.file} (${data.size_kb} KB)\n设置: ${data.copies} 份 / ${data.duplex} / ${data.color}\n提示: ${data.msg}`);
+      msgEl.innerText = '✓ 预检通过，随时可确认提交';
+    } else {
+      alert(`[提交成功]\n${data.msg}`);
+      msgEl.innerText = '✓ 提交成功，请在文印机刷卡取件';
+      setTimeout(() => location.reload(), 1500);
+    }
+  } catch (err) {
+    alert('操作失败: ' + err.message);
+    msgEl.innerText = '✗ 失败: ' + err.message;
+  }
+}
+
+async function cancelJob(jobId, jobName) {
+  if (!confirm(`确认要取消并从云打印队列中删除作业 [${jobName}] (ID: ${jobId}) 吗？`)) return;
+  try {
+    const res = await fetch('/api/pms/cancel', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({job_id: jobId, dry_run: false})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '取消失败');
+    alert(data.msg || '已成功取消作业！');
+    location.reload();
+  } catch (err) {
+    alert('取消失败: ' + err.message);
+  }
+}
+</script>
 
 <section id="pms-usage" class="reveal">
 <h2 class="section">用量统计（{{ usage | length }}）</h2>
