@@ -405,7 +405,14 @@ class ShareBrowser:
             )
 
     def _resolve_target(self) -> None:
-        """从落地页 URL 解析租户、用户与文件夹路径。"""
+        """从落地页 URL 解析租户、用户与文件夹路径。
+
+        两种落地形态：
+
+        - 匿名访问：``onedrive.aspx?id=<文件夹路径>``（URL 路径里带 ``/personal/<user>/``）；
+        - 带组织会话：分享链接统一跳 ``/shared?listurl=<站点根>&id=<文件夹路径>``
+          （2026-11-03 实测，登录态下即使公开分享也走此形态）。
+        """
         final = self._page.url
         if "login.microsoftonline.com" in final or "/_forms/login" in final.lower():
             if has_auth():
@@ -418,11 +425,22 @@ class ShareBrowser:
                 "请运行 `westlake share login` 完成一次西湖微软账号登录（登录后长期有效，后续自动复用）；\n"
                 "或联系分享者放开为「拥有链接的任何人可查看（无需登录）」。"
             )
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(final).query)
+        # 形态二：/shared?listurl=<站点根>&id=<文件夹路径>
+        listurl = (query.get("listurl") or [""])[0].strip()
+        if listurl:
+            match = re.match(r"https://([^/]+)/personal/([^/]+)/", listurl)
+            if match:
+                self.host, self.user = match.group(1), match.group(2)
+                folder = (query.get("id") or [""])[0].strip()
+                if folder:
+                    self.folder = folder.rstrip("/")
+                    return
+        # 形态一：路径里直接带 /personal/<user>/
         match = re.match(r"https://([^/]+)/personal/([^/]+)/", final)
         if not match:
             raise ShareError(f"未识别为 OneDrive/SharePoint 页面：{final[:120]}")
         self.host, self.user = match.group(1), match.group(2)
-        query = urllib.parse.parse_qs(urllib.parse.urlparse(final).query)
         folder = query.get("id", [""])[0].strip()
         if not folder:
             marker = f"/personal/{self.user}/Documents"
