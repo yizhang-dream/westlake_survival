@@ -31,20 +31,30 @@ from westlake_survival._cache import config_root
 from westlake_survival.exceptions import WestlakeError
 
 __all__ = [
+    "AUTH_STORAGE_FILENAME",
     "REGISTRY_FILENAME",
     "ShareBrowser",
     "ShareError",
     "ShareItem",
+    "auth_storage_path",
+    "auth_summary",
+    "clear_auth",
     "cli_group",
+    "has_auth",
     "load_saved",
+    "login_interactive",
     "registry_path",
     "remove_share",
     "resolve_share",
+    "save_cookie_str",
     "save_share",
 ]
 
 #: 已保存分享链接的登记文件名（位于配置根目录）。
 REGISTRY_FILENAME = "shares.json"
+
+#: 微软 SharePoint 组织登录态文件名（遵循 WESTLAKE_HOME 约定，权限 0600）。
+AUTH_STORAGE_FILENAME = "sharepoint_storage.json"
 
 #: 页面加载与请求的超时（毫秒）。
 DEFAULT_TIMEOUT_MS = 90_000
@@ -63,6 +73,172 @@ class ShareItem:
     modified: str | None
     unique_id: str
     is_folder: bool = False
+
+
+# --------------------------------------------------------------------------- #
+# 微软 SharePoint 组织认证（Cookie / StorageState 状态管理）
+# --------------------------------------------------------------------------- #
+
+
+def auth_storage_path() -> Path:
+    """返回 SharePoint 组织会话存储路径（遵循 WESTLAKE_HOME 约定）。"""
+    return config_root() / AUTH_STORAGE_FILENAME
+
+
+def has_auth() -> bool:
+    """本地是否保存了有效的 SharePoint 组织会话。"""
+    path = auth_storage_path()
+    return path.exists() and path.stat().st_size > 10
+
+
+def clear_auth() -> bool:
+    """清除已保存的 SharePoint 组织会话。"""
+    path = auth_storage_path()
+    if path.exists():
+        try:
+            path.unlink()
+            return True
+        except OSError:
+            return False
+    return False
+
+
+def auth_summary() -> dict:
+    """返回当前组织会话的简要状态（只报域名与项数，不打印敏感 Cookie 真实值）。"""
+    path = auth_storage_path()
+    if not path.exists():
+        return {"logged_in": False, "count": 0, "has_fed_auth": False}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        cookies = data.get("cookies") or []
+        names = {c.get("name") for c in cookies if isinstance(c, dict)}
+        has_fed = bool({"FedAuth", "rtFa", "SPSecurityToken"} & names)
+        domains = sorted(
+            {c.get("domain", "") for c in cookies if isinstance(c, dict) and c.get("domain")}
+        )
+        return {
+            "logged_in": bool(cookies),
+            "count": len(cookies),
+            "has_fed_auth": has_fed,
+            "domains": domains,
+            "names": sorted(str(n) for n in names if n),
+        }
+    except Exception:
+        return {"logged_in": False, "corrupted": True}
+
+
+def save_cookie_str(cookie_str: str, domain: str = "westlakeu-my.sharepoint.com") -> Path:
+    """把用户复制的 Cookie 字符串解析并保存为 Playwright storage_state。"""
+    cookie_str = cookie_str.strip()
+    if not cookie_str:
+        raise ShareError("Cookie 字符串不能为空。")
+    cookies = []
+    import time
+
+    far_future = time.time() + 30 * 86400  # 默认 30 天
+    for part in cookie_str.split(";"):
+        if "=" in part:
+            k, v = part.strip().split("=", 1)
+            k = k.strip()
+            v = v.strip()
+            if k and v:
+                cookies.append(
+                    {
+                        "name": k,
+                        "value": v,
+                        "domain": domain,
+                        "path": "/",
+                        "expires": far_future,
+                        "httpOnly": True,
+                        "secure": True,
+                        "sameSite": "None",
+                    }
+                )
+    if not cookies:
+        raise ShareError(
+            "未能从输入中解析出任何有效 Cookie（格式应形如 'FedAuth=...; rtFa=...'）。"
+        )
+    path = auth_storage_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"cookies": cookies, "origins": []}
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+    return path
+
+
+def login_interactive(
+    url: str | None = None,
+    *,
+    timeout_seconds: int = 180,
+    callback=None,
+) -> Path:
+    """打开有头 Chromium 窗口供用户登录西湖大学 Microsoft 365，登录成功后捕获 storage_state。"""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise ShareError(
+            "SharePoint 登录需要 Playwright。请先执行：pip install playwright && playwright install chromium"
+        ) from exc
+
+    import time
+
+    target_url = (url or "https://westlakeu-my.sharepoint.com").strip()
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(headless=False)
+    try:
+        context = browser.new_context(locale="zh-CN")
+        page = context.new_page()
+
+        if callback:
+            callback("正在打开西湖大学微软登录窗口，请在弹出的浏览器中完成登录...")
+
+        page.goto(target_url, timeout=timeout_seconds * 1000)
+
+        start_time = time.time()
+        logged_in = False
+        while time.time() - start_time < timeout_seconds:
+            try:
+                if page.is_closed():
+                    break
+            except Exception:
+                break
+
+            current_url = page.url
+            cookies = context.cookies()
+            cookie_names = {c["name"] for c in cookies}
+            is_sp_domain = "sharepoint.com" in current_url
+            has_sp_cookie = any("sharepoint.com" in c.get("domain", "") for c in cookies)
+            has_auth_cookie = bool({"FedAuth", "rtFa", "SPSecurityToken"} & cookie_names)
+
+            if is_sp_domain and (has_auth_cookie or has_sp_cookie) and "login.microsoftonline.com" not in current_url:
+                logged_in = True
+                break
+
+            time.sleep(1.0)
+
+        if not logged_in:
+            raise ShareError("登录未完成（窗口已关闭或超时）。")
+
+        path = auth_storage_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        context.storage_state(path=str(path))
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
+        return path
+    finally:
+        try:
+            browser.close()
+        except Exception:
+            pass
+        try:
+            pw.stop()
+        except Exception:
+            pass
 
 
 # --------------------------------------------------------------------------- #
@@ -204,7 +380,10 @@ class ShareBrowser:
 
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch(headless=True)
-        self._context = self._browser.new_context(locale="zh-CN")
+        context_kwargs: dict = {"locale": "zh-CN"}
+        if has_auth():
+            context_kwargs["storage_state"] = str(auth_storage_path())
+        self._context = self._browser.new_context(**context_kwargs)
         self._page = self._context.new_page()
         try:
             self._page.goto(self.share_url, wait_until="domcontentloaded", timeout=self.timeout_ms)
@@ -215,17 +394,29 @@ class ShareBrowser:
         self._resolve_target()
         self._digest = self._page_digest()
         if not self._digest:
+            if not has_auth():
+                raise ShareError(
+                    "未取到 SharePoint 表单摘要。该链接可能需要西湖组织登录，"
+                    "请运行 `westlake share login` 完成一次登录；或链接已失效。"
+                )
             raise ShareError(
-                "未取到 SharePoint 表单摘要。链接可能已失效，或权限不是「组织内任何人可查看」。"
+                "未取到 SharePoint 表单摘要。保存的组织会话可能已过期，"
+                "请运行 `westlake share login` 重新登录；或链接已失效。"
             )
 
     def _resolve_target(self) -> None:
         """从落地页 URL 解析租户、用户与文件夹路径。"""
         final = self._page.url
         if "login.microsoftonline.com" in final or "/_forms/login" in final.lower():
+            if has_auth():
+                raise ShareError(
+                    "该分享需要组织登录，但当前保存的西湖微软会话已过期或未覆盖此权限。\n"
+                    "请运行 `westlake share login` 重新登录更新会话。"
+                )
             raise ShareError(
-                "该分享需要登录才能查看（链接可能只对特定人员开放）。"
-                "请分享者改成「组织内任何人可查看」，或自行在浏览器里登录后下载。"
+                "该分享需要登录才能查看（链接可能只对西湖大学组织内开放）。\n"
+                "请运行 `westlake share login` 完成一次西湖微软账号登录（登录后长期有效，后续自动复用）；\n"
+                "或联系分享者放开为「拥有链接的任何人可查看（无需登录）」。"
             )
         match = re.match(r"https://([^/]+)/personal/([^/]+)/", final)
         if not match:
@@ -420,9 +611,67 @@ def _cli():
             if index == 0:
                 click.echo("  ".join("-" * w for w in widths))
 
-    @click.group(name="share", help="OneDrive/SharePoint 分享文件夹：列文件、下载讲义（免账号）。")
+    @click.group(
+        name="share",
+        help="OneDrive/SharePoint 分享文件夹：列文件、下载讲义（支持公开匿名与组织内登录分享）。",
+    )
     def group() -> None:
-        """``westlake share add|saved|remove|files|download``。"""
+        """``westlake share add|saved|remove|files|download|login|auth-status|logout``。"""
+
+    @group.command(name="login")
+    @click.option("--url", default=None, help="目标分享链接（若提供则直接打开该分享页面登录）。")
+    @click.option(
+        "--cookie",
+        "cookie_str",
+        default=None,
+        help="手动提供 Cookie 字符串（免弹窗，形如 'FedAuth=...; rtFa=...'）。",
+    )
+    @click.option("--timeout", type=int, default=180, show_default=True, help="登录超时时间（秒）。")
+    @handle
+    def login_cmd(url: str | None, cookie_str: str | None, timeout: int) -> None:
+        """登录西湖大学 Microsoft 365 组织账号（支持读取组织内分享）。"""
+        if cookie_str:
+            path = save_cookie_str(cookie_str)
+            click.echo(f"✔ 已导入 SharePoint 认证 Cookie → {path}")
+            click.echo("后续 westlake share 命令将自动携带该组织会话。")
+            return
+
+        click.echo("正在启动西湖大学 Microsoft 365 组织登录窗口...")
+        click.echo("请在弹出的浏览器中登录您的西湖大学账号（@westlake.edu.cn）。")
+        click.echo("检测到登录成功后窗口将自动保存并关闭。\n")
+        path = login_interactive(url, timeout_seconds=timeout)
+        click.echo(f"✔ 组织登录成功！会话已安全保存 → {path}")
+        click.echo("后续使用 westlake share 访问组织内限制分享无需重复登录。")
+
+    @group.command(name="auth-status")
+    @handle
+    def auth_status_cmd() -> None:
+        """查看当前 SharePoint 组织会话登录状态。"""
+        info = auth_summary()
+        if not info.get("logged_in"):
+            click.echo("当前未保存 SharePoint 组织登录态（仅支持公开匿名分享）。")
+            click.echo("若需访问组织内限制分享，请运行 `westlake share login`。")
+            return
+        click.echo("✔ 已配置 SharePoint 组织登录态：")
+        click.echo(f"  存储路径：{auth_storage_path()}")
+        click.echo(f"  Cookie 数量：{info.get('count')} 项")
+        has_fed = (
+            "已包含 (FedAuth/rtFa)"
+            if info.get("has_fed_auth")
+            else "未明确检测到 FedAuth（可能采用其他票据）"
+        )
+        click.echo(f"  核心认证票据：{has_fed}")
+        domains = ", ".join(info.get("domains") or []) or "—"
+        click.echo(f"  有效域名：{domains}")
+
+    @group.command(name="logout")
+    @handle
+    def logout_cmd() -> None:
+        """清除已保存的 SharePoint 组织登录态。"""
+        if clear_auth():
+            click.echo("✔ 已清除已保存的 SharePoint 组织登录态。")
+        else:
+            click.echo("当前本就没有保存的组织登录态。")
 
     @group.command(name="add")
     @click.argument("name")

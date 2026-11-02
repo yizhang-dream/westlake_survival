@@ -29,6 +29,7 @@ metadata:
 | **Canvas 作业与截止** | `canvas deadlines` / `canvas todo` | ✓ | 在修课程作业、测验倒计时与个人待办事项列表 |
 | **作业详情与评分细则** | `canvas assignment-info --course <名> --assignment <名>` | ✓ | 查看具体作业题目说明、附件下载链接与 Rubric 评分标准 |
 | **Canvas 课程与文件** | `canvas courses [--past|--all]` / `canvas files --course <名>` | ✓ | 获取在修与过往结课课程 ID、讲义课件与资料列表 |
+| **OneDrive/SharePoint 讲义** | `share files --name <名>` / `share download` / `share login` | — | 列出与下载教师分享文件（支持匿名与西湖组织登录会话） |
 | **讨论区与收件箱** | `canvas discussions --course <名>` / `canvas inbox` | ✓ | 课程讨论区主题、全班回帖与站内信收件箱 |
 | **图书馆书目检索** | `lib search <书名/关键词>` | — | 阿法迪云图书馆检索（书名、作者、索书号、馆藏地） |
 | **在借图书与应还** | `lib loans` | — | 查看当前借阅中的图书清单、到期应还日期与续借状态 |

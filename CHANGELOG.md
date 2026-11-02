@@ -7,6 +7,10 @@
 ## [1.0.0] - 2026-11-02
 
 ### 核心功能集成（Features）
+- **组织内 SharePoint / OneDrive 深度贯通（Org SharePoint Support）**：
+  - **组织会话管理**：新增 `sharepoint_storage.json` 安全凭据层（0600 权限、只存本机不跨端），原生兼容 Playwright storage_state 架构；
+  - **登录命令矩阵**：新增 `westlake share login`（支持弹窗交互式登录与 `--cookie` 免弹窗纯文本注入）、`westlake share auth-status`（状态查看）与 `westlake share logout`（安全登出）；
+  - **无缝鉴权穿透**：`ShareBrowser` 自动加载组织凭据，打通何彬老师 Capstone 等设为「组织内限制」的 SharePoint 讲义目录与下载直链，遇未登录或过期提供精准命令行引导；
 - **集成过往结课课程（Past Courses Integration）**：
   - **CanvasClient 深度拓展**：`list_courses(state=...)` 与 `course_grades(state=...)` 全面支持在修（`active`）、过往结课（`completed`）及全部（`all`）模式，新增 `list_past_courses()` 快捷接口；
   - **课程名称检索自动回退**：`find_course(keyword)` 在未命中当前在修课程时，智能自动回退匹配过往结课课程，彻底解决 `canvas files --course <过往课名>` 找不到课程的问题；

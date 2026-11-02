@@ -114,9 +114,12 @@ westlake share add 2183-lecture-notes https://westlakeu-my.sharepoint.com/:f:/g/
 westlake share saved / share remove <名字>
 westlake share files --name 2183-lecture-notes [--path "Advanced Labs"]
 westlake share download --name 2183-lecture-notes --match day01 --out ./讲义
+westlake share login                             # 登录西湖微软账号（弹窗交互），捕获并保存组织会话
+westlake share login --cookie "FedAuth=...; …"   # 纯文本注入 Cookie（免弹窗）
+westlake share auth-status / share logout        # 查看组织登录态 / 清除会话
 ```
 
-链接「组织内任何人可查看」时免账号读取；仅对特定人开放的链接报 403，只能请分享者放开。
+公开链接免账号匿名读取；需要登录的组织内限制分享通过 `westlake share login` 完成一次登录后长期自动复用。
 
 **课程资料按需现拉，不建本地镜像**：不带 `--download` 只读元数据不写盘；不要为一次查询同步整门课。
 
