@@ -167,9 +167,10 @@ class Course:
     start_at: datetime | None = None
     end_at: datetime | None = None
     is_public: bool | None = None
+    is_completed: bool = False
 
     @classmethod
-    def from_json(cls, data: Any) -> "Course":
+    def from_json(cls, data: Any, *, is_completed: bool = False) -> "Course":
         obj = _as_dict(data)
         term_name = obj.get("term_name")
         if term_name is None:
@@ -184,6 +185,7 @@ class Course:
             start_at=parse_datetime(obj.get("start_at")),
             end_at=parse_datetime(obj.get("end_at")),
             is_public=obj.get("is_public"),
+            is_completed=is_completed,
         )
 
 

@@ -482,7 +482,6 @@
       {% set here = request.path %}
       <!-- 顺序 = 使用频率分层（2026-10-25 用户裁定重排）：日常高频 → 信息浏览 → 办事工具 → 科研工具 → 系统 -->
       <a href="/" data-nav="home" class="{{ 'active' if here == '/' else '' }}">仪表盘</a>
-      <a href="/timeline" data-nav="timeline" class="{{ 'active' if here.startswith('/timeline') else '' }}">时空流</a>
       <a href="/sis" data-nav="sis" class="{{ 'active' if here.startswith('/sis') else '' }}">学业</a>
       <a href="/canvas" data-nav="canvas" class="{{ 'active' if here.startswith('/canvas') else '' }}">Canvas</a>
       <a href="/ams" data-nav="ams" class="{{ 'active' if here.startswith('/ams') else '' }}">教学</a>

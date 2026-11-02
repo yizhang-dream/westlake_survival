@@ -7,6 +7,7 @@
 {# —— 概览数字条 —— #}
 <div class="stats">
   <div class="stat"><div class="label">在修课程</div><div class="value" data-count="{{ courses | length }}">{{ courses | length }}</div></div>
+  <div class="stat"><div class="label">过往结课</div><div class="value" data-count="{{ past_courses | length if past_courses is defined else 0 }}">{{ past_courses | length if past_courses is defined else 0 }}</div></div>
   {% set scored = grades | selectattr('current_score', 'ne', none) | list if grades is defined else [] %}
   {% set avg = (scored | map(attribute='current_score') | list | sum / scored | length) | round(1) if scored else none %}
   {% if avg is not none %}
@@ -132,9 +133,40 @@
 <h2 class="section">在修课程（{{ courses | length }}）</h2>
 {% if courses %}
 <div class="grid cols-2">
-  {% for c in courses %}<div class="card"><div style="font-weight:600">{{ c.name | replace('|', ' · ') }}</div><div class="muted" style="font-size:.8rem">{{ c.code }}</div></div>{% endfor %}
+  {% for c in courses %}
+  <div class="card">
+    <div style="font-weight:600;display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+      <span>{{ c.name | replace('|', ' · ') }}</span>
+      <a href="https://canvas.westlake.edu.cn/courses/{{ c.id }}" target="_blank" rel="noopener" class="chip ok" style="text-decoration:none;font-size:.72rem">在修 ↗</a>
+    </div>
+    <div class="muted" style="font-size:.8rem;margin-top:.25rem">{{ c.code or '代码未分配' }} · ID: {{ c.id }}</div>
+  </div>
+  {% endfor %}
 </div>
 {% elif not error %}<div class="callout mute"><span>未获取到在修课程。</span></div>{% endif %}
+</section>
+
+<section id="cv-past-courses" class="reveal">
+<h2 class="section">过往课程（{{ past_courses | length if past_courses is defined else 0 }} 门已结课）</h2>
+{% if past_by_term is defined and past_by_term %}
+  {% for term, t_courses in past_by_term.items() %}
+  <div style="margin:1.1rem 0 .5rem;display:flex;align-items:center;gap:.6rem">
+    <span style="font-weight:600;font-size:.95rem;color:var(--text, #171725)">{{ term }}</span>
+    <span class="chip" style="font-size:.75rem">{{ t_courses | length }} 门</span>
+  </div>
+  <div class="grid cols-2">
+    {% for c in t_courses %}
+    <div class="card" style="opacity:.92">
+      <div style="font-weight:600;display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+        <span>{{ c.name | replace('|', ' · ') }}</span>
+        <a href="https://canvas.westlake.edu.cn/courses/{{ c.id }}" target="_blank" rel="noopener" class="chip" style="text-decoration:none;font-size:.72rem">结课 ↗</a>
+      </div>
+      <div class="muted" style="font-size:.8rem;margin-top:.25rem">{{ c.code or '代码未分配' }} · ID: {{ c.id }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+{% elif not error %}<div class="callout mute"><span>未获取到过往已结课课程。</span></div>{% endif %}
 </section>
 {% endblock %}
 

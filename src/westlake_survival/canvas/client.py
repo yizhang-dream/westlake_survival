@@ -372,33 +372,91 @@ class CanvasClient:
         """当前令牌对应的用户（``GET /users/self``）。"""
         return User.from_json(self._json(self._get("/users/self")))
 
-    def list_courses(self, enrollment_state: str = "active") -> list[Course]:
-        """列出当前用户的课程（``GET /courses``）。"""
-        # 不带 include[]=term 时 Canvas 不回学期字段，课程列表的「学期」列恒空。
+    def list_courses(
+        self,
+        enrollment_state: str | None = "active",
+        *,
+        include_past: bool = False,
+    ) -> list[Course]:
+        """列出当前用户的课程（``GET /courses``）。
+
+        *enrollment_state* 支持：
+        - ``"active"``（默认）：当前在修课程；
+        - ``"completed"``：过往已结课课程；
+        - ``"all"`` 或 ``None``：包含在修与过往全部课程；
+        若 *include_past* 为 True，无论 *enrollment_state* 为何均合并过往课程。
+        """
+        if enrollment_state in ("all", None) or include_past:
+            active = self.list_courses(enrollment_state="active")
+            completed = self.list_courses(enrollment_state="completed")
+            seen_ids = set()
+            merged: list[Course] = []
+            for c in active:
+                if c.id is not None:
+                    seen_ids.add(c.id)
+                merged.append(c)
+            for c in completed:
+                if c.id is not None and c.id in seen_ids:
+                    continue
+                c.is_completed = True
+                merged.append(c)
+            return merged
+
+        is_completed = (enrollment_state == "completed")
         params: dict = {"include[]": "term"}
         if enrollment_state:
             params["enrollment_state"] = enrollment_state
-        return [Course.from_json(item) for item in self._paginate("/courses", params)]
+        return [
+            Course.from_json(item, is_completed=is_completed)
+            for item in self._paginate("/courses", params)
+        ]
+
+    def list_past_courses(self) -> list[Course]:
+        """列出当前用户的过往已结课课程（``enrollment_state="completed"``）。"""
+        return self.list_courses(enrollment_state="completed")
 
     def get_course(self, course_id: int | str) -> Course:
         """取单个课程详情（``GET /courses/:id``）。"""
         return Course.from_json(self._json(self._get(f"/courses/{course_id}")))
 
-    def course_grades(self, enrollment_state: str = "active") -> list[dict]:
+    def course_grades(
+        self,
+        enrollment_state: str | None = "active",
+        *,
+        include_past: bool = False,
+    ) -> list[dict]:
         """列出课程的当前/最终成绩（``include[]=total_scores``）。
 
-        ``GET /courses?include[]=total_scores&enrollment_state=active`` 会在每门课的
+        ``GET /courses?include[]=total_scores`` 会在每门课的
         ``enrollments[]`` 里附带 ``grades``（``current_score`` / ``current_grade`` /
         ``final_score`` / ``final_grade``）。老师未发布成绩时对应字段为 ``None``。
+        *enrollment_state* 可取 ``"active"`` / ``"completed"`` / ``"all"``。
 
         Returns:
             ``[{name, course_code, term_name, current_score, current_grade,
-            final_score, final_grade}]``，按课程名排序。
+            final_score, final_grade, is_completed}]``，按课程名排序。
         """
+        if enrollment_state in ("all", None) or include_past:
+            active_grades = self.course_grades(enrollment_state="active")
+            completed_grades = self.course_grades(enrollment_state="completed")
+            seen = set()
+            rows: list[dict] = []
+            for r in active_grades:
+                seen.add(r.get("name") or r.get("course_code"))
+                rows.append({**r, "is_completed": False})
+            for r in completed_grades:
+                key = r.get("name") or r.get("course_code")
+                if key in seen:
+                    continue
+                rows.append({**r, "is_completed": True})
+            return sorted(rows, key=lambda r: r["name"])
+
+        is_completed = (enrollment_state == "completed")
         params = {
-            "enrollment_state": enrollment_state,
             "include[]": "total_scores",
         }
+        if enrollment_state:
+            params["enrollment_state"] = enrollment_state
         rows: list[dict] = []
         for item in self._paginate("/courses", params):
             if not isinstance(item, dict):
@@ -408,7 +466,7 @@ class CanvasClient:
                 if isinstance(enrollment, Mapping) and enrollment.get("grades"):
                     grades = dict(enrollment["grades"])
                     break
-            course = Course.from_json(item)
+            course = Course.from_json(item, is_completed=is_completed)
             rows.append(
                 {
                     "name": course.name or "",
@@ -418,6 +476,7 @@ class CanvasClient:
                     "current_grade": grades.get("current_grade"),
                     "final_score": grades.get("final_score"),
                     "final_grade": grades.get("final_grade"),
+                    "is_completed": is_completed,
                 }
             )
         return sorted(rows, key=lambda r: r["name"])
@@ -908,12 +967,14 @@ class CanvasClient:
             )
         )
 
-    def find_course(self, keyword: str) -> Course:
+    def find_course(self, keyword: str, *, include_past: bool = True) -> Course:
         """按课程 id 或名称关键词定位唯一课程。
 
-        *keyword* 为纯数字时按课程 id 精确取；否则在 active 课程的
-        ``name`` / ``course_code`` 上做大小写不敏感的子串匹配。零命中抛
-        :class:`NotFound`，多个命中抛 :class:`ActionError`（附候选清单）。
+        *keyword* 为纯数字时按课程 id 精确取；否则优先在 active 课程的
+        ``name`` / ``course_code`` 上做大小写不敏感的子串匹配。
+        若 active 课程中零命中且 *include_past* 为 True，自动回退到
+        过往已结课课程（past courses）中检索。
+        若仍零命中抛 :class:`NotFound`，多个命中抛 :class:`ActionError`（附候选清单）。
         """
         course_id = self._coerce_int(str(keyword).strip())
         if course_id is not None:
@@ -923,13 +984,20 @@ class CanvasClient:
             raise ActionError("课程关键词为空：请给课程 id 或名称关键词。")
         matches = [
             course
-            for course in self.list_courses()
+            for course in self.list_courses(enrollment_state="active")
             if text in (course.name or "").lower() or text in (course.course_code or "").lower()
         ]
+        if not matches and include_past:
+            matches = [
+                course
+                for course in self.list_past_courses()
+                if text in (course.name or "").lower() or text in (course.course_code or "").lower()
+            ]
         if not matches:
+            scope = "在修与过往" if include_past else "active"
             raise NotFound(
-                f"没有匹配「{keyword}」的 active 课程；"
-                "请用 `westlake canvas courses` 查看课程名，或直接用课程 id。"
+                f"没有匹配「{keyword}」的 {scope} 课程；"
+                "请用 `westlake canvas courses --all` 查看课程名，或直接用课程 id。"
             )
         if len(matches) > 1:
             listed = "；".join(

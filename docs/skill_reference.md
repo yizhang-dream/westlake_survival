@@ -5,17 +5,13 @@
 ## 免凭据命令示例（可直接执行）
 
 ```bash
-westlake timeline                            # 今日时空行动流：跨系统全天日程融合、冲突预警与个人备忘
-westlake timeline --offline                  # 强制离线快照模式（无网秒出）
-westlake timeline add "组会准备" --time 15:00  # 本地生活备忘（写操作，带 Action Card）
-westlake timeline done memo-xxxx             # 标记生活备忘完成
-westlake booking recommend --date today --min-hours 1.5 # 复合求解：智能推荐空闲连续场地
 westlake calendar today                      # 今日日期/学期/周次/事件（支持 --offline）
 westlake calendar week 4                     # 第 4 周起止日期
 westlake calendar events                     # 本学期校历事件
-westlake transit next --campus 云谷 --limit 3
-westlake transit table --campus 云谷 --day 工作日 # （支持 --offline）
-westlake transit ical --days 14 --out bus.ics
+westlake transit next --campus 云谷 --limit 3 # 下一班班车时刻与接驳建议
+westlake transit table --campus 云谷 --day 工作日 # 班车时刻表（支持 --offline）
+westlake transit ical --days 14 --out bus.ics # 导出班车日历文件
+westlake booking recommend --date today --min-hours 1.5 # 复合求解：智能推荐空闲连续场地
 # 网页订阅：校历页有班车/课表 ICS 一键复制（/ical/shuttle、/ical/schedule）
 westlake context --level terse               # terse|normal|verbose
 westlake digest --level normal               # 每日摘要；terse 仅计算本地指标
@@ -87,7 +83,7 @@ westlake career detail 1129108               # 也可用列表输出的 URL / ne
 ## Canvas（令牌或统一密码会话）
 
 ```bash
-westlake canvas courses / deadlines --limit 10 / exams --days 30
+westlake canvas courses [--past|--all] / canvas grades [--past|--all] / deadlines --limit 10 / exams --days 30
 westlake canvas assignments --course 概率论        # 课程给 id 或名称关键词均可
 westlake canvas assignment-info --course 概率论 --assignment Assignment5 [--download ./资料]
 westlake canvas files --course 概率论 --match 作业 --download ./资料
@@ -153,8 +149,8 @@ for course in c.list_courses():                                 # 扫当前可�
 
 | 方法 | 返回 / 作用 |
 | --- | --- |
-| `me()` / `list_courses()` / `get_course(id)` | 当前用户 / 课程列表 / 单课程 |
-| `find_course(关键词)` / `find_assignment(cid, 关键词)` | 唯一定位（零命中 NotFound、多命中列候选） |
+| `me()` / `list_courses([state])` / `list_past_courses()` / `get_course(id)` | 当前用户 / 课程列表（在修/过往结课/全部）/ 过往结课课程 / 单课程 |
+| `find_course(关键词)` / `find_assignment(cid, 关键词)` | 唯一定位（零命中 NotFound、多命中列候选；自动回退过往课程） |
 | `todo(limit)` / `modules(course_id)` | 待办（北京时间）/ 模块与条目 |
 | `discussions(course_id)` / `discussion_topic(cid, tid)` / `discussion_entries(cid, tid)` | 主题列表 / 正文与附件 / 回帖 |
 | `find_topic(cid, 关键词)` / `list_announcements(course_id)` | 主题唯一定位 / 公告 |
@@ -166,7 +162,7 @@ for course in c.list_courses():                                 # 扫当前可�
 
 ## MCP 备选通道
 
-零依赖 stdio 服务器，65 个工具：学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类；就业 `career_latest`/`career_deep`/`career_detail`；校历班车 `calendar_today`/`calendar_week`/`transit_next`；内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`；百科 `wiki_search`/`wiki_page`；培养 `program_*` 六个；校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`；学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`；作业课程 `canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`；分享 `share_files`；场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`。写操作只在 CLI 提供，MCP 仅 `canvas_submit` 且需显式确认。
+零依赖 stdio 服务器，66 个工具：学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类；就业 `career_latest`/`career_deep`/`career_detail`；校历班车 `calendar_today`/`calendar_week`/`transit_next`；内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`；百科 `wiki_search`/`wiki_page`；培养 `program_*` 六个；校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`；学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`；作业课程 `canvas_courses`/`canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`；分享 `share_files`；场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`。写操作只在 CLI 提供，MCP 仅 `canvas_submit` 且需显式确认。
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}

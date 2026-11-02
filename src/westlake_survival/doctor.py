@@ -68,14 +68,22 @@ def _check_python() -> Check:
 
 
 def _check_package() -> Check:
-    from westlake_survival._version import __version__
+    from westlake_survival._version import __version__, __channel__
+    from westlake_survival.version_contract import load_local_release
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        release_meta = load_local_release()
+        channel = release_meta.get("channel", __channel__)
+        status_msg = f"westlake_survival {__version__} [{channel}]（{root}）"
+    except Exception:
+        status_msg = f"westlake_survival {__version__}（{root}）"
+
     return Check(
         key="package",
         name="包本体",
         status="ok",
-        detail=f"westlake_survival {__version__}（{root}）",
+        detail=status_msg,
     )
 
 
@@ -256,6 +264,48 @@ def _check_network() -> Check:
         )
 
 
+def _check_version_update(network: bool = True) -> Check:
+    """检查版本契约与更新（参考 archify update-awareness 协议）。
+
+    只读感知，TTL 缓存保护；有更新报 warn 给出指引，无更新报 ok，
+    网络异常降级为 ok，绝不报 missing 影响正常执行。
+    """
+    from westlake_survival._version import __version__
+
+    if not network:
+        return Check(
+            key="version_update",
+            name="版本契约与更新",
+            status="ok",
+            detail=f"离线模式，遵循 SemVer 契约（v{__version__}）",
+        )
+    try:
+        from westlake_survival.update_check import check_for_updates
+
+        res = check_for_updates(force_network=False, timeout=1.5)
+        if res.has_update and not res.snoozed and not res.ignored:
+            return Check(
+                key="version_update",
+                name="版本契约与更新",
+                status="warn",
+                detail=f"发现新版本 {res.latest_version}（当前 v{res.current_version}）",
+                fix="pip install --upgrade westlake-survival（推迟提醒可执行 westlake update-snooze）",
+            )
+        return Check(
+            key="version_update",
+            name="版本契约与更新",
+            status="ok",
+            detail=f"已遵循语义化版本契约并处于最新推荐状态（v{res.current_version}）",
+        )
+    except Exception as exc:
+        return Check(
+            key="version_update",
+            name="版本契约与更新",
+            status="ok",
+            detail=f"跳过在线检查（{exc.__class__.__name__}），当前 v{__version__}",
+        )
+
+
 def run_checks(*, network: bool = True) -> list[Check]:
     """跑全部检查。``network=False`` 时跳过联网探测（离线/脚本用）。"""
     checks = [_check_python(), _check_package(), _check_command()]
@@ -267,6 +317,7 @@ def run_checks(*, network: bool = True) -> list[Check]:
     checks.append(_check_hpc_token())
     if network:
         checks.append(_check_network())
+    checks.append(_check_version_update(network=network))
     return checks
 
 

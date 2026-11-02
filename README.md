@@ -25,7 +25,7 @@
 
 核心设计原则：
 
-1. **默认只读与受控写操作**。写操作严格收敛在安全白名单内（Canvas 作业提交/回帖/私信/课程收藏/个人云盘上传/待办归档、联创文印云上传/作业取消、场地预约/取消、图书馆在借续借、日历导出、本地日常备忘），统一经由 `consequence.py` 事务门拦截并生成 Action Card（事务预览卡片与单次确认 Ticket）；不提供选课、抢课功能，不绕过权限系统。
+1. **默认只读与受控写操作**。写操作严格收敛在安全白名单内（Canvas 作业提交/回帖/私信/课程收藏/个人云盘上传/待办归档、联创文印云上传/作业取消、场地预约/取消、图书馆在借续借、日历导出），统一经由 `consequence.py` 事务门拦截并生成 Action Card（事务预览卡片与单次确认 Ticket）；不提供选课、抢课功能，不绕过权限系统。
 2. **离线优先与优雅降级**。课表、校历周次、班车时刻表等低频数据全面走 SWR（Stale-While-Revalidate）架构，支持 `--offline` 离线快照直出，断网或无校内 VPN 依然秒级查阅。
 3. **凭据仅存本地**。优先采用系统钥匙串并保持单一持久化存储，不打印、不提交、不跨设备同步；账号信息由使用者在本地网页「设置」页面录入，终端默认不提示输入明文密码。详见[凭据与隐私](#凭据与隐私)。
 4. **无官方背书**。本项目为开源社区工具，项目结构参考 [sustech_survival](https://github.com/dumixthestpd/sustech_survival)，与西湖大学官方无关。
@@ -34,7 +34,6 @@
 
 | 领域 | 覆盖 | 需账号 |
 | --- | --- | --- |
-| 时空行动流 | 跨系统全天日程融合（课表/作业DDL/预约/班车）、时间冲突检测预警、个人生活备忘（支持离线快照秒出） | 部分免账号 |
 | 学业（SIS） | 课表、成绩、考试安排、选课车、评教、第二课堂成绩单、学籍异动、学业导师、课表 ICS | 统一密码 |
 | 教学（AMS） | 另一套课表、教学周次、学籍与选课入口 | 统一密码 |
 | Canvas | 课程、截止与测验、待办、模块、课程文件下载、讨论区、公告、收件箱、作业详情（题目附件＋评分细则）；交作业、回帖、回私信、课程收藏置顶 | 令牌或统一密码 |
@@ -106,6 +105,7 @@ python tools/pii_scan.py       # 提交前扫描敏感个人信息
 | --- | --- |
 | [docs/first_run.md](docs/first_run.md) | 启动行为与首次配置契约 |
 | [docs/doctor.md](docs/doctor.md) | 环境自检逐项说明 |
+| [docs/version_design.md](docs/version_design.md) | 语义化版本体系与更新契约设计（参考 archify 设计） |
 | [docs/skill_reference.md](docs/skill_reference.md) | 命令示例、Python API 方法表、MCP 注册 |
 | [docs/credential_single_store.md](docs/credential_single_store.md) | 「凭据只存一份」的设计与实现 |
 | [docs/ams.md](docs/ams.md) / [docs/sports.md](docs/sports.md) / [docs/wikilake.md](docs/wikilake.md) / [docs/clubwiki.md](docs/clubwiki.md) | 各系统深挖注记 |

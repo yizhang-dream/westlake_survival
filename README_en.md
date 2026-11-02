@@ -25,7 +25,7 @@ Westlake University campus services are split across dozens of isolated portals:
 
 Three core principles:
 
-1. **Read-only by default & Action Card verification.** Write operations are strictly restricted to a safe whitelist (Canvas assignment submission, replies, direct messages, course starring; venue booking & cancellation; library loan renewals; local timeline memos). Each write operation is guarded by `consequence.py`, generating a structured **Action Card** with an ephemeral single-use confirmation ticket (`--ticket`) or explicit per-execution confirmation (`--yes`). No automated course-sniping, no seat-grabbing, and no permission bypasses.
+1. **Read-only by default & Action Card verification.** Write operations are strictly restricted to a safe whitelist (Canvas assignment submission, replies, direct messages, course starring; venue booking & cancellation; library loan renewals; iCalendar export). Each write operation is guarded by `consequence.py`, generating a structured **Action Card** with an ephemeral single-use confirmation ticket (`--ticket`) or explicit per-execution confirmation (`--yes`). No automated course-sniping, no seat-grabbing, and no permission bypasses.
 2. **Offline-first architecture (SWR).** Low-frequency datasets such as class schedules, academic calendar weeks, and shuttle timetables support Stale-While-Revalidate caching and `--offline` flags. Lookups return instant local snapshots even in basements, offline environments, or outside campus without VPN.
 3. **Credentials stay local.** Stored in your native OS keychain, saved exactly once, never logged to terminals or committed to git, and never synced across machines. Enter your credentials once via the local web settings UI. See [Credentials & Privacy](#credentials--privacy).
 4. **Independent community project.** Structurally inspired by [sustech_survival](https://github.com/dumixthestpd/sustech_survival); not officially affiliated with or endorsed by Westlake University.
@@ -34,7 +34,6 @@ Three core principles:
 
 | Domain | Coverage | Account |
 | --- | --- | --- |
-| Action Timeline | Multi-source full-day briefing (timetable, Canvas DDLs, reservations, shuttles), schedule conflict solver, personal daily memos (offline-ready) | partly none |
 | Academics (SIS) | class timetable, grades, exam seating, enrollment cart, course evaluations, co-curricular records, status changes, advisor info, ICS calendar export | unified password |
 | Teaching (AMS) | secondary timetable, academic calendar week numbering, course registration status | unified password |
 | Canvas | courses, deadlines & quizzes, to-dos, modules, file downloads, discussions, announcements, inbox, assignment specifications (attachments & rubrics); submit / reply / send message / star course | personal token or unified password |

@@ -782,6 +782,12 @@ def _sis_context() -> dict:
             ],
         }
 
+    def _safe_aid_items(fn):
+        try:
+            return [r.to_dict() for r in fn()]
+        except Exception:
+            return []
+
     records = _sis_module("records")
     aid = _sis_module("aid")
     loaders: dict = {
@@ -831,18 +837,18 @@ def _sis_context() -> dict:
         "appointments": lambda: records.appointments().to_dict(),
         "leaving": lambda: records.leaving_check(),
         "source": lambda: records.source_info_status(),
-        # 社团与资助
+        # 社团与资助（各子列表容错降级，避免空网格偶发异常导致整块报红）
         "clubs": lambda: clubwiki.annotate([c.to_dict() for c in aid.my_clubs()]),
         "orgs": lambda: clubwiki.annotate([o.to_dict() for o in aid.student_orgs()]),
-        "activities": lambda: [a.to_dict() for a in aid.student_activities()],
+        "activities": lambda: _safe_aid_items(aid.student_activities),
         "aid": lambda: {
-            "loans": [r.to_dict() for r in aid.loans()],
-            "loan_app": [r.to_dict() for r in aid.loan_application()],
-            "repay": [r.to_dict() for r in aid.loan_repayments()],
-            "outbound": [r.to_dict() for r in aid.outbound_programs()],
-            "exchange": [r.to_dict() for r in aid.exchange_applications()],
-            "jobs": [r.to_dict() for r in aid.study_jobs()],
-            "claim_notice": aid.job_claim().get("notice", ""),
+            "loans": _safe_aid_items(aid.loans),
+            "loan_app": _safe_aid_items(aid.loan_application),
+            "repay": _safe_aid_items(aid.loan_repayments),
+            "outbound": _safe_aid_items(aid.outbound_programs),
+            "exchange": _safe_aid_items(aid.exchange_applications),
+            "jobs": _safe_aid_items(aid.study_jobs),
+            "claim_notice": (lambda: aid.job_claim().get("notice", "") if hasattr(aid, "job_claim") else "")(),
         },
     }
 
@@ -889,13 +895,21 @@ def _sis_context() -> dict:
 
 
 def _canvas_context() -> dict:
-    """Canvas 页：课程+成绩 / 公告 / 截止 / 考试 / 测验（令牌或统一会话，逐块降级）。"""
-    context: dict = {"courses": [], "deadlines": [], "error": None}
+    """Canvas 页：课程+成绩 / 公告 / 截止 / 考试 / 测验 / 过往结课课程（令牌或统一会话，逐块降级）。"""
+    context: dict = {
+        "courses": [],
+        "past_courses": [],
+        "past_by_term": {},
+        "deadlines": [],
+        "error": None,
+    }
     try:
+        from collections import defaultdict
         from westlake_survival.canvas.client import CanvasClient
 
         client = CanvasClient()
-        courses = client.list_courses()
+        courses = client.list_courses(enrollment_state="active")
+        past_courses = client.list_past_courses()
 
         def _clean_name(text: str) -> str:
             """课程名清洗：「|」分隔改「·」；中英边界补空格；压空白。"""
@@ -905,9 +919,36 @@ def _canvas_context() -> dict:
             return " ".join(out.split())
 
         name_by_id = {c.id: _clean_name(c.name) for c in courses}
+        for c in past_courses:
+            if c.id is not None and c.id not in name_by_id:
+                name_by_id[c.id] = _clean_name(c.name)
+
         context["courses"] = [
-            {"name": _clean_name(c.name), "code": getattr(c, "code", ""), "id": c.id} for c in courses
+            {
+                "name": _clean_name(c.name),
+                "code": getattr(c, "course_code", "") or getattr(c, "code", ""),
+                "id": c.id,
+            }
+            for c in courses
         ]
+
+        past_list = []
+        past_by_term_map: dict[str, list] = defaultdict(list)
+        for c in past_courses:
+            if not c.name:
+                continue
+            entry = {
+                "name": _clean_name(c.name),
+                "code": getattr(c, "course_code", "") or getattr(c, "code", ""),
+                "id": c.id,
+                "term": c.term_name or "未指定学期",
+            }
+            past_list.append(entry)
+            past_by_term_map[entry["term"]].append(entry)
+
+        context["past_courses"] = past_list
+        context["past_by_term"] = dict(sorted(past_by_term_map.items(), reverse=True))
+
         # 课程成绩（老师未发布时为 None，页面如实显示）
         try:
             context["grades"] = [

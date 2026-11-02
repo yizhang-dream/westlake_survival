@@ -187,11 +187,8 @@ ACTIVITY_GRID_ID = "WL_STU_ACT_LIST_FL"
 # --------------------------------------------------------------------------- #
 
 #: 空记录页正文特征（小写子串匹配）。空页不渲染网格，需据此与「结构漂移」区分。
-#: 2026-10-27 起界面语言为中文，补中文空页文案（实测逐句登录态核对）：
-#: 贷款「您当前没有助贷申请。」、勤工助学「未查询到相应数据！」、
-#: 海外交流 / Exchange「您(你)当前还没有申请…」、社团活动「当前没有活动报名…」
-#: 「你还没有参与活动的记录…」。
 _NO_DATA_MARKERS = (
+    # 英文常见空态
     "you currently do not have a loan application",
     "you have not applied yet",
     "there is no data for the current query",
@@ -199,13 +196,59 @@ _NO_DATA_MARKERS = (
     "no data found",
     "there are currently no activity registrations",
     "you don't have a club yet",
+    "no record found",
+    "no data available",
+    "no results found",
+    # 中文 - 助贷与资助
     "您当前没有助贷申请",
+    "当前没有助贷申请",
+    "没有助贷申请",
+    "暂无助贷",
+    "无助贷",
+    "没有贷款记录",
+    "暂无贷款",
+    # 中文 - 勤工助学
     "未查询到相应数据",
+    "未查询到相应",
+    "暂无勤工助学",
+    "你还没有勤工俭学被录用",
+    # 中文 - 海外交流 / 交换
     "当前还没有申请",
+    "您当前还没有申请",
+    "你当前还没有申请",
+    "暂无申请",
+    # 中文 - 社团与活动
     "当前没有活动报名",
     "你还没有参与活动的记录",
-    # 2026-10-27 实测：还款页空态文案（「没有结果」而不是「没有数据」）
+    "暂无活动报名",
+    "没有活动报名",
+    "暂无活动记录",
+    "没有参与活动的记录",
+    "暂无社团",
+    "没有社团",
+    # 通用空态
     "当前查询没有结果",
+    "没有查询到数据",
+    "暂无数据",
+    "未找到数据",
+    "暂无记录",
+    "没有记录",
+    "无记录",
+    "暂无内容",
+)
+
+#: 已知空态提示面板容器 ID 特征（命中了这些容器且页面无数据行，即为合法空态）。
+_EMPTY_PANEL_CONTAINERS = (
+    "WL_STU_ACTI_WRK_GROUPBOX",
+    "WL_STU_ACTI_WRK_HTMLAREA",
+    "WL_LOAN_WRK",
+    "WL_LOA_LIST_WRK",
+    "CHN_STUAPL_",
+    "CHN_WORK_MD",
+    "WL_SAA_OTB_",
+    "WL_EXC_APPL_",
+    "WL_EXC_SCHOOL_",
+    "WL_STU_ORG_LIST_FL",
 )
 
 #: PeopleSoft 网格数据行 id：``{grid_id}${group}_row_{row}``。
@@ -231,9 +274,49 @@ def _strip_tags(text: str) -> str:
 
 
 def _has_no_data_marker(html: str) -> bool:
-    """正文是否含空记录页特征文案。"""
-    low = (html or "").lower()
-    return any(marker in low for marker in _NO_DATA_MARKERS)
+    """正文（原始 HTML 或纯文本）是否含空记录特征文案。"""
+    if not html:
+        return True
+    low_raw = html.lower()
+    if any(marker in low_raw for marker in _NO_DATA_MARKERS):
+        return True
+    low_text = _strip_tags(html).lower()
+    return any(marker in low_text for marker in _NO_DATA_MARKERS)
+
+
+def _is_empty_record_page(html: str, grid_id: str) -> bool:
+    """综合判定页面是否为无记录的合法空页。"""
+    if not html:
+        return True
+
+    # 1. 文本命中
+    if _has_no_data_marker(html):
+        return True
+
+    # 2. 专属空态容器特征（社团活动、助贷记录、勤工助学等）
+    low = html.lower()
+    for container in _EMPTY_PANEL_CONTAINERS:
+        if container.lower() in low:
+            if not _data_grid_ids(html):
+                return True
+
+    # 3. 常见泛化空态词识别（在纯文本中）
+    plain_text = _strip_tags(html)
+    generic_empty_words = (
+        "暂无",
+        "没有记录",
+        "未查询到",
+        "无记录",
+        "没有数据",
+        "当前没有",
+        "暂无数据",
+        "无符合条件",
+    )
+    if any(w in plain_text for w in generic_empty_words):
+        if not _data_grid_ids(html):
+            return True
+
+    return False
 
 
 def _data_grid_ids(html: str) -> list[str]:
@@ -250,7 +333,7 @@ def _grid_rows(html: str, grid_id: str) -> list[dict]:
     """解析 fluid 网格为行字典列表；空记录页优雅返回 ``[]``。
 
     先按 *grid_id* 解析；若页内该网格不存在但有*其它*数据行网格（列/网格漂移），
-    退回第一个有数据的网格。两者都解析不到时：含空记录特征文案 → ``[]``；
+    退回第一个有数据的网格。两者都解析不到时：合法空页特征 → ``[]``；
     否则原样抛 :class:`~westlake_survival.exceptions.ParseError`（视为结构漂移，
     不静默吞掉）。
     """
@@ -259,7 +342,7 @@ def _grid_rows(html: str, grid_id: str) -> list[dict]:
     try:
         return pages.parse_fluid_grid(html, target)
     except ParseError:
-        if _has_no_data_marker(html):
+        if _is_empty_record_page(html, grid_id):
             return []
         raise
 

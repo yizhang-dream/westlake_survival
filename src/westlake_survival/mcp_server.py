@@ -1211,6 +1211,35 @@ def _tool_canvas_discussion_entries(args: dict) -> Any:
     }
 
 
+def _tool_canvas_courses(args: dict) -> Any:
+    """列出当前账号的 Canvas 课程（支持在修 active、过往结课 completed 或全部 all）。"""
+    from westlake_survival.canvas import canvas
+
+    state = _opt_str(args, "state") or "active"
+    if state not in ("active", "completed", "all"):
+        state = "active"
+    keyword = (_opt_str(args, "keyword") or "").lower()
+
+    courses = canvas().list_courses(enrollment_state=state)
+    out = []
+    for c in courses:
+        name = c.name or ""
+        code = c.course_code or ""
+        if keyword and (keyword not in name.lower() and keyword not in code.lower()):
+            continue
+        out.append(
+            {
+                "id": c.id,
+                "course_code": code,
+                "name": name,
+                "term_name": c.term_name or "",
+                "is_completed": bool(c.is_completed),
+                "status": "completed" if c.is_completed else "active",
+            }
+        )
+    return out
+
+
 def _tool_canvas_deadlines(args: dict) -> Any:
     """未来 N 天内到期的 Canvas 作业（令牌或统一密码会话均可）。"""
     from westlake_survival.canvas import CHINA_TZ, canvas
@@ -2074,6 +2103,20 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "handler": _tool_context_snapshot,
     },
     {
+        "name": "canvas_courses",
+        "description": "列出当前账号的 Canvas 课程列表（支持在修 active、过往结课 completed 或全部 all，支持关键词过滤）。",
+        "inputSchema": _schema(
+            {
+                "state": _str_param(
+                    "课程状态：active（在修，默认）、completed（过往结课）、all（全部）。",
+                    enum=["active", "completed", "all"],
+                ),
+                "keyword": _str_param("可选名称或课程代码关键词过滤。"),
+            }
+        ),
+        "handler": _tool_canvas_courses,
+    },
+    {
         "name": "canvas_deadlines",
         "description": "未来 N 天内到期的 Canvas 作业截止（令牌或统一密码会话均可）。",
         "inputSchema": _schema(
@@ -2411,17 +2454,6 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "handler": _tool_scholar_campus,
     },
     {
-        "name": "timeline",
-        "description": "今日时空行动流：跨系统日程编排（课表/Canvas/预约/班车）、冲突检测与个人备忘（支持离线）。",
-        "inputSchema": _schema(
-            {
-                "date": _str_param("目标日期 YYYY-MM-DD，缺省今天。"),
-                "offline": {"type": "boolean", "description": "是否使用离线快照模式（无网秒出）。"},
-            }
-        ),
-        "handler": _tool_timeline,
-    },
-    {
         "name": "booking_recommend",
         "description": "场景级复合求解：智能推荐空闲连续时段（避免多次轮询）。",
         "inputSchema": _schema(
@@ -2471,40 +2503,6 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
             ["barcode"],
         ),
         "handler": _tool_lib_renew,
-    },
-    {
-        "name": "timeline_add_memo",
-        "description": "添加个人日程生活备忘事项（写操作）。",
-        "inputSchema": _schema(
-            {
-                "text": _str_param("备忘内容。"),
-                "time": _str_param("指定时间点，如 15:00。"),
-            },
-            ["text"],
-        ),
-        "handler": _tool_timeline_add_memo,
-    },
-    {
-        "name": "timeline_done_memo",
-        "description": "标记个人生活备忘为已完成（写操作）。",
-        "inputSchema": _schema(
-            {
-                "memo_id": _str_param("备忘唯一 ID。"),
-            },
-            ["memo_id"],
-        ),
-        "handler": _tool_timeline_done_memo,
-    },
-    {
-        "name": "timeline_delete_memo",
-        "description": "删除指定个人生活备忘（写操作）。",
-        "inputSchema": _schema(
-            {
-                "memo_id": _str_param("待删除备忘的唯一 ID。"),
-            },
-            ["memo_id"],
-        ),
-        "handler": _tool_timeline_delete_memo,
     },
 )
 

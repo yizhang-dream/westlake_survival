@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "skillId": "westlake-survival",
+  "channel": "stable",
+  "version": "1.0.0",
+  "source": {
+    "repository": "https://github.com/yizhang-dream/westlake_survival"
+  },
+  "updateManifestUrl": "https://raw.githubusercontent.com/yizhang-dream/westlake_survival/main/skill-release.json"
+}

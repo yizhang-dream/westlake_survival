@@ -764,14 +764,96 @@ def canvas_cmd() -> None:
 
 
 @canvas_cmd.command(name="courses")
+@click.option(
+    "--state",
+    type=click.Choice(["active", "completed", "all"], case_sensitive=False),
+    default="active",
+    show_default=True,
+    help="课程状态：active（在修）、completed（过往结课）、all（全部）。",
+)
+@click.option("--past", is_flag=True, help="等同于 --state completed，查看过往已结课课程。")
+@click.option("--all", "show_all", is_flag=True, help="等同于 --state all，查看全部（在修+过往）课程。")
 @_handle_canvas_errors
-def canvas_courses() -> None:
-    """列出当前账号的 Canvas 课程。"""
+def canvas_courses(state: str, past: bool, show_all: bool) -> None:
+    """列出当前账号的 Canvas 课程（支持在修与过往结课课程）。"""
     from westlake_survival.canvas import canvas
 
-    courses = canvas().list_courses()
-    rows = [(c.course_code or "—", c.name or "—", c.term_name or "—") for c in courses]
-    _print_table(rows, ("课程代码", "课程名称", "学期"))
+    target_state = state
+    if past:
+        target_state = "completed"
+    elif show_all:
+        target_state = "all"
+
+    courses = canvas().list_courses(enrollment_state=target_state)
+    show_status_col = target_state in ("all", "completed")
+    if show_status_col:
+        rows = [
+            (
+                str(c.id or "—"),
+                c.course_code or "—",
+                c.name or "—",
+                c.term_name or "—",
+                "已结课" if c.is_completed else "在修",
+            )
+            for c in courses
+        ]
+        _print_table(rows, ("ID", "课程代码", "课程名称", "学期", "状态"))
+    else:
+        rows = [
+            (
+                str(c.id or "—"),
+                c.course_code or "—",
+                c.name or "—",
+                c.term_name or "—",
+            )
+            for c in courses
+        ]
+        _print_table(rows, ("ID", "课程代码", "课程名称", "学期"))
+    state_label = {"active": "在修", "completed": "过往已结课", "all": "全部"}.get(
+        target_state, target_state
+    )
+    click.echo(f"共 {len(courses)} 门{state_label}课程。")
+
+
+@canvas_cmd.command(name="grades")
+@click.option(
+    "--state",
+    type=click.Choice(["active", "completed", "all"], case_sensitive=False),
+    default="active",
+    show_default=True,
+    help="课程状态：active（在修）、completed（过往结课）、all（全部）。",
+)
+@click.option("--past", is_flag=True, help="等同于 --state completed，查看过往已结课课程成绩。")
+@click.option("--all", "show_all", is_flag=True, help="等同于 --state all，查看全部课程成绩。")
+@_handle_canvas_errors
+def canvas_grades(state: str, past: bool, show_all: bool) -> None:
+    """列出 Canvas 课程成绩（支持在修与过往结课课程）。"""
+    from westlake_survival.canvas import canvas
+
+    target_state = state
+    if past:
+        target_state = "completed"
+    elif show_all:
+        target_state = "all"
+
+    grades = canvas().course_grades(enrollment_state=target_state)
+    rows = [
+        (
+            g.get("course_code") or "—",
+            g.get("name") or "—",
+            g.get("term_name") or "—",
+            str(g.get("current_score")) if g.get("current_score") is not None else "未发布",
+            g.get("current_grade") or "—",
+            str(g.get("final_score")) if g.get("final_score") is not None else "—",
+            "已结课" if g.get("is_completed") else "在修",
+        )
+        for g in grades
+    ]
+    _print_table(rows, ("课程代码", "课程名称", "学期", "当前分", "当前等级", "最终分", "状态"))
+    state_label = {"active": "在修", "completed": "过往已结课", "all": "全部"}.get(
+        target_state, target_state
+    )
+    click.echo(f"共 {len(grades)} 门{state_label}课程成绩。")
 
 
 @canvas_cmd.command(name="deadlines")
@@ -2574,6 +2656,74 @@ def find_cmd(query: str | None) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# 版本信息与更新感知（参考 archify 版本契约体系）
+# --------------------------------------------------------------------------- #
+@click.command(name="version", help="版本信息与契约状态（参考 archify 版本设计规范）。")
+@click.option("--json", "as_json", is_flag=True, help="输出结构化 JSON 元数据。")
+@click.option("--check", is_flag=True, help="立即联网检查远程版本更新。")
+def version_cmd(as_json: bool, check: bool) -> None:
+    """展示语义化版本 (SemVer 2.0.0)、发行渠道、版本契约与更新感知信息。"""
+    from westlake_survival._version import __channel__, __release_date__, __version__
+    from westlake_survival.update_check import check_for_updates
+    from westlake_survival.version_contract import load_local_release
+
+    local_release = load_local_release()
+    update_res = check_for_updates(force_network=check, timeout=2.5) if check else None
+
+    data = {
+        "version": __version__,
+        "channel": local_release.get("channel", __channel__),
+        "release_date": __release_date__,
+        "skill_id": local_release.get("skillId", "westlake-survival"),
+        "repository": local_release.get("source", {}).get("repository", ""),
+        "semver_contract": "SemVer 2.0.0 (MAJOR.MINOR.PATCH)",
+    }
+    if update_res:
+        data["update"] = update_res.to_dict()
+
+    if as_json:
+        click.echo(json.dumps(data, ensure_ascii=False, indent=2))
+        return
+
+    click.echo(f"westlake_survival v{__version__} [{data['channel']}]")
+    click.echo(f"  发布日期: {__release_date__}")
+    click.echo(f"  版本契约: SemVer 2.0.0 (MAJOR.MINOR.PATCH)")
+    click.echo(f"  源码仓库: {data['repository']}")
+    if update_res:
+        if update_res.has_update:
+            click.secho(f"\n{update_res.notice_text}", fg="yellow")
+        else:
+            click.secho(f"  更新感知: 已是最新版本（检查来源: {update_res.source}）", fg="green")
+    else:
+        click.echo("  提示: 使用 `westlake version --check` 探测是否有新版本。")
+
+
+@click.command(name="update-snooze", help="暂停当前版本的更新提示 7 天。")
+@click.option("--days", default=7, type=int, help="推迟天数（默认 7 天）。")
+def update_snooze_cmd(days: int) -> None:
+    """参考 archify update-awareness 协议：推迟更新提醒。"""
+    from westlake_survival.update_check import check_for_updates, snooze_update
+
+    res = check_for_updates(force_network=False)
+    target_v = res.latest_version or res.current_version
+    snooze_update(target_v, days=days)
+    click.echo(f"✔ 已推迟针对版本 {target_v} 的更新提醒 {days} 天。")
+
+
+@click.command(name="update-ignore", help="忽略当前版本的更新提示。")
+def update_ignore_cmd() -> None:
+    """参考 archify update-awareness 协议：永久忽略当前发现的版本。"""
+    from westlake_survival.update_check import check_for_updates, ignore_update
+
+    res = check_for_updates(force_network=False)
+    if not res.latest_version:
+        click.echo("当前未检测到待提醒的更新版本。")
+        return
+    ignore_update(res.latest_version)
+    click.echo(f"✔ 已永久忽略针对版本 {res.latest_version} 的更新提示。")
+
+
+# --------------------------------------------------------------------------- #
 # 顶层 group
 # --------------------------------------------------------------------------- #
 @click.group(
@@ -2612,6 +2762,9 @@ def _first_run_configured() -> bool:
 
 for _group in (
     go_cmd,
+    version_cmd,
+    update_snooze_cmd,
+    update_ignore_cmd,
     doctor_cmd,
     ams_cmd,
     find_cmd,
