@@ -1,6 +1,6 @@
-# 西湖大学服务工具包（westlake-survival）Skill 执行速度全链路优化报告
+# 性能架构与实测（2026-10-30）
 
-## 1. 优化背景与瓶颈诊断
+## 1. 瓶颈诊断
 
 在 AI 编码代理（ZCode、Claude Code、DSH 等）调用 `westlake-survival` 技能执行各项校园服务查询或日常操作时，原实现存在若干显著的延迟瓶颈：
 

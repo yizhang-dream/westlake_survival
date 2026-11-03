@@ -108,9 +108,9 @@ python tools/pii_scan.py       # 提交前扫描敏感个人信息
 | [docs/version_design.md](docs/version_design.md) | 语义化版本体系与更新契约设计（参考 archify 设计） |
 | [docs/skill_reference.md](docs/skill_reference.md) | 命令示例、Python API 方法表、MCP 注册 |
 | [docs/credential_single_store.md](docs/credential_single_store.md) | 「凭据只存一份」的设计与实现 |
-| [docs/ams.md](docs/ams.md) / [docs/sports.md](docs/sports.md) / [docs/wikilake.md](docs/wikilake.md) / [docs/clubwiki.md](docs/clubwiki.md) | 各系统深挖注记 |
+| [docs/ams.md](docs/ams.md) / [docs/sports.md](docs/sports.md) / [docs/wikilake.md](docs/wikilake.md) / [docs/clubwiki.md](docs/clubwiki.md) / [docs/hidden_services.md](docs/hidden_services.md) | 各系统深挖注记 |
 | [docs/library.md](docs/library.md) | 图书馆新旧系统与阿法迪云接入 |
-| [docs/write_actions_expansion.md](docs/write_actions_expansion.md) | 受控写操作扩充与 Action Card 安全门全栈闭环报告 |
+| [docs/write_actions.md](docs/write_actions.md) | 受控写操作白名单（14 项）与 Action Card 安全门设计 |
 | [docs/module_audit.md](docs/module_audit.md) | 各系统边界与归因审计 |
 | [docs/performance.md](docs/performance.md) / [docs/portability.md](docs/portability.md) | 性能架构与跨平台规范 |
 
