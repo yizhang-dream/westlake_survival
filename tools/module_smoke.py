@@ -15,11 +15,30 @@
 * ``auth``：要本机凭据 / 登录态 / 个人数据 / 校园网——用**使用者自己的**
   账号真跑，结果含个人数据，只适合本机验证，绝不在 CI 或他人环境执行。
 
+参数自举（2026-11-03，auth 组不再绑具体账号的内容）
+==================================================
+每个人账号里的课程、作业、讨论、会话、可约资源、已登记分享都不同——
+把样例参数写死（「概率论」「Quiz 1」「会话 2041」「E12-302研讨室」）
+等于把测试绑在**某一个账号某一个学期**上，换人跑必挂。因此带 ``{占位符}``
+的命令在执行前先跑取数命令、从**该账号的真实列表**提取第一项替换：
+
+* ``{canvas_course}`` / ``{course_with_assignment}``+``{first_assignment}`` /
+  ``{course_with_topic}``+``{first_topic}``：课程表里第一门课 / 第一门有
+  作业的课（最多扫 12 门）/ 第一门有讨论主题的课；``--course`` 一律传
+  课程 id——同名课多门时按名称关键词会匹配歧义；
+* ``{canvas_conversation}``：inbox 第一条会话 id；``{booking_resource}``：
+  可约资源列表第一项；``{sport_scene}``/``{sport_slot}``：第一场景及其
+  第一场地；``{share_name}``：第一笔已登记分享；
+* ``{today}``/``{tomorrow}``/``{today+6d}``：运行日动态生成，不随时间过期。
+
+该账号没有此类内容（收件箱空、没登记分享……）时该条标 ``SKIP``——
+是「此账号无此内容」的有效结果，不是失败。
+
 用法
 ====
     python tools/module_smoke.py            # 默认：匿名+离线精选集，不碰账号
     python tools/module_smoke.py --auth     # 只跑需凭据组（本机、自己账号）
-    python tools/module_smoke.py --all      # 全量（≈旧版默认行为，125 条）
+    python tools/module_smoke.py --all      # 全量（≈旧版默认行为）
     python tools/module_smoke.py --offline  # 只跑纯离线条目（CI 用的子集）
     python tools/module_smoke.py sis canvas # 按模块过滤，与上述选择器取交集
     python tools/module_smoke.py --list     # 只列选中清单不执行（审计口径）
@@ -30,6 +49,7 @@
 ``OK``      正常返回且有内容
 ``EMPTY``   正常返回但空——**空是合法结果，也可能是没权限**，需人工判断
 ``AUTH``    缺凭据/登录失败
+``SKIP``    参数自举失败：该账号没有占位符所需的内容（不是失败）
 ``MIGRATED``服务端系统换掉了、本工具尚未接新接口（不是 bug，不列入待处理）
 ``FAIL``    其他错误（含超时、解析异常）
 ``MISSING`` 命令不存在（文档承诺了但没实现）
@@ -49,10 +69,12 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
+from datetime import date, timedelta
 
 #: (模块, 参数, 说明, 标签)。只放只读命令（排除口径见模块 docstring）。
 #: 标签：``"auth"``=需凭据/登录态/个人数据/校园网；``"offline"``=不碰网；
@@ -135,7 +157,7 @@ COMMANDS: list[tuple[str, list[str], str, tuple[str, ...]]] = [
     ("sso", ["sso", "creds", "status"], "凭据来源有无（本地探测；无凭据时 AUTH 属预期，不回显密码）", ("offline",)),
     # —— 需凭据 / 登录态 / 个人数据 / 校园网（--auth，用自己账号真跑）——
     ("scholar", ["scholar", "status"], "CARSI 会话有效性（依赖本机已有会话）", ("auth",)),
-    ("share", ["share", "files", "--name", "2183-lecture-notes"], "列分享文件夹（需已登记分享+组织会话）", ("auth",)),
+    ("share", ["share", "files", "--name", "{share_name}"], "列分享文件夹（自举：第一笔已登记分享）", ("auth",)),
     ("lib", ["lib", "search", "数据结构"], "书目检索", ("auth",)),
     ("lib", ["lib", "loans"], "我的借阅", ("auth",)),
     ("pms", ["pms", "jobs"], "我的打印任务", ("auth",)),
@@ -180,26 +202,26 @@ COMMANDS: list[tuple[str, list[str], str, tuple[str, ...]]] = [
     ("canvas", ["canvas", "deadlines", "--limit", "3"], "作业截止", ("auth",)),
     ("canvas", ["canvas", "exams", "--days", "30"], "考试安排", ("auth",)),
     ("canvas", ["canvas", "todo", "--limit", "5"], "Canvas 待办", ("auth",)),
-    ("canvas", ["canvas", "assignments", "--course", "概率论"], "课程作业列表（课程名随学期）", ("auth",)),
-    ("canvas", ["canvas", "assignment-info", "--course", "概率论", "--assignment", "Quiz 1"], "作业详情（参数随学期）", ("auth",)),
-    ("canvas", ["canvas", "files", "--course", "概率论"], "课程文件区清单", ("auth",)),
-    ("canvas", ["canvas", "discussions", "--course", "马克思"], "课程讨论主题", ("auth",)),
-    ("canvas", ["canvas", "announcements", "--course", "概率论"], "课程公告", ("auth",)),
-    ("canvas", ["canvas", "discussion", "--course", "马克思", "--topic", "什么是空间"], "讨论主题正文", ("auth",)),
-    ("canvas", ["canvas", "entries", "--course", "马克思", "--topic", "什么是空间", "--limit", "5"], "讨论回帖列表", ("auth",)),
+    ("canvas", ["canvas", "assignments", "--course", "{course_with_assignment}"], "课程作业列表（自举：第一门有作业的课）", ("auth",)),
+    ("canvas", ["canvas", "assignment-info", "--course", "{course_with_assignment}", "--assignment", "{first_assignment}"], "作业详情（课程+作业自举）", ("auth",)),
+    ("canvas", ["canvas", "files", "--course", "{canvas_course}"], "课程文件区清单（自举：第一门课）", ("auth",)),
+    ("canvas", ["canvas", "discussions", "--course", "{course_with_topic}"], "课程讨论主题（自举：第一门有讨论的课）", ("auth",)),
+    ("canvas", ["canvas", "announcements", "--course", "{canvas_course}"], "课程公告（自举：第一门课）", ("auth",)),
+    ("canvas", ["canvas", "discussion", "--course", "{course_with_topic}", "--topic", "{first_topic}"], "讨论主题正文（自举）", ("auth",)),
+    ("canvas", ["canvas", "entries", "--course", "{course_with_topic}", "--topic", "{first_topic}", "--limit", "5"], "讨论回帖列表（自举）", ("auth",)),
     ("canvas", ["canvas", "inbox", "--limit", "5"], "收件箱会话", ("auth",)),
-    ("canvas", ["canvas", "conversation", "2041"], "会话全文（id 由 inbox 给出）", ("auth",)),
-    ("canvas", ["canvas", "modules", "概率论"], "课程模块与条目", ("auth",)),
-    ("canvas", ["canvas", "submission", "--course", "概率论", "--assignment", "Quiz 1"], "作业提交状态", ("auth",)),
+    ("canvas", ["canvas", "conversation", "{canvas_conversation}"], "会话全文（id 自举自 inbox 第一条）", ("auth",)),
+    ("canvas", ["canvas", "modules", "{canvas_course}"], "课程模块与条目（自举：第一门课）", ("auth",)),
+    ("canvas", ["canvas", "submission", "--course", "{course_with_assignment}", "--assignment", "{first_assignment}"], "作业提交状态（自举）", ("auth",)),
     ("booking", ["booking", "types"], "预约中心分类", ("auth",)),
     ("booking", ["booking", "sports"], "预约中心体育类体检", ("auth",)),
     ("booking", ["booking", "list", "--type", "图书馆"], "可预约资源列表", ("auth",)),
-    ("booking", ["booking", "days", "E12-302研讨室", "--start", "2026-11-02", "--end", "2026-11-08"], "某资源逐日可约（日期样例）", ("auth",)),
-    ("booking", ["booking", "slots", "E12-302研讨室", "--date", "2026-11-03"], "某资源空闲时段（日期样例）", ("auth",)),
+    ("booking", ["booking", "days", "{booking_resource}", "--start", "{today}", "--end", "{today+6d}"], "某资源逐日可约（资源+日期自举）", ("auth",)),
+    ("booking", ["booking", "slots", "{booking_resource}", "--date", "{tomorrow}"], "某资源空闲时段（资源+日期自举）", ("auth",)),
     ("booking", ["booking", "mine"], "我的预约", ("auth",)),
     ("sport", ["sport", "scenes"], "场馆场景", ("auth",)),
-    ("sport", ["sport", "sites", "游泳次卡"], "场景当日场地与可约状态", ("auth",)),
-    ("sport", ["sport", "days", "游泳次卡", "游泳场次"], "逐日可约与不可约原因", ("auth",)),
+    ("sport", ["sport", "sites", "{sport_scene}"], "场景当日场地与可约状态（自举：第一场景）", ("auth",)),
+    ("sport", ["sport", "days", "{sport_scene}", "{sport_slot}"], "逐日可约与不可约原因（场景+场地自举）", ("auth",)),
     ("sport", ["sport", "mine"], "我的场馆预约", ("auth",)),
 ]
 
@@ -269,6 +291,150 @@ def run(argv: list[str], timeout: float = 90.0) -> tuple[str, str, float]:
     return status, detail, round(time.time() - started, 1)
 
 
+#: —— 参数自举（见模块 docstring）：占位符 → 该账号真实内容的第一项 ——
+#: 提取器只认各列表命令的表格输出特征（首列数字 id、列间多空格、行尾会话 id、
+#: 全角空格分隔、TAB 分隔），列名表头/虚线/汇总行天然不匹配。
+
+_boot_cache: dict[str, str | None] = {}
+
+
+def _capture(argv: list[str], timeout: float = 60.0) -> str:
+    """跑一条只读取数命令拿合并输出（自举专用，不做结果分类）。"""
+    try:
+        proc = subprocess.run(
+            ["westlake", *argv],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=timeout,
+        )
+        return (proc.stdout or "") + (proc.stderr or "")
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        return f"{exc.__class__.__name__}: {exc}"
+
+
+def _pick_course_id(out: str) -> str | None:
+    """courses 表第一个数据行（首列为纯数字 id；表头「ID」不匹配）。"""
+    m = re.search(r"(?m)^\s*(\d+)\s", out)
+    return m.group(1) if m else None
+
+
+def _pick_assignment(out: str) -> str | None:
+    """assignments 表第一行作业名：列间≥2 空格对齐，名字内部单空格保留。"""
+    m = re.search(r"(?m)^\s*\d+\s+(.+?)\s{2,}", out)
+    return m.group(1).strip() if m else None
+
+
+def _pick_topic(out: str) -> str | None:
+    """discussions 表第一行主题：第 4 列（或空未读时第 3 列后）是日期时间。"""
+    for line in out.splitlines():
+        parts = re.split(r"\s{2,}", line.strip())
+        if len(parts) >= 4 and re.match(r"^\d{4}-\d{2}-\d{2}", parts[-2] if len(parts) > 4 else parts[3]):
+            return parts[0]
+    return None
+
+
+def _pick_conversation(out: str) -> str | None:
+    """inbox 第一个数据行行尾的会话 id（行内含 hh:mm 时间列，避开汇总行）。"""
+    for line in out.splitlines():
+        if re.search(r"\d{2}:\d{2}", line):
+            m = re.search(r"(\d{3,})\s*$", line)
+            if m:
+                return m.group(1)
+    return None
+
+
+def _pick_booking_resource(out: str) -> str | None:
+    """可约资源第一项：名称与「[类型]」之间是全角空格。"""
+    for line in out.splitlines():
+        if "\u3000[" in line:
+            return line.split("\u3000")[0].strip()
+    return None
+
+
+def _first_tab_field(out: str) -> str | None:
+    """TAB 分隔表第一行第一列（sport scenes 的场景名 / sport sites 的场地名）。"""
+    for line in out.splitlines():
+        first = line.split("\t")[0].strip()
+        if first and "\t" in line:
+            return first
+    return None
+
+
+def _pick_share_name(out: str) -> str | None:
+    """share saved 第一笔登记的名称（名称 + URL 两列）。"""
+    for line in out.splitlines():
+        if "http" in line:
+            return line.split()[0]
+    return None
+
+
+def _scan_course_with(kind: str) -> tuple[str, str] | None:
+    """扫课程表（最多 12 门）找第一门有作业/讨论主题的课，返回 (课程id, 第一项)。
+
+    第一门课未必有作业或讨论（实测本账号讨论在第 10 门）——直接取第一门
+    会让这两类条目在多数账号上常年 SKIP/EMPTY，扫描保证自举命中。
+    """
+    out = _capture(["canvas", "courses"])
+    ids = re.findall(r"(?m)^\s*(\d+)\s", out)[:12]
+    for cid in ids:
+        if kind == "assignment":
+            item = _pick_assignment(_capture(["canvas", "assignments", "--course", cid]))
+        else:
+            item = _pick_topic(_capture(["canvas", "discussions", "--course", cid]))
+        if item:
+            return cid, item
+    return None
+
+
+def _boot_value(token: str) -> str | None:
+    if token in _boot_cache:
+        return _boot_cache[token]
+    if token == "{today}":
+        value: str | None = date.today().isoformat()
+    elif token == "{tomorrow}":
+        value = (date.today() + timedelta(days=1)).isoformat()
+    elif token == "{today+6d}":
+        value = (date.today() + timedelta(days=6)).isoformat()
+    elif token == "{canvas_course}":
+        value = _pick_course_id(_capture(["canvas", "courses"]))
+    elif token == "{canvas_conversation}":
+        value = _pick_conversation(_capture(["canvas", "inbox", "--limit", "5"]))
+    elif token == "{booking_resource}":
+        value = _pick_booking_resource(_capture(["booking", "list", "--type", "图书馆"]))
+    elif token == "{sport_scene}":
+        value = _first_tab_field(_capture(["sport", "scenes"]))
+    elif token == "{sport_slot}":
+        scene = _boot_value("{sport_scene}")
+        value = _first_tab_field(_capture(["sport", "sites", scene])) if scene else None
+    elif token == "{share_name}":
+        value = _pick_share_name(_capture(["share", "saved"]))
+    elif token in ("{course_with_assignment}", "{first_assignment}"):
+        found = _scan_course_with("assignment")
+        _boot_cache["{course_with_assignment}"] = found[0] if found else None
+        _boot_cache["{first_assignment}"] = found[1] if found else None
+        return _boot_cache[token]
+    elif token in ("{course_with_topic}", "{first_topic}"):
+        found = _scan_course_with("topic")
+        _boot_cache["{course_with_topic}"] = found[0] if found else None
+        _boot_cache["{first_topic}"] = found[1] if found else None
+        return _boot_cache[token]
+    else:
+        value = None
+    _boot_cache[token] = value
+    return value
+
+
+def _bootstrap(argv: list[str]) -> tuple[list[str], str]:
+    """替换 argv 中的 ``{占位符}``；返回 (新 argv, 失败原因)。原因非空 → 该条 SKIP。"""
+    resolved = list(argv)
+    for i, token in enumerate(resolved):
+        if token.startswith("{") and token.endswith("}"):
+            value = _boot_value(token)
+            if value is None:
+                return resolved, f"自举失败：{token} 本账号取不到"
+            resolved[i] = value
+    return resolved, ""
+
+
 def _select(argv: list[str]) -> tuple[list[tuple[str, list[str], str, tuple[str, ...]]], str]:
     """按旗标+位置参数选命令，返回 (选中清单, 口径描述)。"""
     modes = [name for flag, name in _SELECTOR_FLAGS.items() if flag in argv]
@@ -319,10 +485,16 @@ def main() -> int:
 
     results: list[Result] = []
     for module, cmd, note, tags in chosen:
-        status, detail, seconds = run(cmd)
-        results.append(Result(module, " ".join(cmd), note, status, detail, seconds, tags))
+        boot_cmd, skip_reason = _bootstrap(cmd)
+        if skip_reason:  # 该账号没有占位符所需内容：保留占位符原样便于审计
+            results.append(Result(module, " ".join(cmd), note, "SKIP", skip_reason, 0.0, tags))
+            if not as_json:
+                print(f"{'SKIP':8}{module:12}{' '.join(cmd)}  ← {skip_reason}", flush=True)
+            continue
+        status, detail, seconds = run(boot_cmd)
+        results.append(Result(module, " ".join(boot_cmd), note, status, detail, seconds, tags))
         if not as_json:
-            print(f"{status:8}{module:12}{' '.join(cmd)}  ← {detail}", flush=True)
+            print(f"{status:8}{module:12}{' '.join(boot_cmd)}  ← {detail}", flush=True)
 
     if not as_json:
         print()
