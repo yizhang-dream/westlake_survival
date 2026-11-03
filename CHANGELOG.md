@@ -4,6 +4,13 @@
 
 ---
 
+## [Unreleased]
+
+### 验证体系（Testing Infrastructure）
+- **冒烟矩阵分层精选（Smoke Tiering）**：`tools/module_smoke.py` 的 141 条只读命令按「依赖什么」打标分三层——匿名（公开网页/接口）、`offline`（随包快照与本地计算，连网都不用）、`auth`（凭据/登录态/个人数据/校园网，68 条）。**默认只跑不依赖账号的 73 条精选集**（实测 73/73 OK），`--auth` 显式跑凭据组、`--offline` 单选纯离线子集、`--all` 全量、`--list` 只列清单不执行；`--json` 输出新增 `tags` 字段（向后兼容）。混在匿名区的登录态命令（`career deep`、`share files`、`scholar status`）归位到凭据组；
+- **CI 离线门升级**：新增 `python tools/module_smoke.py --offline` 步骤（10 条纯离线命令真出结果），从「CLI 起得来」升级为「离线命令真跑通」；
+- **WebUI 冒烟口径说明**：`tools/webui_smoke.py` 明确不依赖账号凭据——需登录页面在无凭据环境走降级路径仍断言 200，任何机器可跑。
+
 ## [1.0.0] - 2026-11-02
 
 ### 核心功能集成（Features）

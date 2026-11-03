@@ -1,4 +1,4 @@
-"""模块冒烟矩阵：把所有只读命令跑一遍，输出一张「能不能用」的体检表。
+"""模块冒烟矩阵：把只读命令分层精选，输出一张「能不能用」的体检表。
 
 为什么需要它
 ============
@@ -6,10 +6,23 @@
 主链路跑通≠模块被验证——权限、空列表、占位外链、服务端未配置，都可能在
 主链路之外。这个脚本把「每个模块至少有一次真实调用」变成可重复的检查。
 
+分层（2026-11-03 精选口径）
+==========================
+每条命令按「依赖什么」打标，**默认只跑不依赖账号的精选集**：
+
+* 无标（匿名）：公开网页/公开接口，任何机器有网就能跑；
+* ``offline``：连网都不用（随包快照、本地计算），CI 与无外网环境可跑；
+* ``auth``：要本机凭据 / 登录态 / 个人数据 / 校园网——用**使用者自己的**
+  账号真跑，结果含个人数据，只适合本机验证，绝不在 CI 或他人环境执行。
+
 用法
 ====
-    python tools/module_smoke.py            # 全量（约 3-8 分钟，视网络）
-    python tools/module_smoke.py sis canvas # 只跑匹配的模块
+    python tools/module_smoke.py            # 默认：匿名+离线精选集，不碰账号
+    python tools/module_smoke.py --auth     # 只跑需凭据组（本机、自己账号）
+    python tools/module_smoke.py --all      # 全量（≈旧版默认行为，125 条）
+    python tools/module_smoke.py --offline  # 只跑纯离线条目（CI 用的子集）
+    python tools/module_smoke.py sis canvas # 按模块过滤，与上述选择器取交集
+    python tools/module_smoke.py --list     # 只列选中清单不执行（审计口径）
     python tools/module_smoke.py --json out.json
 
 判定（逐条命令）
@@ -41,151 +54,161 @@ import sys
 import time
 from dataclasses import asdict, dataclass
 
-#: (模块, 参数, 说明)。只放只读命令（排除口径见模块 docstring）。
-COMMANDS: list[tuple[str, list[str], str]] = [
-    ("calendar", ["calendar", "today"], "今日日期/周次"),
-    ("calendar", ["calendar", "today", "--offline"], "今日日期/周次（离线）"),
-    ("calendar", ["calendar", "week", "8"], "第 8 周起止"),
-    ("calendar", ["calendar", "events"], "校历事件"),
-    ("transit", ["transit", "next", "--campus", "云谷", "--limit", "2"], "下一班校车"),
-    ("transit", ["transit", "table", "--campus", "云谷", "--day", "工作日"], "班车时刻表"),
-    ("transit", ["transit", "table", "--offline"], "班车时刻表（离线）"),
-    ("version", ["version"], "版本信息与契约"),
-    ("version", ["version", "--json"], "版本信息结构化 JSON"),
-    ("skill", ["skill", "runtime"], "SkillVM JIT 运行时画像探测"),
-    ("skill", ["skill", "compile", "--target", "zcode"], "SkillVM AOT 编译 (ZCode)"),
-    ("booking", ["booking", "recommend", "--date", "today", "--limit", "2"], "场地空闲推荐复合求解"),
-    ("context", ["context", "--level", "terse"], "此刻快照"),
-    ("digest", ["digest", "--level", "terse"], "晨报"),
-    ("find", ["find", "论文"], "按需求搜能力（CLI/MCP/网页/学术库/注册表）"),
-    ("search", ["search", "西湖", "--limit", "3"], "官网搜索"),
-    ("news", ["news", "--limit", "3"], "新闻"),
-    ("news", ["news", "detail", "https://www.westlake.edu.cn/news_events/westlakenews/News/202610/t20261026_70719.html"], "新闻详情（样例 URL 会过期）"),
-    ("events", ["events", "--days", "7", "--limit", "3"], "讲座活动"),
-    ("events", ["events", "detail", "https://www.westlake.edu.cn/news_events/EventCalendars/science/202610/t20261023_70627.html"], "活动详情（样例 URL 会过期）"),
-    ("research", ["research", "--limit", "3"], "科研进展"),
-    ("research", ["research", "detail", "https://www.westlake.edu.cn/research/research_at_westlake/good_health_wellbeing/202510/t20251016_60343.html"], "科研进展详情（样例 URL 会过期）"),
-    ("careers", ["careers", "--limit", "3"], "招聘岗位"),
-    ("careers", ["careers", "detail", "https://www.westlake.edu.cn/careers/OpenPositions/postdoctoral_fellow/bshsls/202508/t20250827_58224.html"], "岗位详情（样例 URL 会过期）"),
-    ("career", ["career", "list", "--kind", "jobfair"], "就业服务网招聘会"),
-    ("career", ["career", "deep", "--kind", "campus", "--page", "1"], "就业深列表（登录态）"),
-    ("career", ["career", "detail", "zpxz"], "就业服务网详情（招聘指南常设页面）"),
-    ("faculty", ["faculty", "--limit", "3"], "教师名录"),
-    ("faculty", ["faculty", "detail", "https://www.westlake.edu.cn/faculty/jianhao-zhang.html"], "教师主页详情"),
-    ("campus", ["campus", "dining", "--campus", "云谷"], "食堂"),
-    ("campus", ["campus", "housing", "--campus", "云谷"], "公寓"),
-    ("campus", ["campus", "services", "--campus", "云谷"], "生活服务网点（超市/快递/干洗/理发/打印/银行）"),
-    ("contact", ["contact", "--campus", "云谷"], "校区联系"),
-    ("contact", ["contact", "phones"], "常用电话"),
-    ("map", ["map"], "校区地图"),
-    ("program", ["program", "overview"], "培养目标"),
-    ("program", ["program", "curriculum"], "课程体系"),
-    ("program", ["program", "majors"], "专业总览"),
-    ("program", ["program", "plan"], "培养方案"),
-    ("program", ["program", "courses"], "通识课程"),
-    ("program", ["program", "course", "机器学习"], "跨源课程查询"),
-    ("sites", ["sites", "list"], "站点索引"),
-    ("sites", ["sites", "site", "hpc"], "单站栏目与条目"),
-    ("sites", ["sites", "detail", "https://hpc.westlake.edu.cn/document/science/index.html"], "条目详情（样例 URL 会过期）"),
-    ("hosts", ["hosts", "list", "--limit", "3"], "子站清单（缓存）"),
-    ("hosts", ["hosts", "mine", "hpc"], "单站挖掘（--all 全量普查不入表）"),
-    ("hosts", ["hosts", "show", "hpc"], "已挖掘站点的栏目条目"),
-    ("affairs", ["affairs", "apps", "预约"], "办事大厅应用"),
-    ("affairs", ["affairs", "app", "证明"], "办事流程应用详情与直达链接"),
-    ("affairs", ["affairs", "links"], "常用服务入口直达（HPC/预约中心/镜像站）"),
-    ("affairs", ["affairs", "portal"], "门户服务"),
-    ("hpc", ["hpc", "overview"], "集群队列"),
-    ("hpc", ["hpc", "ai"], "AI 网关"),
-    ("hpc", ["hpc", "chat", "1+1=?", "--no-think"], "集群 AI 大模型对话"),
-    ("portal", ["portal", "ask", "图书馆开放时间"], "官方 AI 助手问答"),
-    ("instrument", ["instrument", "search", "质谱", "--limit", "2"], "大型仪器共享检索"),
-    ("finance", ["finance", "sections"], "财务栏目"),
-    ("mirrors", ["mirrors"], "镜像目录"),
-    ("wiki", ["wiki", "list", "--cat", "guides"], "百科目录（WikiLake，学生自建）"),
-    ("wiki", ["wiki", "search", "班车"], "百科标题检索"),
-    ("wiki", ["wiki", "page", "guides/班车"], "百科单页正文（抓整页）"),
-    ("probe", ["probe"], "堵点探测"),
-    ("pms", ["pms", "stations"], "打印网点（匿名）"),
-    ("scholar", ["scholar", "dbs"], "订阅数据库"),
-    ("scholar", ["scholar", "campus"], "校园 IP 信标"),
-    ("scholar", ["scholar", "carsi"], "CARSI 目录（随包快照，356 个 SP）"),
-    ("scholar", ["scholar", "open", "cnki"], "打印某库直达/CARSI 入口 URL"),
-    ("scholar", ["scholar", "status"], "CARSI 会话有效性（不弹窗）"),
-    ("scholar", ["scholar", "doi", "10.1038/nature12373"], "DOI 题录解析（不带 --out 不下载）"),
-    ("share", ["share", "saved"], "已登记分享"),
-    ("share", ["share", "files", "--name", "2183-lecture-notes"], "列分享文件夹（需已登记分享）"),
-    ("institute", ["institute", "news"], "理论院新闻动态"),
-    ("institute", ["institute", "events"], "理论院学术活动"),
-    ("schools", ["schools", "list"], "学院清单"),
-    ("schools", ["schools", "news", "science"], "学院最新新闻"),
-    ("sso", ["sso", "creds", "status"], "凭据来源有无（不回显密码）"),
-    # —— 需凭据 / 校园网 ——
-    ("lib", ["lib", "search", "数据结构"], "书目检索"),
-    ("lib", ["lib", "loans"], "我的借阅"),
-    ("pms", ["pms", "jobs"], "我的打印任务"),
-    ("todo", ["todo", "list"], "办事待办"),
-    ("todo", ["todo", "doing"], "我发起的进行中流程"),
-    ("todo", ["todo", "done"], "我已处理的流程"),
-    ("todo", ["todo", "cc"], "抄送给我的流程（未读）"),
-    ("todo", ["todo", "apps"], "可发起/访问的应用"),
-    ("sis", ["sis", "schedule"], "课表"),
-    ("sis", ["sis", "grid"], "周课表网格+冲突检测（只读）"),
-    ("sis", ["sis", "grades"], "成绩"),
-    ("sis", ["sis", "exams"], "考试"),
-    ("sis", ["sis", "cart"], "选课车（只读）"),
-    ("sis-evals", ["sis-evals", "list", "--pending"], "待评教"),
-    ("profile", ["profile", "info"], "个人信息"),
-    ("profile", ["profile", "academic"], "学籍数据"),
-    ("profile", ["profile", "extended"], "扩展信息"),
-    ("records", ["records", "second-class"], "第二课堂"),
-    ("records", ["records", "advisor"], "学业导师"),
-    ("records", ["records", "dorm"], "住宿申请与宿舍信息"),
-    ("records", ["records", "leave"], "请假申请"),
-    ("records", ["records", "honors"], "荣誉记录"),
-    ("records", ["records", "volunteer"], "志愿服务记录"),
-    ("records", ["records", "vol-history"], "志愿服务历史（含总时长）"),
-    ("records", ["records", "practice"], "社会实践记录"),
-    ("records", ["records", "discipline"], "违纪信息"),
-    ("records", ["records", "appointments"], "本周预约（心理健康）"),
-    ("records", ["records", "registration"], "学期注册缴费状态"),
-    ("records", ["records", "leaving-check"], "离校自查清单"),
-    ("records", ["records", "source-info"], "生源信息确认状态"),
-    ("records", ["records", "other-apps"], "异动/认定/衔接/就业申请状态"),
-    ("aid", ["aid", "loans"], "贷款记录"),
-    ("aid", ["aid", "jobs"], "勤工助学岗位/工时/工资"),
-    ("aid", ["aid", "outbound"], "海外交流派出申请"),
-    ("aid", ["aid", "exchange"], "交换生申请记录"),
-    ("aid", ["aid", "orgs"], "学生组织与社团目录"),
-    ("aid", ["aid", "activities"], "社团活动登记记录"),
-    ("aid", ["aid", "claim"], "工时申报状态（有无岗位）"),
-    ("portal", ["portal", "cards"], "门户个人卡片（未读/在借/待办）"),
-    ("sso", ["sso", "login"], "验证 SIS 凭据有效性"),
-    ("canvas", ["canvas", "courses"], "Canvas 课程"),
-    ("canvas", ["canvas", "deadlines", "--limit", "3"], "作业截止"),
-    ("canvas", ["canvas", "exams", "--days", "30"], "考试安排"),
-    ("canvas", ["canvas", "todo", "--limit", "5"], "Canvas 待办"),
-    ("canvas", ["canvas", "assignments", "--course", "概率论"], "课程作业列表（课程名随学期）"),
-    ("canvas", ["canvas", "assignment-info", "--course", "概率论", "--assignment", "Quiz 1"], "作业详情（参数随学期）"),
-    ("canvas", ["canvas", "files", "--course", "概率论"], "课程文件区清单"),
-    ("canvas", ["canvas", "discussions", "--course", "马克思"], "课程讨论主题"),
-    ("canvas", ["canvas", "announcements", "--course", "概率论"], "课程公告"),
-    ("canvas", ["canvas", "discussion", "--course", "马克思", "--topic", "什么是空间"], "讨论主题正文"),
-    ("canvas", ["canvas", "entries", "--course", "马克思", "--topic", "什么是空间", "--limit", "5"], "讨论回帖列表"),
-    ("canvas", ["canvas", "inbox", "--limit", "5"], "收件箱会话"),
-    ("canvas", ["canvas", "conversation", "2041"], "会话全文（id 由 inbox 给出）"),
-    ("canvas", ["canvas", "modules", "概率论"], "课程模块与条目"),
-    ("canvas", ["canvas", "submission", "--course", "概率论", "--assignment", "Quiz 1"], "作业提交状态"),
-    ("booking", ["booking", "types"], "预约中心分类"),
-    ("booking", ["booking", "sports"], "预约中心体育类体检"),
-    ("booking", ["booking", "list", "--type", "图书馆"], "可预约资源列表"),
-    ("booking", ["booking", "days", "E12-302研讨室", "--start", "2026-11-02", "--end", "2026-11-08"], "某资源逐日可约（日期样例）"),
-    ("booking", ["booking", "slots", "E12-302研讨室", "--date", "2026-11-03"], "某资源空闲时段（日期样例）"),
-    ("booking", ["booking", "mine"], "我的预约"),
-    ("sport", ["sport", "scenes"], "场馆场景"),
-    ("sport", ["sport", "sites", "游泳次卡"], "场景当日场地与可约状态"),
-    ("sport", ["sport", "days", "游泳次卡", "游泳场次"], "逐日可约与不可约原因"),
-    ("sport", ["sport", "mine"], "我的场馆预约"),
+#: (模块, 参数, 说明, 标签)。只放只读命令（排除口径见模块 docstring）。
+#: 标签：``"auth"``=需凭据/登录态/个人数据/校园网；``"offline"``=不碰网；
+#: 空=匿名公网。默认选择器跑「非 auth」，--auth/--offline/--all 单选。
+COMMANDS: list[tuple[str, list[str], str, tuple[str, ...]]] = [
+    # —— 匿名 + 离线（默认精选集）——
+    ("calendar", ["calendar", "today"], "今日日期/周次", ()),
+    ("calendar", ["calendar", "today", "--offline"], "今日日期/周次（离线）", ("offline",)),
+    ("calendar", ["calendar", "week", "8"], "第 8 周起止", ()),
+    ("calendar", ["calendar", "events"], "校历事件", ()),
+    ("transit", ["transit", "next", "--campus", "云谷", "--limit", "2"], "下一班校车", ()),
+    ("transit", ["transit", "table", "--campus", "云谷", "--day", "工作日"], "班车时刻表", ()),
+    ("transit", ["transit", "table", "--offline"], "班车时刻表（离线）", ("offline",)),
+    ("version", ["version"], "版本信息与契约", ("offline",)),
+    ("version", ["version", "--json"], "版本信息结构化 JSON", ("offline",)),
+    ("skill", ["skill", "runtime"], "SkillVM JIT 运行时画像探测", ()),
+    ("skill", ["skill", "compile", "--target", "zcode"], "SkillVM AOT 编译 (ZCode)", ("offline",)),
+    ("booking", ["booking", "recommend", "--date", "today", "--limit", "2"], "场地空闲推荐复合求解", ()),
+    ("context", ["context", "--level", "terse"], "此刻快照", ()),
+    ("digest", ["digest", "--level", "terse"], "晨报", ()),
+    ("find", ["find", "论文"], "按需求搜能力（本地索引，CLI/MCP/网页/学术库/注册表）", ("offline",)),
+    ("search", ["search", "西湖", "--limit", "3"], "官网搜索", ()),
+    ("news", ["news", "--limit", "3"], "新闻", ()),
+    ("news", ["news", "detail", "https://www.westlake.edu.cn/news_events/westlakenews/News/202610/t20261026_70719.html"], "新闻详情（样例 URL 会过期）", ()),
+    ("events", ["events", "--days", "7", "--limit", "3"], "讲座活动", ()),
+    ("events", ["events", "detail", "https://www.westlake.edu.cn/news_events/EventCalendars/science/202610/t20261023_70627.html"], "活动详情（样例 URL 会过期）", ()),
+    ("research", ["research", "--limit", "3"], "科研进展", ()),
+    ("research", ["research", "detail", "https://www.westlake.edu.cn/research/research_at_westlake/good_health_wellbeing/202510/t20251016_60343.html"], "科研进展详情（样例 URL 会过期）", ()),
+    ("careers", ["careers", "--limit", "3"], "招聘岗位", ()),
+    ("careers", ["careers", "detail", "https://www.westlake.edu.cn/careers/OpenPositions/postdoctoral_fellow/bshsls/202508/t20250827_58224.html"], "岗位详情（样例 URL 会过期）", ()),
+    ("career", ["career", "list", "--kind", "jobfair"], "就业服务网招聘会", ()),
+    ("career", ["career", "deep", "--kind", "campus", "--page", "1"], "就业深列表（登录态）", ("auth",)),
+    ("career", ["career", "detail", "zpxz"], "就业服务网详情（招聘指南常设页面）", ()),
+    ("faculty", ["faculty", "--limit", "3"], "教师名录", ()),
+    ("faculty", ["faculty", "detail", "https://www.westlake.edu.cn/faculty/jianhao-zhang.html"], "教师主页详情", ()),
+    ("campus", ["campus", "dining", "--campus", "云谷"], "食堂", ()),
+    ("campus", ["campus", "housing", "--campus", "云谷"], "公寓", ()),
+    ("campus", ["campus", "services", "--campus", "云谷"], "生活服务网点（超市/快递/干洗/理发/打印/银行）", ()),
+    ("contact", ["contact", "--campus", "云谷"], "校区联系", ()),
+    ("contact", ["contact", "phones"], "常用电话", ()),
+    ("map", ["map"], "校区地图", ()),
+    ("program", ["program", "overview"], "培养目标", ()),
+    ("program", ["program", "curriculum"], "课程体系", ()),
+    ("program", ["program", "majors"], "专业总览", ()),
+    ("program", ["program", "plan"], "培养方案", ()),
+    ("program", ["program", "courses"], "通识课程", ()),
+    ("program", ["program", "course", "机器学习"], "跨源课程查询", ()),
+    ("sites", ["sites", "list"], "站点索引", ()),
+    ("sites", ["sites", "site", "hpc"], "单站栏目与条目", ()),
+    ("sites", ["sites", "detail", "https://hpc.westlake.edu.cn/document/science/index.html"], "条目详情（样例 URL 会过期）", ()),
+    ("hosts", ["hosts", "list", "--limit", "3"], "子站清单（缓存）", ()),
+    ("hosts", ["hosts", "mine", "hpc"], "单站挖掘（--all 全量普查不入表）", ()),
+    ("hosts", ["hosts", "show", "hpc"], "已挖掘站点的栏目条目", ()),
+    ("affairs", ["affairs", "apps", "预约"], "办事大厅应用", ()),
+    ("affairs", ["affairs", "app", "证明"], "办事流程应用详情与直达链接", ()),
+    ("affairs", ["affairs", "links"], "常用服务入口直达（HPC/预约中心/镜像站）", ()),
+    ("affairs", ["affairs", "portal"], "门户服务", ()),
+    ("hpc", ["hpc", "overview"], "集群队列", ()),
+    ("hpc", ["hpc", "ai"], "AI 网关", ()),
+    ("hpc", ["hpc", "chat", "1+1=?", "--no-think"], "集群 AI 大模型对话", ()),
+    ("portal", ["portal", "ask", "图书馆开放时间"], "官方 AI 助手问答", ()),
+    ("instrument", ["instrument", "search", "质谱", "--limit", "2"], "大型仪器共享检索", ()),
+    ("finance", ["finance", "sections"], "财务栏目", ()),
+    ("mirrors", ["mirrors"], "镜像目录", ()),
+    ("wiki", ["wiki", "list", "--cat", "guides"], "百科目录（WikiLake，学生自建）", ()),
+    ("wiki", ["wiki", "search", "班车"], "百科标题检索", ()),
+    ("wiki", ["wiki", "page", "guides/班车"], "百科单页正文（抓整页）", ()),
+    ("probe", ["probe"], "堵点探测", ()),
+    ("pms", ["pms", "stations"], "打印网点（匿名）", ()),
+    ("scholar", ["scholar", "dbs"], "订阅数据库", ()),
+    ("scholar", ["scholar", "campus"], "校园 IP 信标", ()),
+    ("scholar", ["scholar", "carsi"], "CARSI 目录（随包快照，356 个 SP）", ("offline",)),
+    ("scholar", ["scholar", "open", "cnki"], "打印某库直达/CARSI 入口 URL（本地拼链）", ("offline",)),
+    ("scholar", ["scholar", "doi", "10.1038/nature12373"], "DOI 题录解析（不带 --out 不下载）", ()),
+    ("share", ["share", "saved"], "已登记分享（本地登记表）", ("offline",)),
+    ("institute", ["institute", "news"], "理论院新闻动态", ()),
+    ("institute", ["institute", "events"], "理论院学术活动", ()),
+    ("schools", ["schools", "list"], "学院清单", ()),
+    ("schools", ["schools", "news", "science"], "学院最新新闻", ()),
+    ("sso", ["sso", "creds", "status"], "凭据来源有无（本地探测；无凭据时 AUTH 属预期，不回显密码）", ("offline",)),
+    # —— 需凭据 / 登录态 / 个人数据 / 校园网（--auth，用自己账号真跑）——
+    ("scholar", ["scholar", "status"], "CARSI 会话有效性（依赖本机已有会话）", ("auth",)),
+    ("share", ["share", "files", "--name", "2183-lecture-notes"], "列分享文件夹（需已登记分享+组织会话）", ("auth",)),
+    ("lib", ["lib", "search", "数据结构"], "书目检索", ("auth",)),
+    ("lib", ["lib", "loans"], "我的借阅", ("auth",)),
+    ("pms", ["pms", "jobs"], "我的打印任务", ("auth",)),
+    ("todo", ["todo", "list"], "办事待办", ("auth",)),
+    ("todo", ["todo", "doing"], "我发起的进行中流程", ("auth",)),
+    ("todo", ["todo", "done"], "我已处理的流程", ("auth",)),
+    ("todo", ["todo", "cc"], "抄送给我的流程（未读）", ("auth",)),
+    ("todo", ["todo", "apps"], "可发起/访问的应用", ("auth",)),
+    ("sis", ["sis", "schedule"], "课表", ("auth",)),
+    ("sis", ["sis", "grid"], "周课表网格+冲突检测（只读）", ("auth",)),
+    ("sis", ["sis", "grades"], "成绩", ("auth",)),
+    ("sis", ["sis", "exams"], "考试", ("auth",)),
+    ("sis", ["sis", "cart"], "选课车（只读）", ("auth",)),
+    ("sis-evals", ["sis-evals", "list", "--pending"], "待评教", ("auth",)),
+    ("profile", ["profile", "info"], "个人信息", ("auth",)),
+    ("profile", ["profile", "academic"], "学籍数据", ("auth",)),
+    ("profile", ["profile", "extended"], "扩展信息", ("auth",)),
+    ("records", ["records", "second-class"], "第二课堂", ("auth",)),
+    ("records", ["records", "advisor"], "学业导师", ("auth",)),
+    ("records", ["records", "dorm"], "住宿申请与宿舍信息", ("auth",)),
+    ("records", ["records", "leave"], "请假申请", ("auth",)),
+    ("records", ["records", "honors"], "荣誉记录", ("auth",)),
+    ("records", ["records", "volunteer"], "志愿服务记录", ("auth",)),
+    ("records", ["records", "vol-history"], "志愿服务历史（含总时长）", ("auth",)),
+    ("records", ["records", "practice"], "社会实践记录", ("auth",)),
+    ("records", ["records", "discipline"], "违纪信息", ("auth",)),
+    ("records", ["records", "appointments"], "本周预约（心理健康）", ("auth",)),
+    ("records", ["records", "registration"], "学期注册缴费状态", ("auth",)),
+    ("records", ["records", "leaving-check"], "离校自查清单", ("auth",)),
+    ("records", ["records", "source-info"], "生源信息确认状态", ("auth",)),
+    ("records", ["records", "other-apps"], "异动/认定/衔接/就业申请状态", ("auth",)),
+    ("aid", ["aid", "loans"], "贷款记录", ("auth",)),
+    ("aid", ["aid", "jobs"], "勤工助学岗位/工时/工资", ("auth",)),
+    ("aid", ["aid", "outbound"], "海外交流派出申请", ("auth",)),
+    ("aid", ["aid", "exchange"], "交换生申请记录", ("auth",)),
+    ("aid", ["aid", "orgs"], "学生组织与社团目录", ("auth",)),
+    ("aid", ["aid", "activities"], "社团活动登记记录", ("auth",)),
+    ("aid", ["aid", "claim"], "工时申报状态（有无岗位）", ("auth",)),
+    ("portal", ["portal", "cards"], "门户个人卡片（未读/在借/待办）", ("auth",)),
+    ("sso", ["sso", "login"], "验证 SIS 凭据有效性", ("auth",)),
+    ("canvas", ["canvas", "courses"], "Canvas 课程", ("auth",)),
+    ("canvas", ["canvas", "deadlines", "--limit", "3"], "作业截止", ("auth",)),
+    ("canvas", ["canvas", "exams", "--days", "30"], "考试安排", ("auth",)),
+    ("canvas", ["canvas", "todo", "--limit", "5"], "Canvas 待办", ("auth",)),
+    ("canvas", ["canvas", "assignments", "--course", "概率论"], "课程作业列表（课程名随学期）", ("auth",)),
+    ("canvas", ["canvas", "assignment-info", "--course", "概率论", "--assignment", "Quiz 1"], "作业详情（参数随学期）", ("auth",)),
+    ("canvas", ["canvas", "files", "--course", "概率论"], "课程文件区清单", ("auth",)),
+    ("canvas", ["canvas", "discussions", "--course", "马克思"], "课程讨论主题", ("auth",)),
+    ("canvas", ["canvas", "announcements", "--course", "概率论"], "课程公告", ("auth",)),
+    ("canvas", ["canvas", "discussion", "--course", "马克思", "--topic", "什么是空间"], "讨论主题正文", ("auth",)),
+    ("canvas", ["canvas", "entries", "--course", "马克思", "--topic", "什么是空间", "--limit", "5"], "讨论回帖列表", ("auth",)),
+    ("canvas", ["canvas", "inbox", "--limit", "5"], "收件箱会话", ("auth",)),
+    ("canvas", ["canvas", "conversation", "2041"], "会话全文（id 由 inbox 给出）", ("auth",)),
+    ("canvas", ["canvas", "modules", "概率论"], "课程模块与条目", ("auth",)),
+    ("canvas", ["canvas", "submission", "--course", "概率论", "--assignment", "Quiz 1"], "作业提交状态", ("auth",)),
+    ("booking", ["booking", "types"], "预约中心分类", ("auth",)),
+    ("booking", ["booking", "sports"], "预约中心体育类体检", ("auth",)),
+    ("booking", ["booking", "list", "--type", "图书馆"], "可预约资源列表", ("auth",)),
+    ("booking", ["booking", "days", "E12-302研讨室", "--start", "2026-11-02", "--end", "2026-11-08"], "某资源逐日可约（日期样例）", ("auth",)),
+    ("booking", ["booking", "slots", "E12-302研讨室", "--date", "2026-11-03"], "某资源空闲时段（日期样例）", ("auth",)),
+    ("booking", ["booking", "mine"], "我的预约", ("auth",)),
+    ("sport", ["sport", "scenes"], "场馆场景", ("auth",)),
+    ("sport", ["sport", "sites", "游泳次卡"], "场景当日场地与可约状态", ("auth",)),
+    ("sport", ["sport", "days", "游泳次卡", "游泳场次"], "逐日可约与不可约原因", ("auth",)),
+    ("sport", ["sport", "mine"], "我的场馆预约", ("auth",)),
 ]
+
+#: 选择器旗标 → 选中条件。默认（无旗标）跑非 auth 的精选集。
+_SELECTOR_FLAGS: dict[str, str] = {
+    "--all": "all",
+    "--auth": "auth",
+    "--offline": "offline",
+}
 
 
 @dataclass
@@ -196,6 +219,7 @@ class Result:
     status: str
     detail: str
     seconds: float
+    tags: tuple[str, ...] = ()
 
 
 #: 空结果标记。只看**首行**：正文里出现「太空/空间/没有」这类字眼不算空
@@ -245,8 +269,33 @@ def run(argv: list[str], timeout: float = 90.0) -> tuple[str, str, float]:
     return status, detail, round(time.time() - started, 1)
 
 
+def _select(argv: list[str]) -> tuple[list[tuple[str, list[str], str, tuple[str, ...]]], str]:
+    """按旗标+位置参数选命令，返回 (选中清单, 口径描述)。"""
+    modes = [name for flag, name in _SELECTOR_FLAGS.items() if flag in argv]
+    if len(modes) > 1:
+        raise SystemExit(f"选择器互斥：{' '.join(modes)} 只能给一个")
+    args = [a for a in argv if not a.startswith("--")]
+    if modes == ["all"]:
+        chosen, label = COMMANDS, "全量"
+    elif modes == ["auth"]:
+        chosen = [row for row in COMMANDS if "auth" in row[3]]
+        label = "需凭据组（--auth，本机自己账号）"
+    elif modes == ["offline"]:
+        chosen = [row for row in COMMANDS if "offline" in row[3]]
+        label = "纯离线子集（--offline）"
+    else:
+        chosen = [row for row in COMMANDS if "auth" not in row[3]]
+        label = "匿名+离线精选集（默认，不碰账号）"
+    if args:
+        chosen = [row for row in chosen if any(a in row[0] for a in args)]
+        label += f"，模块过滤 {','.join(args)}"
+    return chosen, label
+
+
 def main() -> int:
     argv = sys.argv[1:]
+    list_only = "--list" in argv
+    argv = [a for a in argv if a != "--list"]
     out_path = ""
     bare_json = False
     if "--json" in argv:
@@ -257,21 +306,30 @@ def main() -> int:
         else:
             bare_json = True  # 裸 --json：stdout 输出 JSON（此前会静默降级成文本，坑过工作流）
             argv = argv[:index] + argv[index + 1 :]
-    args = [a for a in argv if not a.startswith("--")]
     as_json = bool(out_path) or bare_json or "--stdout-json" in sys.argv
-    chosen = [row for row in COMMANDS if not args or any(a in row[0] for a in args)]
+    chosen, label = _select(argv)
+
+    if list_only:  # 审计口径：只列清单不执行，供核对精选了哪些、砍掉了哪些
+        for module, cmd, note, tags in chosen:
+            mark = "/".join(tags) if tags else "-"
+            print(f"{mark:8}{module:12}{' '.join(cmd)}  ← {note}")
+        total_auth = sum(1 for row in COMMANDS if "auth" in row[3])
+        print(f"\n{label}：{len(chosen)} 条（全量 {len(COMMANDS)}，其中需凭据 {total_auth} 条）")
+        return 0
+
     results: list[Result] = []
-    for module, argv, note in chosen:
-        status, detail, seconds = run(argv)
-        results.append(Result(module, " ".join(argv), note, status, detail, seconds))
+    for module, cmd, note, tags in chosen:
+        status, detail, seconds = run(cmd)
+        results.append(Result(module, " ".join(cmd), note, status, detail, seconds, tags))
         if not as_json:
-            print(f"{status:8}{module:12}{' '.join(argv)}  ← {detail}", flush=True)
+            print(f"{status:8}{module:12}{' '.join(cmd)}  ← {detail}", flush=True)
 
     if not as_json:
         print()
         counts: dict[str, int] = {}
         for item in results:
             counts[item.status] = counts.get(item.status, 0) + 1
+        print(f"口径：{label}，本次 {len(results)} 条")
         print("汇总：" + "　".join(f"{k} {v}" for k, v in sorted(counts.items())))
         broken = [r for r in results if r.status in ("FAIL", "MISSING")]
         if broken:

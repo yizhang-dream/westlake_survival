@@ -94,8 +94,9 @@ An agent's standard health check should always begin with **`westlake doctor`** 
 In accordance with project architecture, this repository relies strictly on end-to-end validation rather than synthetic unit tests or mocks:
 
 ```bash
-python tools/module_smoke.py   # executes every read-only CLI command against live services
-python tools/webui_smoke.py    # starts an in-process web instance and validates HTTP 200 across all routes
+python tools/module_smoke.py   # curated tier (anonymous + offline, no account needed) runs every public read-only CLI command
+python tools/module_smoke.py --auth   # credential tier (68 commands): personal data, requires campus network + local account
+python tools/webui_smoke.py    # starts an in-process web instance and validates HTTP 200 across all routes (no credentials needed)
 python tools/pii_scan.py       # pre-commit linting to prevent exposure of real student identifiers or credentials
 ```
 

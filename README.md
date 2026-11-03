@@ -94,8 +94,9 @@ Agent 接入后建议优先运行 **`westlake doctor`**（支持 `--json` 输出
 本仓库不维护单元测试，功能验证一律端到端真跑：
 
 ```bash
-python tools/module_smoke.py   # 逐条测试只读 CLI 并输出状态表
-python tools/webui_smoke.py    # 进程内启动真实 Flask 服务并验证各页面响应
+python tools/module_smoke.py   # 精选集（匿名+离线，不依赖账号）逐条真跑并输出状态表
+python tools/module_smoke.py --auth   # 需凭据的 68 条：用本机已配置的账号真跑
+python tools/webui_smoke.py    # 进程内启动真实 Flask 服务并验证各页面响应（不依赖凭据）
 python tools/pii_scan.py       # 提交前扫描敏感个人信息
 ```
 

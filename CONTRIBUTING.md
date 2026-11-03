@@ -2,7 +2,7 @@
 
 单人维护为主，外部 issue / PR 欢迎，有空即审。
 
-> **English quick version** — Issues and PRs in English or 中文 are both fine. Install: `pip install -e .` (Python 3.10+). No unit tests: verify end-to-end with `python tools/module_smoke.py` / `python tools/webui_smoke.py` (campus network needed), and always pass `python tools/pii_scan.py` before committing. Keep `skills/westlake-survival/SKILL.md`, the README capability table, and `docs/skill_reference.md` in sync when capabilities change. Write operations stay at exactly five, behind the consequence gate — no course-selection automation.
+> **English quick version** — Issues and PRs in English or 中文 are both fine. Install: `pip install -e .` (Python 3.10+). No unit tests: verify end-to-end with `python tools/module_smoke.py` (curated tier runs without any account; `--auth` tier needs campus network + credentials, contributor machines only) / `python tools/webui_smoke.py` (no credentials needed), and always pass `python tools/pii_scan.py` before committing. Keep `skills/westlake-survival/SKILL.md`, the README capability table, and `docs/skill_reference.md` in sync when capabilities change. Write operations stay at exactly five, behind the consequence gate — no course-selection automation.
 
 ## 先问再写
 
@@ -32,8 +32,9 @@ pip install -e '.[browser]'      # 可选增强：share 讲义 / hosts 渲染深
 本仓库**不维护单元测试**——功能与修复一律端到端验证（真实启动、真实链路、真实输入输出）：
 
 ```bash
-python tools/module_smoke.py     # 全部只读 CLI 逐条真跑（需校园网/VPN 与凭据）
-python tools/webui_smoke.py      # 进程内起真实 Flask 服务，逐页断言 200
+python tools/module_smoke.py     # 精选集（匿名+离线，不依赖账号）逐条真跑
+python tools/module_smoke.py --auth    # 需凭据/登录态/个人数据的 68 条（校园网+本机账号）
+python tools/webui_smoke.py      # 进程内起真实 Flask 服务，逐页断言 200（不依赖凭据）
 python tools/pii_scan.py         # 提交前必过：无真实学号等个人信息
 ```
 

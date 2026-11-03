@@ -1,8 +1,9 @@
 name: CI
 
-# 离线门：不碰校园网与凭据，只验「装得上、CLI 起得来、文档与 CLI 一致、无 PII」。
-# 端到端验证（tools/module_smoke.py、tools/webui_smoke.py）需校园网/VPN 与账号，
-# 在贡献者本机跑（见 CONTRIBUTING.md）。
+# 离线门：不碰校园网与凭据，只验「装得上、CLI 起得来、离线命令真出结果、
+# 文档与 CLI 一致、无 PII」。
+# module_smoke.py 默认精选集（匿名+离线）不需要凭据，任何人可跑；
+# --auth 组（68 条）才需要校园网/VPN 与账号，只在贡献者本机跑（见 CONTRIBUTING.md）。
 
 on:
   push:
@@ -41,6 +42,9 @@ jobs:
 
       - name: CLI boots
         run: westlake --help
+
+      - name: Offline smoke
+        run: python tools/module_smoke.py --offline
 
       - name: SKILL and CLI agree
         run: python tools/skill_coverage.py .
