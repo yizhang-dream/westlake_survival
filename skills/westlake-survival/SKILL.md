@@ -40,6 +40,7 @@ metadata:
 | **班车时刻与下一班** | `transit next --campus 云谷` / `transit table --campus 云谷` | ✓ | 三校区班车时刻表与下一班发车倒计时 |
 | **今天几号 / 第几周 / 放假**| `calendar today` / `calendar week <N>` / `calendar events` | ✓ | 官方校历当前学期、教学周次、调休补课与节假日安排 |
 | **校园网点与后勤生活** | `campus services --campus 云谷` / `campus dining` | ✓ | 超市、快递驿站、干洗、理发、文印网点位置与营业时间 |
+| **自助文印网点与打印队列** | `pms stations` / `pms jobs` | — | 打印机网点与实时状态（免登录）、我的待打印作业；上传后到任意自助机刷卡两次取件（首刷验证、二刷扣款） |
 | **学术数据库与 DOI 论文**| `scholar dbs` / `scholar doi <DOI> -o paper.pdf` | ✓ | 订阅数据库列表、校外 CARSI SSO 会话保障与全文直接下载 |
 | **HPC 集群免费 AI 对话**| `hpc chat "<内容>"` / `hpc sync-key` | ✓ | 调用校内 GPU 集群免费进行 DeepSeek/GLM/Qwen 对话 |
 | **办事大厅与表单直达** | `affairs apps [关键词]` / `portal ask "<问题>"` | ✓ | 查找办事流程与直达表单链接，或向官方办事 AI 咨询问答 |
@@ -58,8 +59,8 @@ metadata:
 | `canvas upload <本地文件路径>` | 上传至个人 Canvas 文件网盘 | 确认文件类型与大小配额 |
 | `canvas star <课程名>` / `canvas unstar` | 调整个人面板置顶展示 | 仅影响个人视图 |
 | `canvas dismiss-todo <作业ID>` | 归档个人待办事项 | 不改变系统内作业截止时间 |
-| `pms print <文件> [--copies N] [--duplex]` | 上传至联创云打印队列，终端刷卡扣费 | 核对打印份数与单双面设置 |
-| `pms cancel <作业ID>` | 从未打印队列中取消作业 | 确认作业 ID |
+| `pms print <文件> [--copies N] [--duplex] [--color] [--from-page N --to-page N]` | 上传至联创云打印队列；**刷卡取件前不扣费**，传错可撤单重传 | 核对份数、单双面、彩色与页码范围 |
+| `pms cancel <作业ID>` | 从未打印队列中取消作业（刷卡前无损撤回） | 确认作业 ID |
 | `booking book <房间> --date … --start …` | 占用研讨室名额，爽约影响信用 | 核对校区、房间名、日期与开始结束时间 |
 | `booking cancel <预约单号>` | 释放已预约名额，原时段需重新抢约 | 确认预约单号 |
 | `lib renew <图书条形码>` | 延长借阅还书期限（通常每本限 1 次） | 核对图书条码与到期时间 |

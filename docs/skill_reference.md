@@ -66,8 +66,8 @@ westlake ams status / ams schedule --json / ams menus / ams notices
 westlake lib search 数据结构 --page 1 / lib loans   # 2026-10-28 起迁移暂不可用
 westlake pms stations                           # 打印网点列表（无需登录）
 westlake pms jobs                               # 我的未打印作业（需登录）
-westlake pms print doc.pdf [--copies 2] [--duplex] [--color]  # 上传并创建云打印作业（写操作，带 Action Card）
-westlake pms cancel 12345                       # 取消并删除未打印作业（写操作，带 Action Card）
+westlake pms print doc.pdf [--copies 2] [--duplex] [--color] [--from-page N --to-page N]  # 上传并创建云打印作业（写操作，带 Action Card）
+westlake pms cancel 12345                       # 取消并删除未打印作业（写操作，带 Action Card；刷卡前撤回无损）
 ```
 
 ## 门户 / 场馆 / 就业
@@ -165,7 +165,7 @@ for course in c.list_courses():                                 # 扫当前可�
 
 ## MCP 备选通道
 
-零依赖 stdio 服务器，66 个工具：学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类；就业 `career_latest`/`career_deep`/`career_detail`；校历班车 `calendar_today`/`calendar_week`/`transit_next`；内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`；百科 `wiki_search`/`wiki_page`；培养 `program_*` 六个；校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`；学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`；作业课程 `canvas_courses`/`canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`；分享 `share_files`；场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`。写操作只在 CLI 提供，MCP 仅 `canvas_submit` 且需显式确认。
+零依赖 stdio 服务器，82 个工具：学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类；就业 `career_latest`/`career_deep`/`career_detail`；校历班车 `calendar_today`/`calendar_week`/`transit_next`；内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`；百科 `wiki_search`/`wiki_page`；培养 `program_*` 六个；校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`；学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`；作业课程 `canvas_courses`/`canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`；分享 `share_files`；文印 `pms_stations`/`pms_jobs`；场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`。写操作工具缺省只预检、`confirm=true` 才执行：`canvas_submit`、`pms_print`、`pms_cancel`（其余写操作仅在 CLI 提供，走 Action Card 确认门）。
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}
@@ -176,6 +176,7 @@ for course in c.list_courses():                                 # 扫当前可�
 ## 深挖注记（按需）
 
 - **图书馆接入架构**：老阿法迪 OPAC 下线后，已全面适配「阿法迪云 eLibrary」（`mylib.westlake.edu.cn`），打通公开书目检索（`lib search`）、在借图书（`lib loans`）与在线续借（`lib renew`，受控写操作），详见 docs/library.md。
+- **自助文印（联创 UniFound）**：入口 `print.lib.westlake.edu.cn:9130`，校园卡号 + 统一密码。打印机分布——云栖图书馆（五号楼一楼）与云谷图书馆师生服务中心（A2-413），各一台黑白 + 一台彩色（彩打勿选错机器，实时状态看 `pms stations`）。云打印支持 `.jpg/.png/word/excel/.pdf/.txt/.ppt`，可设份数、单双面（长/短边）、黑白/彩色、页码范围；上传进队列后**任意自助机**刷卡两次取件（首刷验证、二刷扣款），**刷卡前不扣费**、`pms cancel` 可无损撤回。扫描件扫完在云平台「扫描文档」下载。故障联系信息技术中心 87025797 / it@westlake.edu.cn（图书馆 library@westlake.edu.cn）。（要点依据 2026-11 图书馆《自助文印服务使用手册》）
 - **预约四套系统**：预约中心 17 类场地；体育场馆/游泳在 sportvenue（登录已通、卡服务端「表单规则未找到」，docs/sports.md）；图书馆座位在 seats.library（企业微信微应用，浏览器拿不到 accessToken）；办事大厅另有 CGYY/ResourceReservation 两个流程表单。对照表 docs/module_audit.md。
 - **学术资源**：本校是 CARSI 联盟成员，统一密码可登录各出版社；校园网内按 IP 认账。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url」两级取全文。
 - **门户服务目录 `affairs portal`**：2026-10-27 实测服务端接口疑似变化暂报错，网页区块自动降级。
