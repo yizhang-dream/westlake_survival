@@ -180,4 +180,5 @@ for course in c.list_courses():                                 # 扫当前可�
 - **预约四套系统**：预约中心 17 类场地；体育场馆/游泳在 sportvenue（登录已通、卡服务端「表单规则未找到」，docs/sports.md）；图书馆座位在 seats.library（企业微信微应用，浏览器拿不到 accessToken）；办事大厅另有 CGYY/ResourceReservation 两个流程表单。对照表 docs/module_audit.md。
 - **学术资源**：本校是 CARSI 联盟成员，统一密码可登录各出版社；校园网内按 IP 认账。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url」两级取全文。
 - **门户服务目录 `affairs portal`**：2026-10-27 实测服务端接口疑似变化暂报错，网页区块自动降级。
+- **门户数据市集**：技能内 `scripts/data_market.py` 支持目录与本人档案、履历、已修课程、荣誉、社团、志愿七类只读查询，自动完成会话交换与分页；尚无专用 CLI/MCP。调用方法、进程内取值、认证步骤和目录权限边界统一维护在[数据市集只读指南](../skills/westlake-survival/references/data-market.md)。
 - **Canvas 事实口径**：待办/讨论时间是 UTC；作业对象无 attachments 字段，题目附件在描述 HTML 的文件链接；题目文件可能挂三处（描述/文件区/模块）。

@@ -44,8 +44,15 @@ metadata:
 | **学术数据库与 DOI 论文**| `scholar dbs` / `scholar doi <DOI> -o paper.pdf` | ✓ | 订阅数据库列表、校外 CARSI SSO 会话保障与全文直接下载 |
 | **HPC 集群免费 AI 对话**| `hpc chat "<内容>"` / `hpc sync-key` | ✓ | 调用校内 GPU 集群免费进行 DeepSeek/GLM/Qwen 对话 |
 | **办事大厅与表单直达** | `affairs apps [关键词]` / `portal ask "<问题>"` | ✓ | 查找办事流程与直达表单链接，或向官方办事 AI 咨询问答 |
+| **数据市集 / 个人履历** | 技能内 `scripts/data_market.py`，见[只读指南](references/data-market.md) | — | 数据目录与本人档案、履历、已修课程、荣誉、社团、志愿；尚无专用 CLI/MCP |
 | **全校服务探测与状态** | `probe` / `services` / `vpn status` | ✓ | 全校 90+ 域名存活探测与深信服 VPN 隧道连通状态 |
 | **需求模糊自适应检索** | `westlake find <关键词>` | — | 自动模糊匹配 CLI、MCP、Web 页面与学术库最佳入口 |
+
+## 门户数据市集（按需）
+
+查询个人履历、已修课程/学分分类、志愿记录或数据集目录时，按[数据市集只读指南](references/data-market.md)调用技能内脚本，复用本机已配置账号。脚本支持七类已验证查询，自动完成门户会话交换与全量分页；命令行只输出目录元数据或个人数据概要，具体业务字段可在进程内读取。
+
+学分进度、论文/专利、一卡通、财务等目录项仍需核实明细权限，不能作为已接入能力；不要通过申请入口发起流程或改查其他人员。
 
 ## 受控写操作规范（Action Card 保护）
 

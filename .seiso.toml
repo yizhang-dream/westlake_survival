@@ -3,6 +3,10 @@ preview = false
 include = [
   "AGENTS.md",
   "README.md",
+  "README_en.md",
+  "docs/skill_reference.md",
+  "skills/westlake-survival/SKILL.md",
+  "skills/westlake-survival/references/data-market.md",
 ]
 
 [[kinds]]
@@ -12,3 +16,19 @@ kind = "reference"
 [[kinds]]
 path = "README.md"
 kind = "readme"
+
+[[kinds]]
+path = "README_en.md"
+kind = "readme"
+
+[[kinds]]
+path = "docs/skill_reference.md"
+kind = "reference"
+
+[[kinds]]
+path = "skills/westlake-survival/SKILL.md"
+kind = "reference"
+
+[[kinds]]
+path = "skills/westlake-survival/references/data-market.md"
+kind = "howto"

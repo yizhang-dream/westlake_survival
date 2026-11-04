@@ -40,6 +40,7 @@ Three core principles:
 | Venue booking | 17 venue categories (study rooms, seminar rooms, piano rooms, etc.): composite availability solver (`booking recommend`), slot discovery, active reservations, booking & cancellation | unified password |
 | Sports venues | facilities, courts, daily availability, personal bookings (read-only) | unified password |
 | Tasks & portal | administrative service catalog, pending tasks, portal dashboard cards (unread mail, book loans, pending approvals) | unified password |
+| Portal data market (skill script) | [Read-only guide](skills/westlake-survival/references/data-market.md) (Chinese): dataset catalog and the current account's profile, education history, completed courses, honors, clubs, and volunteering; no dedicated CLI/MCP entry yet | unified password |
 | Research | subscribed database registry, CARSI off-campus SSO (`scholar ensure`), DOI→PDF full text, research news, faculty directory, HPC clusters, reimbursement rules | most require none |
 | Careers | job postings, campus fairs, employer info sessions: recent digests and detailed listings | none |
 | Curriculum | major requirements & degree roadmaps, course system, general education catalog, cross-department course search | none |
