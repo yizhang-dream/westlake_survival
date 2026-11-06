@@ -1,10 +1,7 @@
 name: CI
 
-# 离线门：不碰校园网与凭据，只验「装得上、CLI 起得来、离线命令真出结果、
-# 文档与 CLI 一致、无 PII」。
-# module_smoke.py 默认精选集（匿名+离线）不需要凭据，任何人可跑；
-# --auth 组（68 条）才需要校园网/VPN 与账号，只在贡献者本机跑（见 CONTRIBUTING.md）。
-
+# 离线门：不碰校园网与凭据，只验安装、CLI、离线检查与精选 pytest。
+# module_smoke.py 默认精选集（匿名+离线）不需要凭据。
 on:
   push:
     branches: ["main"]
@@ -22,8 +19,9 @@ jobs:
         python-version: ["3.10", "3.12"]
     env:
       TZ: "Asia/Shanghai"
-      # Windows runner 的 stdout/子进程按 cp1252 解码中文必炸，整作业钉 UTF-8
       PYTHONUTF8: "1"
+      # 强制 zoneinfo 使用 Python tzdata 包，防止 Linux 系统时区库掩盖问题。
+      PYTHONTZPATH: ""
     steps:
       - uses: actions/checkout@v7
 
@@ -32,10 +30,22 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      - name: Install
+      - name: Install (constrained to reviewed dependency snapshot)
         run: |
           python -m pip install --upgrade pip
-          pip install -e . ruff
+          python -m pip install -c requirements.txt -e ".[test]" ruff
+          python -m pip check
+
+      - name: Verify constrained dependency versions
+        run: |
+          python -c "import importlib.metadata as m; from pathlib import Path; pins = dict(line.strip().split('==', 1) for line in Path('requirements.txt').read_text(encoding='utf-8').splitlines() if line.strip() and not line.lstrip().startswith('#') and '==' in line); assert m.version('pytest') == pins['pytest'], (m.version('pytest'), pins['pytest']); assert m.version('tzdata') == pins['tzdata'], (m.version('tzdata'), pins['tzdata'])"
+
+      - name: Collect non-live pytest tests
+        run: python -m pytest --collect-only -q
+
+      - name: Offline regression tests
+        run: |
+          python -m pytest -q src/test/canvas/test_models.py src/test/pms/test_pms_models.py src/test/ical src/test/transit/test_ical.py src/test/transit/test_schedule.py src/test/calendar/test_calendar_fallback.py
 
       - name: Static check (undefined names)
         run: ruff check --select F821 src
@@ -49,5 +59,5 @@ jobs:
       - name: SKILL and CLI agree
         run: python tools/skill_coverage.py .
 
-      - name: PII gate
+      - name: PII gate (scanner exit semantics tracked separately)
         run: python tools/pii_scan.py
