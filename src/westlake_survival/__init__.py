@@ -5,7 +5,8 @@
     import westlake_survival
     westlake_survival.sis        # 教务 SIS (PeopleSoft)
     westlake_survival.canvas     # Canvas LMS
-    westlake_survival.lib        # 图书馆 OPAC
+    westlake_survival.lib        # 阿法迪云图书馆 (eLibrary)
+    westlake_survival.market     # 门户数据市集
     westlake_survival.sso        # 统一身份认证 (CAS)
     westlake_survival.mcp_server # MCP 服务器（stdio，供 AI 客户端接入）
 
@@ -85,23 +86,49 @@ __all__ = ["__version__", *_SIS_REEXPORTS]
 _SUBMODULES = (
     "sso",
     "sis",
+    "ams",
     "canvas",
     "lib",
     "pms",
+    "booking",
+    "sportvenue",
     "transit",
     "calendar",
     "ical",
     "context",
+    "timeline",
+    "market",
     "search",
     "news",
     "research",
     "events",
     "careers",
+    "careersite",
     "faculty",
     "campus",
+    "campusmap",
     "contact",
     "clubwiki",
     "wikilake",
+    "program",
+    "scholar",
+    "hpc",
+    "finance",
+    "mirrors",
+    "institute",
+    "schools",
+    "instruments",
+    "sites",
+    "hosts",
+    "portal",
+    "taskcenter",
+    "discovery",
+    "capabilities",
+    "consequence",
+    "doctor",
+    "sharepoint",
+    "vpn",
+    "skillvm",
     "webui",
     "mcp_server",
     "cli",

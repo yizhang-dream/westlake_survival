@@ -116,12 +116,23 @@ def _auth_chain(session, lck: str, entity_id: str, user: str, password: str) -> 
     if not chain_code:
         raise WestlakeError("未取得 userAndPwd 认证链——IAM 协议可能已变化")
 
-    _post_json(
+    need = _post_json(
         session,
         f"{IAM_BASE}/idp/authn/verifyCodeIsNeed",
         {"lang": "zh_CN", "loginName": user, "chainCode": chain_code, "authModuleCode": "userAndPwd"},
         referer=referer,
     )
+    need_data = need.get("data")
+    need_signals = [
+        need.get("result"),
+        need_data if isinstance(need_data, bool) else None,
+        need_data.get("result") if isinstance(need_data, dict) else None,
+    ]
+    if any(value is True for value in need_signals):
+        raise AuthError(
+            "IAM 当前强制图形验证码（失败计数态）：已停止自动提交密码以免续期锁定。"
+            "请运行 westlake scholar ensure 或在浏览器手动登录一次。"
+        )
     key = _post_json(session, f"{IAM_BASE}/idp/authn/getJsPublicKey", {}, referer=referer)
     public_b64 = str(key.get("data") or "")
     if not public_b64:

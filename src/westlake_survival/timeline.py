@@ -13,12 +13,13 @@ import json
 import logging
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time as time_cls
 from pathlib import Path
 from typing import Any
 
-from westlake_survival._cache import config_root, fetch_with_swr, load_snapshot, save_snapshot
+from westlake_survival._cache import config_root, fetch_with_swr
 from westlake_survival.canvas.models import format_remaining
 from westlake_survival.exceptions import WestlakeError
 
@@ -192,6 +193,15 @@ def detect_timeline_conflicts(items: list[TimelineItem]) -> list[str]:
         for j in range(i + 1, n):
             s1, e1, it1 = schedulable[i]
             s2, e2, it2 = schedulable[j]
+            # 同课同时段多教室（如分教室平行实验/大课）不是冲突
+            if (
+                it1.category == "course"
+                and it2.category == "course"
+                and it1.title == it2.title
+                and s1 == s2
+                and e1 == e2
+            ):
+                continue
             # 判断交集非空
             if max(s1, s2) < min(e1, e2):
                 it1.is_conflict = True
@@ -202,10 +212,66 @@ def detect_timeline_conflicts(items: list[TimelineItem]) -> list[str]:
     return conflicts
 
 
+def _merge_locations(locations: list[str]) -> str:
+    """合并平行教室地点列表并去重，同校区后续地点省略重复校区前缀。"""
+    unique: list[str] = []
+    for loc in locations:
+        text = str(loc or "").strip()
+        if text and text != "待定教室" and text not in unique:
+            unique.append(text)
+    if not unique:
+        return "待定教室"
+    if len(unique) == 1:
+        return unique[0]
+    for prefix in ("云谷校区", "云栖校区"):
+        if unique[0].startswith(prefix):
+            merged = [unique[0]]
+            for item in unique[1:]:
+                if item.startswith(prefix):
+                    merged.append(item[len(prefix) :].lstrip())
+                else:
+                    merged.append(item)
+            return " / ".join(x for x in merged if x)
+    return " / ".join(unique)
+
+
+def _merge_parallel_courses(raw_items: list[TimelineItem]) -> list[TimelineItem]:
+    """合并同课同时段的平行教室条目，避免时间轴出现多张重复课程卡片。"""
+    grouped: dict[tuple[str, str, str], dict[str, Any]] = {}
+    others: list[TimelineItem] = []
+    for it in raw_items:
+        if it.category != "course":
+            others.append(it)
+            continue
+        key = (it.sort_time, it.time_str, it.title)
+        bucket = grouped.get(key)
+        if bucket is None:
+            grouped[key] = {"item": it, "locs": [it.location] if it.location else []}
+        elif it.location:
+            bucket["locs"].append(it.location)
+
+    merged_courses: list[TimelineItem] = []
+    for bucket in grouped.values():
+        it: TimelineItem = bucket["item"]
+        merged_courses.append(
+            TimelineItem(
+                time_str=it.time_str,
+                sort_time=it.sort_time,
+                category=it.category,
+                title=it.title,
+                location=_merge_locations(bucket["locs"]),
+                status=it.status,
+                details=it.details,
+                is_conflict=it.is_conflict,
+            )
+        )
+    return merged_courses + others
+
+
 def build_timeline(*, target_date: date | None = None, offline: bool = False) -> TimelineReport:
     """构建指定日期（默认今天）的全局时空编排报告。
 
-    支持离线优先（SWR 降级），无网环境下自动秒出。
+    支持离线优先（SWR 降级）与三源并发拉取，无网环境下自动秒出。
     """
     now_date = target_date or date.today()
     date_str = now_date.strftime("%Y-%m-%d")
@@ -213,168 +279,312 @@ def build_timeline(*, target_date: date | None = None, offline: bool = False) ->
     full_date_title = f"{date_str} {weekday_cn}"
 
     items: list[TimelineItem] = []
-    is_stale = False
-    stale_reasons = []
+    is_stale = offline
+    stale_reasons: list[str] = []
 
-    # 1. 校历与学期周次
-    term_info = "学期周次获取中..."
+    # 1. 校历与学期周次（AcademicCalendar.load 自带 ETag 缓存与内置离线兜底）
+    term_info = "非教学期"
+    sem = None
+    week_num: int | None = None
+    china_tz = None
     try:
-        from westlake_survival import calendar
+        from westlake_survival.calendar import AcademicCalendar, CHINA_TZ
 
-        cal_data, meta = fetch_with_swr(
-            "calendar",
-            "full",
-            lambda: calendar.load(),
-            offline=offline,
-        )
-        if meta.get("is_stale"):
-            is_stale = True
-        sem = cal_data.semester_of(now_date)
+        china_tz = CHINA_TZ
+        cal = AcademicCalendar.load(offline=offline)
+        sem = cal.semester_for(now_date)
         if sem:
             week_num = sem.week_of(now_date)
             term_info = f"{sem.name} 第 {week_num} 周" if week_num else sem.name
-            holiday = sem.holiday_on(now_date)
-            if holiday:
+            covering_holidays = (
+                [e for e in sem.holiday_events() if e.covers(now_date)]
+                if sem.is_holiday(now_date)
+                else []
+            )
+            emitted_titles: set[str] = set()
+            for holiday in covering_holidays:
+                emitted_titles.add(holiday.title)
                 items.append(
                     TimelineItem(
                         time_str="全天",
                         sort_time="00:00",
                         category="holiday",
-                        title=f"校历假期：{holiday.name}",
+                        title=f"校历假期：{holiday.title}",
                         location="全校",
                         status="假期",
                     )
                 )
-        else:
-            term_info = "非教学期"
+            for ev in sem.events:
+                if ev.title not in emitted_titles and ev.covers(now_date):
+                    emitted_titles.add(ev.title)
+                    items.append(
+                        TimelineItem(
+                            time_str="全天",
+                            sort_time="00:01",
+                            category="holiday",
+                            title=f"校历提示：{ev.title}",
+                            location="全校",
+                            status="校历事件",
+                        )
+                    )
+            if now_date in sem.makeup_days():
+                items.append(
+                    TimelineItem(
+                        time_str="调休补课",
+                        sort_time="00:02",
+                        category="holiday",
+                        title="校历提示：今日为调休补课日",
+                        location="全校",
+                        status="调休补课",
+                    )
+                )
     except Exception as exc:
         stale_reasons.append(f"校历: {exc}")
         term_info = "西湖大学校历（离线）"
 
-    # 2. 课表（SIS / AMS 融合）
-    try:
-        from westlake_survival.sis.client import sis
-        from westlake_survival.sis.pages import get_schedule_rows
+    skip_courses = bool(sem and sem.is_holiday(now_date))
 
-        def _fetch_schedule():
-            client = sis()
-            return get_schedule_rows(client)
+    def _load_courses() -> tuple[list[TimelineItem], bool, list[str]]:
+        if skip_courses:
+            return [], False, []
+        local_items: list[TimelineItem] = []
+        local_stale = False
+        local_errs: list[str] = []
+        sis_err: str | None = None
+        sis_rows: list[dict[str, Any]] = []
+        course_keys: set[tuple[str, str]] = set()
 
-        rows, meta = fetch_with_swr("sis", "schedule", _fetch_schedule, offline=offline)
-        if meta.get("is_stale"):
-            is_stale = True
+        def _fetch_sis_rows() -> list[dict[str, Any]]:
+            from westlake_survival.sis import get_schedule
 
-        today_weekday = now_date.weekday() + 1
-        for row in rows or []:
-            if row.get("weekday") == today_weekday:
-                time_range = str(row.get("time") or "").strip()
-                sort_t = time_range.split("-")[0] if "-" in time_range else "08:00"
-                items.append(
+            return [
+                {
+                    "course_code": s.course_code,
+                    "title": s.title,
+                    "teacher": s.teacher,
+                    "weekday": s.weekday,
+                    "start": s.start_time.strftime("%H:%M"),
+                    "end": s.end_time.strftime("%H:%M"),
+                    "room": s.room,
+                    "date_start": s.date_start.isoformat(),
+                    "date_end": s.date_end.isoformat(),
+                    "weeks": list(s.weeks) if s.weeks else None,
+                }
+                for s in get_schedule()
+            ]
+
+        try:
+            sis_rows, meta = fetch_with_swr("sis", "schedule", _fetch_sis_rows, offline=offline)
+            if meta.get("is_stale"):
+                local_stale = True
+            today_weekday = now_date.isoweekday()
+            for row in sis_rows or []:
+                if row.get("weekday") != today_weekday:
+                    continue
+                ds_str = row.get("date_start")
+                de_str = row.get("date_end")
+                if ds_str and de_str:
+                    try:
+                        ds = date.fromisoformat(str(ds_str))
+                        de = date.fromisoformat(str(de_str))
+                        if ds.year >= 2000 and de.year >= 2000 and not (ds <= now_date <= de):
+                            continue
+                    except ValueError:
+                        pass
+                weeks = row.get("weeks")
+                if weeks and week_num is not None and week_num not in weeks:
+                    continue
+                start_t = str(row.get("start") or "").strip()
+                end_t = str(row.get("end") or "").strip()
+                time_range = (
+                    f"{start_t}-{end_t}"
+                    if start_t and end_t
+                    else str(row.get("time") or "").strip()
+                )
+                sort_t = start_t or (
+                    time_range.split("-")[0].strip() if "-" in time_range else "08:00"
+                )
+                title = str(row.get("title") or row.get("name") or "课程").strip()
+                room = str(row.get("room") or row.get("location") or "待定教室").strip()
+                code = str(row.get("course_code") or row.get("course") or "—").strip()
+                teacher = str(row.get("teacher") or "").strip()
+                details = f"课程代码: {code}" + (f" · {teacher}" if teacher else "")
+                course_keys.add((sort_t, title))
+                local_items.append(
                     TimelineItem(
                         time_str=time_range or "时间待定",
                         sort_time=sort_t,
                         category="course",
-                        title=str(row.get("name") or "课程"),
-                        location=str(row.get("location") or "待定教室"),
+                        title=title,
+                        location=room,
                         status="已选课程",
-                        details=f"课程代码: {row.get('course') or '—'}",
+                        details=details,
                     )
                 )
-    except Exception as exc:
-        stale_reasons.append(f"课表: {exc}")
+        except Exception as exc:
+            sis_err = f"SIS: {exc}"
 
-    # 3. Canvas 待办与作业截止
-    try:
-        from westlake_survival.canvas import canvas
+        if not sis_rows or sis_err is not None:
+            try:
+                from westlake_survival import ams
 
-        def _fetch_deadlines():
-            client = canvas()
-            res = []
-            for a in client.upcoming_deadlines(limit=8):
-                res.append({
-                    "name": a.name,
-                    "due_at": a.due_at.isoformat() if a.due_at else None,
-                    "html_url": a.html_url,
-                    "points_possible": a.points_possible,
-                })
-            return res
-
-        deadlines_raw, meta = fetch_with_swr(
-            "canvas", "deadlines", _fetch_deadlines, offline=offline
-        )
-        if meta.get("is_stale"):
-            is_stale = True
-
-        for d in deadlines_raw or []:
-            due_at_str = d.get("due_at")
-            if due_at_str:
-                try:
-                    dt = datetime.fromisoformat(due_at_str)
-                    # 检查是否在未来 24 小时或属于今天
-                    if dt.date() == now_date:
-                        items.append(
-                            TimelineItem(
-                                time_str=dt.strftime("%H:%M"),
-                                sort_time=dt.strftime("%H:%M"),
-                                category="canvas",
-                                title=f"DDL 截止: {d.get('name')}",
-                                location="Canvas",
-                                status=f"待提交作业（{format_remaining(dt)}）",
-                                details=f"分值: {d.get('points_possible') or '—'} 分",
-                            )
+                ams_rows, ams_meta = fetch_with_swr(
+                    "ams",
+                    f"schedule_{date_str}",
+                    lambda: ams.schedule(now_date, now_date),
+                    offline=offline,
+                )
+                if ams_meta.get("is_stale"):
+                    local_stale = True
+                for row in ams_rows or []:
+                    start_t = str(row.get("start") or "").strip()
+                    end_t = str(row.get("end") or "").strip()
+                    title = str(row.get("title") or "课程").strip()
+                    if not title:
+                        continue
+                    sort_t = start_t or "08:00"
+                    if (sort_t, title) in course_keys:
+                        continue
+                    course_keys.add((sort_t, title))
+                    time_range = (
+                        f"{start_t}-{end_t}"
+                        if start_t and end_t
+                        else (start_t or ("全天" if row.get("whole_day") else "时间待定"))
+                    )
+                    local_items.append(
+                        TimelineItem(
+                            time_str=time_range,
+                            sort_time=sort_t,
+                            category="course",
+                            title=title,
+                            location=str(row.get("address") or "待定教室"),
+                            status="已选课程 (AMS)",
+                            details="来源: 教学系统 AMS",
                         )
-                except Exception:
-                    pass
-    except Exception as exc:
-        stale_reasons.append(f"Canvas: {exc}")
-
-    # 4. 预约中心的场地预约
-    try:
-        from westlake_survival import booking
-
-        def _fetch_bookings():
-            return [b.to_dict() for b in booking.my_bookings()]
-
-        b_rows, meta = fetch_with_swr("booking", "mine", _fetch_bookings, offline=offline)
-        if meta.get("is_stale"):
-            is_stale = True
-
-        for b in b_rows or []:
-            if b.get("date") == date_str and b.get("state") not in ("3", "取消"):
-                start_t = b.get("start", "")
-                end_t = b.get("end", "")
-                items.append(
-                    TimelineItem(
-                        time_str=f"{start_t}-{end_t}",
-                        sort_time=start_t or "12:00",
-                        category="booking",
-                        title=f"场地使用: {b.get('resource')}",
-                        location=str(b.get("resource") or "预约中心"),
-                        status="已预约",
-                        details=f"预约ID: {b.get('id')}",
                     )
-                )
-    except Exception as exc:
-        stale_reasons.append(f"预约: {exc}")
+            except Exception as ams_exc:
+                if sis_err is not None and not course_keys:
+                    local_errs.append(f"课表: {sis_err}; AMS: {ams_exc}")
 
-    # 5. 班车接驳建议（根据全天最早课程/最早预约自动推荐）
+        return _merge_parallel_courses(local_items), local_stale, local_errs
+
+    def _load_canvas() -> tuple[list[TimelineItem], bool, list[str]]:
+        local_items: list[TimelineItem] = []
+        local_stale = False
+        local_errs: list[str] = []
+        try:
+            from westlake_survival.canvas import canvas
+
+            def _fetch_deadlines():
+                client = canvas()
+                res = []
+                for a in client.upcoming_deadlines(limit=25):
+                    res.append({
+                        "name": a.name,
+                        "due_at": a.due_at.isoformat() if a.due_at else None,
+                        "html_url": a.html_url,
+                        "points_possible": a.points_possible,
+                    })
+                return res
+
+            deadlines_raw, meta = fetch_with_swr(
+                "canvas", "deadlines", _fetch_deadlines, offline=offline
+            )
+            if meta.get("is_stale"):
+                local_stale = True
+
+            for d in deadlines_raw or []:
+                due_at_str = d.get("due_at")
+                if due_at_str:
+                    try:
+                        dt = datetime.fromisoformat(due_at_str)
+                        if dt.tzinfo is not None and china_tz is not None:
+                            dt = dt.astimezone(china_tz)
+                        if dt.date() == now_date:
+                            local_items.append(
+                                TimelineItem(
+                                    time_str=dt.strftime("%H:%M"),
+                                    sort_time=dt.strftime("%H:%M"),
+                                    category="canvas",
+                                    title=f"DDL 截止: {d.get('name')}",
+                                    location="Canvas",
+                                    status=f"待提交作业（{format_remaining(dt)}）",
+                                    details=f"分值: {d.get('points_possible') or '—'} 分",
+                                )
+                            )
+                    except Exception:
+                        pass
+        except Exception as exc:
+            local_errs.append(f"Canvas: {exc}")
+        return local_items, local_stale, local_errs
+
+    def _load_bookings() -> tuple[list[TimelineItem], bool, list[str]]:
+        local_items: list[TimelineItem] = []
+        local_stale = False
+        local_errs: list[str] = []
+        try:
+            from westlake_survival import booking
+
+            def _fetch_bookings():
+                return [b.to_dict() for b in booking.my_bookings()]
+
+            b_rows, meta = fetch_with_swr("booking", "mine", _fetch_bookings, offline=offline)
+            if meta.get("is_stale"):
+                local_stale = True
+
+            for b in b_rows or []:
+                if b.get("date") == date_str and b.get("state") not in ("3", "取消"):
+                    start_t = b.get("start", "")
+                    end_t = b.get("end", "")
+                    local_items.append(
+                        TimelineItem(
+                            time_str=f"{start_t}-{end_t}",
+                            sort_time=start_t or "12:00",
+                            category="booking",
+                            title=f"场地使用: {b.get('resource')}",
+                            location=str(b.get("resource") or "预约中心"),
+                            status="已预约",
+                            details=f"预约ID: {b.get('id')}",
+                        )
+                    )
+        except Exception as exc:
+            local_errs.append(f"预约: {exc}")
+        return local_items, local_stale, local_errs
+
+    # 2~4. 课表 / Canvas / 预约三源并发拉取
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_courses = pool.submit(_load_courses)
+        f_canvas = pool.submit(_load_canvas)
+        f_bookings = pool.submit(_load_bookings)
+        for fut in (f_courses, f_canvas, f_bookings):
+            part_items, part_stale, part_errs = fut.result()
+            items.extend(part_items)
+            if part_stale:
+                is_stale = True
+            stale_reasons.extend(part_errs)
+
+    # 5. 班车接驳建议（当日存在课程或预约时生成）
     try:
-        from westlake_survival.transit import next_bus
+        from westlake_survival.transit import transit
 
-        # 查找今天 09:00 前是否有课
-        morning_events = [it for it in items if it.sort_time < "10:00" and it.category == "course"]
-        if morning_events:
-            nb = next_bus()
-            if nb:
+        has_day_activity = any(it.category in ("course", "booking") for it in items)
+        if has_day_activity:
+            t_data = transit(offline=offline)
+            ref_dt = (
+                datetime.now(china_tz)
+                if now_date == date.today()
+                else datetime.combine(now_date, time_cls(7, 20), tzinfo=china_tz)
+            )
+            for tbl, hhmm in t_data.next_departures(now=ref_dt, limit=2):
                 items.append(
                     TimelineItem(
-                        time_str="推荐早班车",
-                        sort_time="07:30",
+                        time_str=hhmm,
+                        sort_time=hhmm,
                         category="transit",
-                        title=f"接驳班车建议: 下班车 {nb.departure_time}",
-                        location=f"{nb.route} ({nb.from_stop}→{nb.to_stop})",
-                        status="班车通勤",
-                        details="预留从容抵达与进教室时间",
+                        title=f"接驳班车: {hhmm} 从 {tbl.campus.value} 开出",
+                        location=tbl.campus.value,
+                        status=tbl.day_kind.value,
+                        details=tbl.direction_note or "预留从容抵达与进教室时间",
                     )
                 )
     except Exception:

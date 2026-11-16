@@ -34,6 +34,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from unicodedata import east_asian_width
 
 import click
 
@@ -197,30 +198,70 @@ class ActionCard:
         }
 
     def render_card(self, use_color: bool = True) -> str:
-        """渲染高可读性的结构化事务卡片。"""
-        width = 72
+        """渲染高可读性的结构化事务卡片（按东亚显示列宽对齐右边框）。"""
+        width = 76
+        inner_width = width - 2
+
+        def _disp_width(text: str) -> int:
+            return sum(2 if east_asian_width(ch) in ("W", "F") else 1 for ch in text)
+
+        def _clip(text: str, max_cols: int) -> str:
+            if _disp_width(text) <= max_cols:
+                return text
+            acc: list[str] = []
+            used = 0
+            limit = max(0, max_cols - 3)
+            for ch in text:
+                w = 2 if east_asian_width(ch) in ("W", "F") else 1
+                if used + w > limit:
+                    break
+                acc.append(ch)
+                used += w
+            return "".join(acc) + ("..." if max_cols >= 3 else "")
+
+        def _wrap_line(prefix: str, text: str, cont_prefix: str = "  ") -> list[str]:
+            content_limit = inner_width - 1  # 左侧留 1 个空格边距（"│ "）
+            chunks: list[str] = []
+            cur = prefix
+            cur_w = _disp_width(cur)
+            for ch in text.replace("\r", " ").replace("\n", " "):
+                w = 2 if east_asian_width(ch) in ("W", "F") else 1
+                if cur_w + w > content_limit and cur != prefix:
+                    chunks.append(cur)
+                    cur = cont_prefix + ch
+                    cur_w = _disp_width(cont_prefix) + w
+                else:
+                    cur += ch
+                    cur_w += w
+            chunks.append(cur)
+            return [
+                f"│ {chunk}{' ' * max(0, content_limit - _disp_width(chunk))}│"
+                for chunk in chunks
+            ]
+
         title_tag = f" [事务预览卡片 Action Card: {self.action_id}] "
-        top_bar = "┌" + title_tag.center(width - 2, "─") + "┐"
-        bot_bar = "└" + "─" * (width - 2) + "┘"
+        pad_cols = max(0, inner_width - _disp_width(title_tag))
+        left_dash = pad_cols // 2
+        right_dash = pad_cols - left_dash
+        top_bar = "┌" + ("─" * left_dash) + title_tag + ("─" * right_dash) + "┐"
+        bot_bar = "└" + ("─" * inner_width) + "┘"
 
         lines = [top_bar]
-        lines.append(f"│ 操作类型: {self.name} (风险等级: {self.severity.value.upper()})".ljust(width - 2) + "│")
+        lines.extend(_wrap_line("操作类型: ", f"{self.name} (风险等级: {self.severity.value.upper()})"))
         if self.title:
-            lines.append(f"│ 事务描述: {self.title}".ljust(width - 2) + "│")
+            lines.extend(_wrap_line("事务描述: ", self.title, "          "))
         if self.target:
-            lines.append(f"│ 目标对象: {self.target}".ljust(width - 2) + "│")
+            lines.extend(_wrap_line("目标对象: ", self.target, "          "))
 
         if self.payload:
-            lines.append(f"│ 变更载荷:".ljust(width - 2) + "│")
+            lines.extend(_wrap_line("变更载荷:", ""))
             for k, v in self.payload.items():
-                val_str = str(v)
-                if len(val_str) > 48:
-                    val_str = val_str[:45] + "..."
-                lines.append(f"│   • {k}: {val_str}".ljust(width - 2) + "│")
+                val_str = _clip(str(v).replace("\r", " ").replace("\n", " "), 46)
+                lines.extend(_wrap_line(f"  • {k}: ", val_str, "      "))
 
-        lines.append(f"│ 潜在影响: {self.risk}".ljust(width - 2) + "│")
-        lines.append(f"│ 确认凭据: {self.ticket} (15分钟内有效，单次放行)".ljust(width - 2) + "│")
-        lines.append(f"│ 执行指令: 加 --yes 或 --ticket {self.ticket}".ljust(width - 2) + "│")
+        lines.extend(_wrap_line("潜在影响: ", self.risk, "          "))
+        lines.extend(_wrap_line("确认凭据: ", f"{self.ticket} (15分钟内有效，单次放行)"))
+        lines.extend(_wrap_line("执行指令: ", f"加 --yes 或 --ticket {self.ticket}"))
         lines.append(bot_bar)
         return "\n".join(lines)
 
@@ -287,8 +328,39 @@ def create_action_card(
     return card
 
 
-def validate_and_consume_ticket(ticket: str, expected_name: str | None = None) -> ActionCard | None:
-    """验证并单次消费 Ticket。有效则返回对应 ActionCard 并注销该凭证。"""
+def _action_digest(target: str, payload: dict[str, Any] | None) -> str:
+    encoded = json.dumps(
+        {"target": target, "payload": payload or {}},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _card_from_dict(data: dict[str, Any]) -> ActionCard:
+    return ActionCard(
+        action_id=data["action_id"],
+        name=data["name"],
+        title=data.get("title", ""),
+        target=data.get("target", ""),
+        payload=data.get("payload", {}),
+        risk=data.get("risk", ""),
+        severity=Severity(data.get("severity", "medium")),
+        irreversible=bool(data.get("irreversible", False)),
+        ticket=data["ticket"],
+        expires_at=float(data["expires_at"]),
+        created_at=float(data.get("created_at", time.time())),
+    )
+
+
+def validate_and_consume_ticket(
+    ticket: str,
+    expected_name: str | None = None,
+    *,
+    expected_digest: str | None = None,
+) -> ActionCard | None:
+    """验证操作与载荷后单次消费 Ticket；不匹配时保留凭证。"""
     if not ticket:
         return None
     tickets = _load_tickets()
@@ -303,23 +375,75 @@ def validate_and_consume_ticket(ticket: str, expected_name: str | None = None) -
 
     if expected_name and data.get("name") != expected_name:
         return None
+    if expected_digest is not None and _action_digest(
+        data.get("target", ""), data.get("payload")
+    ) != expected_digest:
+        return None
 
     # 单次有效，销毁凭证
     tickets.pop(ticket, None)
     _save_tickets(tickets)
+    return _card_from_dict(data)
 
-    return ActionCard(
-        action_id=data["action_id"],
-        name=data["name"],
-        title=data.get("title", ""),
-        target=data.get("target", ""),
-        payload=data.get("payload", {}),
-        risk=data.get("risk", ""),
-        severity=Severity(data.get("severity", "medium")),
-        irreversible=bool(data.get("irreversible", False)),
-        ticket=data["ticket"],
-        expires_at=float(data["expires_at"]),
-        created_at=float(data.get("created_at", time.time())),
+
+def consume_matching_preview(
+    name: str,
+    *,
+    target: str = "",
+    payload: dict[str, Any] | None = None,
+) -> ActionCard | None:
+    """消费最近一条与操作名、目标和载荷精确匹配且未过期的预检 Ticket。"""
+    tickets = _load_tickets()
+    expected_digest = _action_digest(target, payload)
+    for tk, data in reversed(list(tickets.items())):
+        if data.get("name") != name:
+            continue
+        if _action_digest(data.get("target", ""), data.get("payload")) != expected_digest:
+            continue
+        tickets.pop(tk, None)
+        _save_tickets(tickets)
+        return _card_from_dict(data)
+    _save_tickets(tickets)
+    return None
+
+
+def gate_mcp(
+    name: str,
+    *,
+    confirm: bool = False,
+    ticket: str | None = None,
+    target: str = "",
+    title: str = "",
+    payload: dict[str, Any] | None = None,
+) -> tuple[bool, ActionCard]:
+    """MCP 写操作防跳过预检与防参数篡改门禁。
+
+    返回 ``(authorized, card)``：
+    - 传 ``ticket``：校验绑定摘要并单次消费，通过返回 ``(True, card)``；无效/不匹配抛 ``ValueError``；
+    - 未传 ``ticket`` 且 ``not confirm``：生成预检 ``ActionCard``（含一次性 ``ticket``），返回 ``(False, card)``；
+    - 未传 ``ticket`` 且 ``confirm=True``：要求近期同参数预检存在，匹配并消费一次后放行，否则拦截抛 ``ValueError``。
+    """
+    consequence_by_name(name)
+    tk = (ticket or "").strip() or None
+    if tk:
+        consumed = validate_and_consume_ticket(
+            tk, expected_name=name, expected_digest=_action_digest(target, payload)
+        )
+        if consumed is not None:
+            return True, consumed
+        raise ValueError(
+            f"Ticket [{tk}] 无效、已过期或与当前目标/参数不匹配；"
+            "请先不带 ticket 与 confirm 调用预检生成新 Action Card。"
+        )
+    if not confirm:
+        return False, create_action_card(name, target=target, title=title, payload=payload)
+    matched = consume_matching_preview(name, target=target, payload=payload)
+    if matched is not None:
+        return True, matched
+    raise ValueError(
+        f"写操作安全拦截：未找到操作 {name} 对应当前目标与参数的有效预检记录"
+        "（禁止跳过预检、篡改参数或重复重放执行）。请先不带 confirm/ticket 调用一次预检"
+        "展示 Action Card，用户确认后传入返回卡片中的 ticket（或保持相同参数传 confirm=true）。"
     )
 
 
@@ -353,32 +477,31 @@ def require_confirmation(
 ) -> tuple[Consequence, ActionCard | None]:
     """写操作统一确认门。
 
-    若 ``ticket`` 有效，放行执行；
-    若 ``dry_run``，放行执行（并附带生成的 card 用于预检预览）；
+    若 ``dry_run``，返回预览卡且不消费传入的 Ticket，调用方须在预览后返回；
+    若 ``ticket`` 与本次操作及载荷匹配，单次放行执行；
     若 ``confirmed`` (即 ``--yes``)，放行执行；
     否则抛出 :class:`ConfirmationRequired` 并包含生成的 :class:`ActionCard`。
     """
     consequence = consequence_by_name(name)
 
-    # 1. 检查 Ticket 闭环
+    if dry_run:
+        return consequence, create_action_card(name, target=target, title=title, payload=payload)
+
     if ticket:
-        consumed = validate_and_consume_ticket(ticket, expected_name=name)
+        consumed = validate_and_consume_ticket(
+            ticket, expected_name=name, expected_digest=_action_digest(target, payload)
+        )
         if consumed:
             return consequence, consumed
-        raise click.ClickException(f"提供的 Ticket [{ticket}] 无效、已过期或不匹配操作 {name}")
+        raise click.ClickException(
+            f"提供的 Ticket [{ticket}] 无效、已过期或不匹配操作 {name} 的目标与参数"
+        )
 
-    # 2. 生成事务预览卡片
     card = create_action_card(name, target=target, title=title, payload=payload)
-
-    # 3. dry-run 放行
-    if dry_run:
-        return consequence, card
-
-    # 4. --yes 放行
     if confirmed:
         return consequence, card
 
-    # 5. 未确认，拦截
+    # 未确认，拦截
     raise ConfirmationRequired(consequence, card=card)
 
 

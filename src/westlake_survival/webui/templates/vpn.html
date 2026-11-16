@@ -37,7 +37,11 @@
   var note = document.getElementById('vpn-login-note');
   btn.addEventListener('click', function () {
     note.textContent = '启动中…';
-    fetch('/vpn/api/login', { method: 'POST' })
+    fetch('/vpn/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         note.textContent = d.message || '已打开';

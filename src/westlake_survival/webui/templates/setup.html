@@ -150,7 +150,11 @@
       if (!confirm('确认清除本地 Canvas 令牌？清除后将回退使用统一认证密码。')) return;
       var noteBox = document.getElementById('clearedNote');
       try {
-        var res = await fetch('/setup/api/canvas/clear', { method: 'POST' });
+        var res = await fetch('/setup/api/canvas/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}'
+        });
         var data = await res.json();
         if (noteBox) noteBox.textContent = data.note || '';
         await refreshStatus();

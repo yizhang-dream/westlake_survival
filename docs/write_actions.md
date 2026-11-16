@@ -60,35 +60,38 @@
 | `canvas.submit` | Canvas | `canvas submit` | `canvas_submit` | MEDIUM | 需覆盖 | 提交文件/文本/链接作业至课程侧，教师立即可见 |
 | `canvas.reply` | Canvas | `canvas reply` | — | MEDIUM | 否 | 在课程讨论区回帖，全班可见 |
 | `canvas.send` | Canvas | `canvas send` | — | MEDIUM | 否 | 发送 Canvas 收件箱私信 |
-| `canvas.star` | Canvas | `canvas star` | — | LOW | 是 | 将课程置顶于个人面板收藏夹 |
-| `canvas.unstar` | Canvas | `canvas unstar` | — | LOW | 是 | 将课程移出个人收藏夹（不退课） |
+| `canvas.star` | Canvas | `canvas star` | `canvas_star` | LOW | 是 | 将课程置顶于个人面板收藏夹 |
+| `canvas.unstar` | Canvas | `canvas unstar` | `canvas_unstar` | LOW | 是 | 将课程移出个人收藏夹（不退课） |
 | `canvas.upload` | Canvas | `canvas upload` | `canvas_upload` | LOW | 是 | 上传本地文件至个人 Canvas 文件云盘 |
 | `canvas.dismiss_todo` | Canvas | `canvas dismiss-todo` | `canvas_dismiss_todo` | LOW | 是 | 模糊/精确匹配待办事项并在线归档/忽略 |
 | `pms.print` | 联创文印 | `pms print` | `pms_print` | LOW | 是 | 上传文件至云打印队列，支持份数/单双面/色彩参数 |
 | `pms.cancel` | 联创文印 | `pms cancel` | `pms_cancel` | LOW | 否 | 从云打印队列中取消并删除指定未打印作业 |
 | `booking.book` | 场地预约 | `booking book` | — | MEDIUM | 是 | 预约研讨室/自习仓，占用公共资源 |
 | `booking.cancel` | 场地预约 | `booking cancel` | — | LOW | 是 | 取消已有预约并释放名额 |
-| `lib.renew` | 阿法迪图书馆 | `lib renew` | — | LOW | 否 | 在借图书在线续借（限续 1 次） |
+| `lib.renew` | 阿法迪图书馆 | `lib renew` | `lib_renew` | LOW | 否 | 在借图书在线续借（限续 1 次） |
 | `calendar.export` | 本地日历 | `calendar export` | `calendar_export` | LOW | 是 | 导出课表与行动流为标准 `.ics` 写入本地 |
-| `timeline.memo` | 本地行动流 | `timeline add/done/delete` | — | LOW | 是 | 个人备忘增/删/改/勾选全生命周期 |
+| `timeline.memo` | 本地行动流 | `timeline add/done/delete` | `timeline_add_memo` / `timeline_done_memo` / `timeline_delete_memo` | LOW | 是 | 个人备忘增/删/改/勾选全生命周期 |
 
 ## 三端入口
 
-CLI 统一支持 `--dry-run`（预览）/ `--yes`（直接放行）/ `--ticket`（凭证放行）三态：
+CLI 统一支持 `--dry-run`（预览）/ `--yes`（直接放行）/ `--ticket <ticket>`（凭证放行）。先预览并审查卡片，再用相同业务参数和 Ticket 执行。Ticket 同时绑定操作名、目标和完整载荷，修改任一项都会拒绝放行，且不消耗原票据；有效票据仅可执行一次，15 分钟后失效。`--dry-run` 始终只生成新预览，不执行写入、不消费已有 Ticket，即使同时带有确认参数。
 
 ```bash
-westlake pms print <file> [--copies N] [--duplex] [--color] [--dry-run|--yes]
-westlake pms cancel <job_id> [--dry-run|--yes]
-westlake canvas upload <file> [--dry-run|--yes]
-westlake canvas dismiss-todo <keyword_or_id> [--dry-run|--yes]
-westlake calendar export [-o schedule.ics] [--dry-run|--yes]
-westlake timeline delete <memo_id> [--dry-run|--yes]
+westlake pms print <file> [--copies N] [--duplex] [--color] [--dry-run|--ticket <ticket>|--yes]
+westlake pms cancel <job_id> [--dry-run|--ticket <ticket>|--yes]
+westlake canvas upload <file> [--dry-run|--ticket <ticket>|--yes]
+westlake canvas dismiss-todo <keyword_or_id> [--dry-run|--ticket <ticket>|--yes]
+westlake calendar export [-o schedule.ics] [--dry-run|--ticket <ticket>|--yes]
+westlake timeline done <memo_id> [--dry-run|--ticket <ticket>|--yes]
+westlake timeline delete <memo_id> [--dry-run|--ticket <ticket>|--yes]
 ```
 
-MCP 侧暴露 `pms_stations`、`pms_jobs`、`pms_print`、`pms_cancel`、`canvas_upload`、`canvas_dismiss_todo`、`calendar_export` 等工具，默认以预检计划形式响应，显式传递 `confirm: true` 才执行底层状态变更。
+MCP 侧暴露 `pms_stations`、`pms_jobs`、`pms_print`、`pms_cancel`、`canvas_upload`、`canvas_dismiss_todo`、`calendar_export`、`timeline_add_memo`、`timeline_done_memo`、`timeline_delete_memo`、`lib_renew` 等工具，缺省以预检计划及带一次性 `ticket` 的 Action Card 形式响应；再次调用时须传入该 `ticket`（推荐）或保持目标与参数完全一致并传 `confirm: true`（校验近 15 分钟内存在同参数预检记录并单次核销，跳过预检或篡改参数将被安全拦截）。
 
 WebUI 侧：`/pms` 页提供云打印任务提交控制台（参数调整、事务卡片预检弹窗）与取消作业；`/timeline` 页提供 `.ics` 导出与备忘的安全删除。
 
 ## 验证口径
 
-每项写操作按 `--dry-run` 预览生成、无标志拦截、`--ticket` 消费、防重放二次拦截四步断言；全量回归走 `tools/module_smoke.py` 与 `tools/webui_smoke.py` 端到端真跑，提交前 `tools/pii_scan.py` 扫描敏感信息（本仓库不维护单元测试）。
+写操作的完整核验包括 `--dry-run` 预览生成、无标志拦截、`--ticket` 消费、防重放二次拦截，并核对目标数据是否改变。可在临时 `WESTLAKE_HOME` 中通过本地 `timeline` 备忘跑通该闭环；涉及学校系统的真实写入须有对应操作的用户授权，不能为了回归检查而发送消息、提交作业或占用预约。
+
+`tools/module_smoke.py` 只跑只读命令，`tools/webui_smoke.py` 检查页面响应；两者均不覆盖上述写操作闭环，不能据此宣称写操作验证通过。交付时分别说明哪些命令完成了预检、哪些完成了实际写入验证。提交前运行 `tools/pii_scan.py` 扫描敏感信息；本仓库不维护单元测试。

@@ -206,14 +206,21 @@ def _check_credentials() -> Check:
 
 
 def _check_canvas_token() -> Check:
-    from westlake_survival.canvas.client import TOKEN_ENV_VAR
+    from westlake_survival.canvas.client import TOKEN_ENV_VAR, resolve_token, token_file_path
 
-    env = bool(os.environ.get(TOKEN_ENV_VAR))
+    if (os.environ.get(TOKEN_ENV_VAR) or "").strip():
+        detail = f"环境变量 {TOKEN_ENV_VAR} 已设"
+    else:
+        resolved = resolve_token()
+        if resolved:
+            detail = f"独立令牌文件已配置（{token_file_path().name}，不回显）"
+        else:
+            detail = "无独立令牌，走统一密码（已够用）"
     return Check(
         key="canvas_token",
         name="Canvas 令牌（选填）",
         status="ok",
-        detail="有环境变量令牌" if env else "无独立令牌，走统一密码（IAM CAS 会话）",
+        detail=detail,
     )
 
 
@@ -222,12 +229,11 @@ def _check_hpc_token() -> Check:
 
     token = read_hpc_token()
     if token:
-        masked = token[:7] + "..." + token[-4:] if len(token) > 12 else "已配置"
         return Check(
             key="hpc_token",
             name="HPC 集群 AI 令牌（选填）",
             status="ok",
-            detail=f"已配置（{masked}，Westlake AI 网关）",
+            detail="已配置（Westlake AI 网关，不回显）",
         )
     return Check(
         key="hpc_token",

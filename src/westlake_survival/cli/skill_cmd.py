@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import click
@@ -108,19 +109,70 @@ def runtime_cmd(as_json: bool) -> None:
     default="frontier",
     help="目标模型档位（frontier: 强推理大模型; compact: 紧凑轻量模型; micro: -O3 微内核常驻）。",
 )
+@click.option("--aot", is_flag=True, help="强制写入 AOT 精简编译产物，而非仓库完整手写 SKILL.md。")
+@click.option("--force", is_flag=True, help="覆盖已存在的外部软链或联接目标（谨慎使用）。")
 @_handle_errors
-def install_cmd(target: str, profile: str) -> None:
-    """一键跨机挂载：将编译后的 Skill 自动安装到本机对应智能体框架目录。"""
+def install_cmd(target: str, profile: str, aot: bool, force: bool) -> None:
+    """一键跨机挂载：将 Skill 自动安装到本机对应智能体框架目录。"""
     p_enum = ModelProfile(profile)
-    click.secho(f"⚡ [SkillVM 跨机安装自适应检测中...]", fg="cyan", bold=True)
+    click.secho("⚡ [SkillVM 跨机安装自适应检测中...]", fg="cyan", bold=True)
 
     if target == "all":
-        results = SkillInstaller.autodetect_and_install_all(profile=p_enum)
+        results = SkillInstaller.autodetect_and_install_all(profile=p_enum, force=force, aot=aot)
         for t, p in results:
             click.secho(f"  ✓ 成功挂载至 [{t.value}]: {p}", fg="green")
     else:
         t_enum = HarnessTarget(target)
-        p = SkillInstaller.install(target=t_enum, profile=p_enum)
+        p = SkillInstaller.install(target=t_enum, profile=p_enum, force=force, aot=aot)
         click.secho(f"  ✓ 成功挂载至 [{t_enum.value}]: {p}", fg="green")
 
     click.secho("跨机安装完成！可以在当前机器对应的 Agent 中直接调用 /westlake-survival。", fg="cyan")
+
+
+@cli_group.command(name="status")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出挂载状态。")
+@_handle_errors
+def status_cmd(as_json: bool) -> None:
+    """检查各智能体宿主目录的 Skill 挂载、软链指向与同步状态。"""
+    report = SkillInstaller.inspect_status()
+    if as_json:
+        click.echo(json.dumps(report, ensure_ascii=False, indent=2))
+        return
+
+    click.secho("=== Skill 插件挂载与同步状态 ===", fg="cyan", bold=True)
+    click.echo(f"  Python 解释器: {report['python_executable']}")
+    click.echo(f"  仓库真源目录:  {report['repo_skill_dir'] or '（未命中）'}")
+    marks = {"ok": "✔", "outdated": "!", "linked-outdated": "!", "missing": "·"}
+    for row in report["targets"]:
+        mark = marks.get(row["status"], "?")
+        click.echo(f"  {mark} [{row['target']}] {row['path']}")
+        click.echo(f"      状态: {row['note']}")
+
+
+@cli_group.command(name="mcp-config")
+@click.option(
+    "--client",
+    type=click.Choice(["generic", "claude", "cursor", "zcode"]),
+    default="generic",
+    show_default=True,
+    help="目标客户端类型（影响提示语，配置片段通用）。",
+)
+@_handle_errors
+def mcp_config_cmd(client: str) -> None:
+    """输出可直接粘贴到 MCP 客户端的 mcpServers JSON 配置块。"""
+    payload = {
+        "mcpServers": {
+            "westlake-survival": {
+                "command": sys.executable,
+                "args": ["-m", "westlake_survival.mcp_server"],
+            }
+        }
+    }
+    click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+    hints = {
+        "claude": "将上述片段合并至 ~/.claude.json 或 Claude Desktop 配置文件 mcpServers 节点。",
+        "cursor": "将上述片段合并至 .cursor/mcp.json 或 Cursor 全局 MCP 配置。",
+        "zcode": "将上述片段合并至 ZCode / Antigravity MCP 配置的 mcpServers 节点。",
+        "generic": "将其粘贴到任意支持 stdio MCP 的客户端配置中即可启用全部 89 个工具。",
+    }
+    click.echo(f"# {hints[client]}", err=True)

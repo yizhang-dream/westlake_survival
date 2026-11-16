@@ -2,7 +2,8 @@
 {% block title %}全站 · 西湖生存手册{% endblock %}
 {% block content %}
 <h1 class="page">全校站点（{{ stats.total }} 个已接入）
-  {% if cached %}<a class="chip plain" href="/sites?refresh=1" title="10 分钟缓存，点击重抓">缓存 · 刷新</a>
+  {% if stale %}<a class="chip warn" href="/sites?refresh=1" title="已立即返回本地缓存并在后台刷新，点击同步重抓">缓存 · 后台同步中</a>
+  {% elif cached %}<a class="chip plain" href="/sites?refresh=1" title="10 分钟缓存，点击重抓">缓存 · 刷新</a>
   {% else %}<span class="chip">实时</span>{% endif %}
 </h1>
 

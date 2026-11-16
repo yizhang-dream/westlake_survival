@@ -2,19 +2,21 @@
 
 > 本文汇总 westlake_survival 的常用命令示例、Python API 方法表、MCP 工具清单与系统适配注记，供按需查阅。具体命令用法以 `westlake find` 与 `--help` 输出为准。
 
-## 免凭据命令示例（可直接执行）
+## 公开与本地命令示例
 
 ```bash
 westlake calendar today                      # 今日日期/学期/周次/事件（支持 --offline）
 westlake calendar week 4                     # 第 4 周起止日期
 westlake calendar events                     # 本学期校历事件
+westlake timeline [--offline] [--json]       # 时空行动流：课表/DDL/预约/班车/备忘融合与冲突检测
 westlake transit next --campus 云谷 --limit 3 # 下一班班车时刻与接驳建议
 westlake transit table --campus 云谷 --day 工作日 # 班车时刻表（支持 --offline）
 westlake transit ical --days 14 --out bus.ics # 导出班车日历文件
-westlake booking recommend --date today --min-hours 1.5 # 复合求解：智能推荐空闲连续场地
 # 网页订阅：校历页有班车/课表 ICS 一键复制（/ical/shuttle、/ical/schedule）
-westlake context --level terse               # terse|normal|verbose
-westlake digest --level normal               # 每日摘要；terse 仅计算本地指标
+westlake context --level terse [--json]      # terse|normal|verbose
+westlake digest --level normal [--json]      # 每日摘要；terse 仅计算本地指标
+westlake find <需求词> [--json]              # 按关键词检索 CLI / MCP / Web / 学术库能力
+westlake skill status [--json] / mcp-config  # 查看 Skill 挂载同步状态 / 导出 MCP 配置 JSON
 westlake search 西湖 --limit 10 --page 1
 westlake news --category 学术 --limit 5      # 人物|资讯|学术|校园|招生|媒体|影像
 westlake news detail <URL>
@@ -30,32 +32,32 @@ westlake campus dining --campus 云谷 --kind 食堂 / campus housing --campus �
 westlake campus services --campus 云谷       # 超市/快递/干洗/理发/打印/银行
 westlake contact --campus 云谷               # 云谷|云栖|铜鉴湖；缺省三校区
 westlake map [--campus 云谷]                 # 地址/地图图片/全景/交通
-westlake sso creds show                      # 终端显示已存教务学号/密码（忘记时找回）
-westlake vpn login                           # 弹窗手动输验证码，会话落盘复用
 westlake vpn status / vpn resources          # 状态 / 隧道推送的内网路由
 westlake sites list / sites site <key> / sites detail <url>
 westlake hosts list|mine --all|show <子域> [--render]   # 全量子站探测与栏目挖掘
 westlake wiki list --cat clubs / wiki search 班车 / wiki page 音游社
-westlake lib search "数据结构"                # 新版阿法迪云平台公开检索书目（题名/作者/索书号/馆藏地）
-westlake lib loans                           # 个人在借图书与应还时间（新平台长效 JWT 会话）
 westlake hpc ai                              # Westlake AI 大模型网关（OpenAI 兼容）
-westlake hpc chat "提示词"                    # 终端直接调用学校 GPU 集群大模型对话（deepseek/glm/qwen，免费）
-westlake hpc sync-key                        # 基于统一认证自动领取并配置集群私有令牌
 westlake portal ask "问题"                    # 向校内官方 AI 问答助手提问（办事/规章/生活答疑）
 westlake instrument search "质谱"             # 检索全校大型科学仪器设备（地点/联系人/电话/预约入口）
 westlake instrument list --limit 20          # 浏览大仪共享平台最新设备清单
 westlake affairs app <名称>                   # 查看办事大厅流程应用的详细说明与表单直达链接
 westlake pms stations / probe / scholar open cnki
-westlake cache clear --module events
 westlake webui serve --port 2018             # 本地前端；/capabilities 能力总览
 ```
 
-## 需 SIS 凭据 + 校园网/VPN
+## 需凭据或已有登录会话的命令
+
+按系统要求使用本机已配置的账号、令牌或会话；校内服务还可能需要校园网/VPN。凭据检查使用 `sso creds status`；`sso creds show` 会显示明文凭据，仅供用户本人在私有终端使用，Agent 不得调用。`cache clear --module events` 会删除本地缓存，也不属于只读查询。
 
 ```bash
 westlake sso creds set                       # 交互输入；--sid/--password/--keyring
 westlake sso creds status / sso login
-westlake sis schedule / grades / exams / cart / sis ical --out schedule.ics
+westlake vpn login                           # 由用户手动输入验证码，登录态仅存本机
+westlake booking types|list|slots|mine [--json]         # 预约中心只读列表与空闲查询
+westlake booking recommend --date today --min-hours 1.5 # 复合求解空闲场地；需预约中心登录态
+westlake hpc chat "提示词"                    # 需已有 HPC 令牌；未配置时尝试通过统一认证领取
+westlake hpc sync-key                        # 统一认证领取并配置 HPC 令牌
+westlake sis schedule|grades|exams [--json] / sis cart / sis ical --out schedule.ics
 westlake sis-evals list --pending
 westlake profile info|academic|extended
 westlake records dorm|leave|honors|volunteer|vol-history|practice|discipline|
@@ -63,9 +65,10 @@ westlake records dorm|leave|honors|volunteer|vol-history|practice|discipline|
 westlake aid loans|jobs|claim|outbound|exchange|orgs|activities
 westlake aid orgs --wiki                     # 社团目录 + WikiLake 改写简介
 westlake ams status / ams schedule --json / ams menus / ams notices
-westlake lib search 数据结构 --page 1 / lib loans   # 2026-10-28 起迁移暂不可用
+westlake market catalog|profile|resume|courses|honors|clubs|volunteer [--summary] [--json]  # 门户数据市集脱敏概要
+westlake lib search 数据结构 --page 1 [--json] / lib loans [--json]   # 新版阿法迪云图书馆；lib loans 首列含条码供 lib renew 使用
 westlake pms stations                           # 打印网点列表（无需登录）
-westlake pms jobs                               # 我的未打印作业（需登录）
+westlake pms jobs                               # 我的未打印作业（首列含作业ID供 pms cancel 使用；需登录）
 westlake pms print doc.pdf [--copies 2] [--duplex] [--color] [--from-page N --to-page N]  # 上传并创建云打印作业（写操作，带 Action Card）
 westlake pms cancel 12345                       # 取消并删除未打印作业（写操作，带 Action Card；刷卡前撤回无损）
 ```
@@ -83,15 +86,15 @@ westlake career detail 1129108               # 也可用列表输出的 URL / ne
 ## Canvas（令牌或统一密码会话）
 
 ```bash
-westlake canvas courses [--past|--all] / canvas grades [--past|--all] / deadlines --limit 10 / exams --days 30
-westlake canvas assignments --course 概率论        # 课程给 id 或名称关键词均可
+westlake canvas courses [--past|--all] [--json] / canvas grades [--past|--all] [--json] / deadlines --limit 10 [--json] / todo [--json] / exams --days 30
+westlake canvas assignments --course 概率论 [--json]   # 课程给 id 或名称关键词均可
 westlake canvas assignment-info --course 概率论 --assignment Assignment5 [--download ./资料]
-westlake canvas files --course 概率论 --match 作业 --download ./资料
-westlake canvas discussions --course 概率论 / announcements --course 概率论
+westlake canvas files --course 概率论 --match 作业 [--json|--download ./资料]
+westlake canvas discussions --course 概率论 [--json] / announcements --course 概率论 [--json]
 westlake canvas discussion --course 马原 --topic 什么是空间
 westlake canvas entries --course 马原 --topic 4123 --limit 20
 westlake canvas reply --course … --topic … --text "……"          # 写操作
-westlake canvas inbox --limit 20 [--unread]                      # 打开会话即标已读
+westlake canvas inbox --limit 20 [--unread] [--json]             # 打开会话即标已读
 westlake canvas conversation 2041 --download ./资料
 westlake canvas send --conversation 2041 --text "……"             # 写操作
 westlake canvas star 2183 / canvas unstar 2183                   # 课程收藏/星标置顶（写操作）
@@ -165,7 +168,7 @@ for course in c.list_courses():                                 # 扫当前可�
 
 ## MCP 备选通道
 
-零依赖 stdio 服务器，82 个工具：学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类；就业 `career_latest`/`career_deep`/`career_detail`；校历班车 `calendar_today`/`calendar_week`/`transit_next`；内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`；百科 `wiki_search`/`wiki_page`；培养 `program_*` 六个；校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`；学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`；作业课程 `canvas_courses`/`canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`；分享 `share_files`；文印 `pms_stations`/`pms_jobs`；场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`。写操作工具缺省只预检、`confirm=true` 才执行：`canvas_submit`、`pms_print`、`pms_cancel`（其余写操作仅在 CLI 提供，走 Action Card 确认门）。
+零依赖 stdio 服务器，89 个工具：学业 `sis_schedule`/`sis_grades`/`sis_exams`/`sis_cart`/`sis_evals_pending`/`sis_second_class`/`sis_advisor`/`sis_other_applications` + records/aid 类；时空行动流 `timeline`/`timeline_add_memo`/`timeline_done_memo`/`timeline_delete_memo`；门户数据市集 `market_query`；就业 `career_latest`/`career_deep`/`career_detail`；校历班车 `calendar_today`/`calendar_week`/`transit_next`；内容 `news_latest`/`events_upcoming`/`research_latest`/`site_search`/`faculty_search`/`affairs_apps`；百科 `wiki_search`/`wiki_page`；培养 `program_*` 六个；校园 `campus_dining`/`campus_housing`/`campus_map`/`contact_info`/`context_snapshot`；学术 `scholar_databases`/`scholar_resolve_doi`/`scholar_campus`；图书馆 `lib_search`/`lib_loans`/`lib_renew`；作业课程 `canvas_courses`/`canvas_deadlines`/`canvas_todo`/`canvas_submit`/`canvas_upload`/`canvas_dismiss_todo`/`canvas_files`/`canvas_assignment_info`/`canvas_discussions`/`canvas_announcements`/`canvas_inbox`/`canvas_conversation`/`canvas_discussion_entries`（令牌或统一密码均可）；分享 `share_files`；文印 `pms_stations`/`pms_jobs`/`pms_print`/`pms_cancel`；场馆 `sport_scenes`/`sport_sites`/`sport_days`/`sport_reservations`。写操作工具缺省只预览并输出带一次性 `ticket` 的 Action Card，核对后传 `ticket`（推荐，15 分钟内单次有效、防篡改）或保持同参数显式传 `confirm=true`（校验近期存在匹配预检并单次消费，跳过预检或改动参数将被拦截）才执行；完整清单见[写操作矩阵](write_actions.md#写操作矩阵14-项)。其中 `canvas_star` / `canvas_unstar` 与 `calendar_export`（无凭据时）可预览原始请求参数，预览不代表已确认课程或课表存在。
 
 ```json
 {"mcpServers": {"westlake": {"command": "westlake-mcp"}}}
@@ -180,5 +183,5 @@ for course in c.list_courses():                                 # 扫当前可�
 - **预约四套系统**：预约中心 17 类场地；体育场馆/游泳在 sportvenue（登录已通、卡服务端「表单规则未找到」，docs/sports.md）；图书馆座位在 seats.library（企业微信微应用，浏览器拿不到 accessToken）；办事大厅另有 CGYY/ResourceReservation 两个流程表单。对照表 docs/module_audit.md。
 - **学术资源**：本校是 CARSI 联盟成员，统一密码可登录各出版社；校园网内按 IP 认账。`scholar doi` 走「OA 副本（OpenAlex）→ 出版社 citation_pdf_url」两级取全文。
 - **门户服务目录 `affairs portal`**：2026-10-27 实测服务端接口疑似变化暂报错，网页区块自动降级。
-- **门户数据市集**：技能内 `scripts/data_market.py` 支持目录与本人档案、履历、已修课程、荣誉、社团、志愿七类只读查询，自动完成会话交换与分页；尚无专用 CLI/MCP。调用方法、进程内取值、认证步骤和目录权限边界统一维护在[数据市集只读指南](../skills/westlake-survival/references/data-market.md)。
+- **门户数据市集**：已正式集成 `westlake market` CLI、`westlake_survival.market` Python API 与 `market_query` MCP 工具（同时保留技能内 `scripts/data_market.py`），支持目录与本人档案、履历、已修课程、荣誉、社团、志愿七类只读查询，自动完成会话交换与分页，CLI/MCP 默认仅输出脱敏概要。调用方法、进程内取值、认证步骤和目录权限边界统一维护在[数据市集只读指南](../skills/westlake-survival/references/data-market.md)。
 - **Canvas 事实口径**：待办/讨论时间是 UTC；作业对象无 attachments 字段，题目附件在描述 HTML 的文件链接；题目文件可能挂三处（描述/文件区/模块）。

@@ -25,12 +25,8 @@
 
 from __future__ import annotations
 
-import json
-import os
 import re
-import time
 from http.cookiejar import Cookie as _Cookie
-from pathlib import Path
 
 from westlake_survival._net import AUTH_TIMEOUT, http_session
 from westlake_survival.exceptions import (
@@ -41,6 +37,11 @@ from westlake_survival.exceptions import (
 )
 from westlake_survival.sso.creds import read_credentials
 from westlake_survival.sso.providers.cas import CASAuthorizer
+from westlake_survival.sso.session_store import (
+    clear_session_data,
+    load_session_data,
+    save_session_data,
+)
 
 #: SIS 根地址。
 SIS_BASE = "https://sis.westlake.edu.cn/psc/CSPRD_3/"
@@ -48,26 +49,12 @@ SIS_BASE = "https://sis.westlake.edu.cn/psc/CSPRD_3/"
 #: PS 登录页（GET 渲染表单，POST 提交）。
 SIS_LOGIN_URL = "https://sis.westlake.edu.cn/psc/CSPRD_3/?cmd=login&languageCd=ENG"
 
-#: 缓存会话的落盘位置（遵循 WESTLAKE_HOME 重定位约定）。
-COOKIES_FILENAME = "sis_cookies.json"
-
 #: 缓存有效期（秒）：25 分钟（与基类 SESSION_TTL 一致）。
 _TTL = 25 * 60
 
 
-def _cookies_path() -> Path:
-    override = os.environ.get("WESTLAKE_HOME")
-    root = Path(override) if override else Path.home() / ".westlake_survival"
-    return root / COOKIES_FILENAME
-
-
 def _clear_jar() -> None:
-    try:
-        p = _cookies_path()
-        if p.exists():
-            p.unlink()
-    except OSError:
-        pass
+    clear_session_data("sis")
 
 
 def _save_jar(session) -> None:
@@ -82,24 +69,12 @@ def _save_jar(session) -> None:
         for c in session.cookies
         if "westlake.edu.cn" in (c.domain or "")
     ]
-    path = _cookies_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"ts": time.time(), "cookies": jar}, ensure_ascii=False), encoding="utf-8")
-    try:
-        path.chmod(0o600)
-    except OSError:
-        pass
+    save_session_data("sis", {"cookies": jar})
 
 
 def _load_jar():
-    path = _cookies_path()
-    if not path.exists():
-        return None
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    if time.time() - float(payload.get("ts") or 0) > _TTL:
+    payload = load_session_data("sis", _TTL)
+    if not payload:
         return None
     jar = payload.get("cookies") or []
     if not jar:

@@ -35,3 +35,7 @@ out/
 shot_*
 .vpn_*
 *.png.tmp
+
+# 宣传片 v4 Remotion 工程依赖（junction 到 video-shotcraft 模板）
+media/westlake-promo-v4/node_modules
+media/westlake-promo-v4/public/audio/

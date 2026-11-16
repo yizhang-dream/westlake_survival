@@ -15,15 +15,16 @@ westlake                        # launch the local web dashboard
 | --- | --- | --- |
 | Academics (SIS) | timetable, grades, exam seating, enrollment cart, course evaluations, co-curricular records, weekly grid with conflict detection, ICS export | unified password |
 | Teaching (AMS) | secondary timetable, academic week numbers, enrollment status | unified password |
-| Canvas | courses, deadlines & quizzes, files, discussions, announcements, inbox, assignment specifications; submit / reply / send message | personal token or unified password |
-| Venue booking | 17 venue categories: real-time availability, slot discovery, active reservations, booking & cancellation | unified password |
+| Canvas | active & past courses, deadlines & quizzes, to-dos, modules, file downloads, discussions, announcements, inbox, assignment specs; submit / reply / message / star / upload / dismiss to-do | personal token or unified password |
+| Venue booking | 17 venue categories: composite slot recommender (`booking recommend`), availability, active reservations, booking & cancellation | unified password |
 | Sports venues | facilities, courts, daily availability, personal bookings (read-only) | unified password |
-| Tasks & portal | administrative service catalog, pending to-dos, portal summary cards | unified password |
-| Research / careers / curriculum / campus life / lecture notes / search / system inventory | see the [GitHub README](https://github.com/yizhang-dream/westlake_survival#readme) | most require none |
+| Library & cloud print | Afadi Cloud eLibrary search, active loans & online renewal; UniFound printing stations, queues, upload & cancel | partly none |
+| Tasks, portal & data market | administrative service catalog, pending to-dos, portal summary cards, `westlake market` sanitized summaries (catalog, profile, resume, courses, honors, clubs, volunteering) | unified password |
+| Research / timeline / careers / curriculum / campus life / lecture notes / systems | includes `timeline` cross-system daily scheduler & conflict detection; see the [GitHub README](https://github.com/yizhang-dream/westlake_survival#readme) | most require none |
 
 ## Three principles
 
-1. **Read-only by default.** Only five write operations exist, all protected behind a structured consequence gate (without `--yes`, a detailed risk descriptor prints and the command exits 1). No course-grabbing or seat-sniping.
+1. **Read-only by default & Action Card verification.** All 14 guarded write operations pass through `consequence.py`, generating a structured **Action Card** with a single-use confirmation ticket (`--dry-run` to preview, `--ticket <ticket>` or `--yes` to execute). No course-grabbing or seat-sniping.
 2. **Credentials stay local.** Stored securely in your native OS keychain; entered once via the local web UI and never prompted in plaintext terminal sessions.
 3. **Independent community tool.** Operates strictly within user-authorized permissions with no official affiliation or endorsement from Westlake University.
 

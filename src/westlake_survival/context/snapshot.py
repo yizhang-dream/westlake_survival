@@ -42,11 +42,14 @@
 from __future__ import annotations
 
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from enum import Enum
 from typing import Any
+
+import requests
 
 from westlake_survival._cache import load_cached, save_cached
 from westlake_survival._net import http_session
@@ -86,8 +89,8 @@ WEATHER_API = "https://api.open-meteo.com/v1/forecast"
 #: Open-Meteo 空气质量接口（免 key）。
 AQI_API = "https://air-quality-api.open-meteo.com/v1/air-quality"
 
-#: HTTP 超时（秒）。天气接口响应很快，8s 足够。
-TIMEOUT = 8.0
+#: HTTP 超时（秒）：(连接超时, 读取超时)，避免境外节点长时间挂起。
+TIMEOUT: tuple[float, float] = (2.5, 3.5)
 
 #: 中文星期名，索引 = ``date.weekday()``（0=周一）。
 _WEEKDAY_CN = ("周一", "周二", "周三", "周四", "周五", "周六", "周日")
@@ -162,17 +165,135 @@ class Level(str, Enum):
     VERBOSE = "verbose"  # + 天气 + AQI + Canvas 截止
 
 
-#: 天气与 AQI 本地缓存（15 分钟 TTL，优雅降级）。
+#: 天气与 AQI 本地缓存（15 分钟 TTL，优雅降级）及失败冷却负缓存。
 _WEATHER_CACHE = "context/weather.json"
 _AQI_CACHE = "context/aqi.json"
+_WEATHER_FAIL_CACHE = "context/weather_fail.json"
+_AQI_FAIL_CACHE = "context/aqi_fail.json"
+_OPEN_METEO_DOWN_CACHE = "context/open_meteo_down.json"
 _METEO_TTL = 15 * 60
+_FAIL_COOLDOWN = 5 * 60
+_OPEN_METEO_COOLDOWN = 30 * 60
+
+#: wttr.in WWO 天气代码 → WMO 天气代码映射。
+_WWO_TO_WMO: dict[int, int] = {
+    113: 0,
+    116: 2,
+    119: 2,
+    122: 3,
+    143: 45,
+    149: 45,
+    176: 80,
+    179: 71,
+    182: 66,
+    185: 56,
+    200: 95,
+    227: 73,
+    230: 75,
+    248: 45,
+    260: 48,
+    263: 51,
+    266: 53,
+    281: 56,
+    284: 57,
+    293: 61,
+    296: 61,
+    299: 63,
+    302: 63,
+    305: 65,
+    308: 65,
+    311: 66,
+    314: 67,
+    317: 66,
+    320: 67,
+    323: 71,
+    326: 71,
+    329: 73,
+    332: 73,
+    335: 75,
+    338: 75,
+    350: 77,
+    353: 80,
+    356: 81,
+    359: 82,
+    362: 66,
+    365: 67,
+    368: 85,
+    371: 86,
+    374: 77,
+    377: 77,
+    386: 95,
+    389: 95,
+    392: 96,
+    395: 99,
+}
+
+
+def _wttr_wmo_code(raw_code: Any) -> int | None:
+    try:
+        code = int(raw_code)
+    except (TypeError, ValueError):
+        return None
+    return _WWO_TO_WMO.get(code)
+
+
+def _num_or_none(value: Any, cast=float):
+    try:
+        return cast(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_wttr_weather(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """把 wttr.in ``?format=j1`` 响应解析为与 Open-Meteo 一致的天气结构。"""
+    current_list = payload.get("current_condition") or []
+    if not current_list or not isinstance(current_list[0], dict):
+        return None
+    cc = current_list[0]
+    wmo = _wttr_wmo_code(cc.get("weatherCode"))
+    desc_list = cc.get("weatherDesc") or []
+    fallback_desc = (
+        desc_list[0].get("value") if desc_list and isinstance(desc_list[0], dict) else None
+    )
+    text = wmo_text(wmo) if wmo is not None else (fallback_desc or "未知")
+    result: dict[str, Any] = {
+        "temperature": _num_or_none(cc.get("temp_C"), float),
+        "humidity": _num_or_none(cc.get("humidity"), int),
+        "wind_speed": _num_or_none(cc.get("windspeedKmph"), float),
+        "weather_code": wmo,
+        "text": text,
+        "time": cc.get("localObsDateTime") or cc.get("observation_time"),
+        "daily": [],
+    }
+    for day in (payload.get("weather") or [])[:3]:
+        if not isinstance(day, dict):
+            continue
+        hourly = [h for h in (day.get("hourly") or []) if isinstance(h, dict)]
+        mid = hourly[len(hourly) // 2] if hourly else {}
+        day_wmo = _wttr_wmo_code(mid.get("weatherCode"))
+        probs = [
+            p
+            for h in hourly
+            if (p := _num_or_none(h.get("chanceofrain"), int)) is not None
+        ]
+        result["daily"].append(
+            {
+                "date": day.get("date"),
+                "code": day_wmo,
+                "text": wmo_text(day_wmo),
+                "tmax": _num_or_none(day.get("maxtempC"), float),
+                "tmin": _num_or_none(day.get("mintempC"), float),
+                "precip_prob": max(probs) if probs else None,
+            }
+        )
+    return result
 
 
 # --------------------------------------------------------------------------- #
 # 数据抓取（各返回 None 表示失败，绝不抛）
 # --------------------------------------------------------------------------- #
 def fetch_weather(now: datetime | None = None, *, refresh: bool = False) -> dict[str, Any] | None:
-    """抓取实时天气 + 今明预报；失败返回 ``None``（带 15min 本地缓存）。
+    """抓取实时天气 + 今明预报；失败返回 ``None``（带 15min 本地缓存 + 国内可达回退 + 5min 失败冷却）。
 
     返回结构::
 
@@ -187,6 +308,9 @@ def fetch_weather(now: datetime | None = None, *, refresh: bool = False) -> dict
         cached = load_cached(_WEATHER_CACHE, _METEO_TTL)
         if cached and isinstance(cached, dict):
             return cached
+        if load_cached(_WEATHER_FAIL_CACHE, _FAIL_COOLDOWN):
+            stale = load_cached(_WEATHER_CACHE, 10**9)
+            return stale if isinstance(stale, dict) else None
 
     params = {
         "latitude": LATITUDE,
@@ -197,21 +321,60 @@ def fetch_weather(now: datetime | None = None, *, refresh: bool = False) -> dict
         "timezone": "Asia/Shanghai",
         "forecast_days": 3,
     }
-    try:
+    wttr_enabled = os.environ.get("WESTLAKE_NO_WTTR", "").strip().lower() not in {"1", "true", "yes"}
+
+    def _try_open_meteo() -> dict[str, Any] | None:
         session = http_session()
-        response = session.get(WEATHER_API, params=params, timeout=TIMEOUT)
-        response.raise_for_status()
-        payload = response.json()
-        parsed = _parse_weather(payload)
-        if parsed:
-            save_cached(_WEATHER_CACHE, parsed)
-        return parsed
-    except Exception as exc:  # noqa: BLE001 - 优雅降级，任何失败都置 None
-        logger.warning("抓取天气失败（%s）：%s", exc.__class__.__name__, exc)
-        stale = load_cached(_WEATHER_CACHE, 10**9)
-        if stale and isinstance(stale, dict):
-            return stale
+        try:
+            response = session.get(WEATHER_API, params=params, timeout=TIMEOUT)
+            response.raise_for_status()
+            parsed = _parse_weather(response.json())
+            if parsed:
+                save_cached(_WEATHER_CACHE, parsed)
+                return parsed
+        except Exception as exc:  # noqa: BLE001 - 记录冷却标记后交由兜底源
+            try:
+                save_cached(_OPEN_METEO_DOWN_CACHE, {"down": True})
+            except Exception:  # noqa: BLE001 - 冷却缓存写失败不影响主链路
+                pass
+            logger.debug("Open-Meteo 请求失败，尝试 wttr.in 兜底（%s）：%s", exc.__class__.__name__, exc)
         return None
+
+    def _try_wttr() -> dict[str, Any] | None:
+        if not wttr_enabled:
+            return None
+        wttr_url = f"https://wttr.in/{LATITUDE},{LONGITUDE}?format=j1"
+        try:
+            response = requests.get(
+                wttr_url,
+                headers={"Accept": "application/json", "User-Agent": "westlake-survival/1.0"},
+                timeout=TIMEOUT,
+            )
+            response.raise_for_status()
+            parsed = _parse_wttr_weather(response.json())
+            if parsed:
+                save_cached(_WEATHER_CACHE, parsed)
+                return parsed
+        except Exception as exc:  # noqa: BLE001 - 优雅降级
+            logger.debug("抓取 wttr.in 天气失败（%s）：%s", exc.__class__.__name__, exc)
+        return None
+
+    # Open-Meteo 近期不可达且允许 wttr.in 时，直接先走 wttr.in 省去首轮超时等待
+    open_meteo_cooling = bool(wttr_enabled and not refresh and load_cached(_OPEN_METEO_DOWN_CACHE, _OPEN_METEO_COOLDOWN))
+    if open_meteo_cooling:
+        parsed = _try_wttr() or _try_open_meteo()
+    else:
+        parsed = _try_open_meteo() or _try_wttr()
+
+    if parsed:
+        return parsed
+
+    logger.warning("抓取天气失败：Open-Meteo 与 wttr.in 均不可用")
+    save_cached(_WEATHER_FAIL_CACHE, {"failed": True})
+    stale = load_cached(_WEATHER_CACHE, 10**9)
+    if stale and isinstance(stale, dict):
+        return stale
+    return None
 
 
 def _parse_weather(payload: dict[str, Any]) -> dict[str, Any]:
@@ -249,7 +412,7 @@ def _parse_weather(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def fetch_aqi(now: datetime | None = None, *, refresh: bool = False) -> dict[str, Any] | None:
-    """抓取实时空气质量；失败返回 ``None``（带 15min 本地缓存）。
+    """抓取实时空气质量；失败返回 ``None``（带 15min 本地缓存 + 5min 失败冷却）。
 
     返回结构::
 
@@ -260,6 +423,9 @@ def fetch_aqi(now: datetime | None = None, *, refresh: bool = False) -> dict[str
         cached = load_cached(_AQI_CACHE, _METEO_TTL)
         if cached and isinstance(cached, dict):
             return cached
+        if load_cached(_AQI_FAIL_CACHE, _FAIL_COOLDOWN):
+            stale = load_cached(_AQI_CACHE, 10**9)
+            return stale if isinstance(stale, dict) else None
 
     params = {
         "latitude": LATITUDE,
@@ -278,6 +444,7 @@ def fetch_aqi(now: datetime | None = None, *, refresh: bool = False) -> dict[str
         return parsed
     except Exception as exc:  # noqa: BLE001 - 优雅降级
         logger.warning("抓取空气质量失败（%s）：%s", exc.__class__.__name__, exc)
+        save_cached(_AQI_FAIL_CACHE, {"failed": True})
         stale = load_cached(_AQI_CACHE, 10**9)
         if stale and isinstance(stale, dict):
             return stale
@@ -373,19 +540,34 @@ class Context:
             return None
         return self._get("next_shuttles", self._compute_next_shuttles)
 
+    def _prefetch(self, *tasks: tuple[str, Any]) -> None:
+        """并发预热多个尚未进入实例缓存的字段，主线程统一落缓存与降级告警。"""
+        missing = [(key, factory) for key, factory in tasks if key not in self._cache]
+        if not missing:
+            return
+        if len(missing) == 1:
+            key, factory = missing[0]
+            self._get(key, factory)
+            return
+
+        def _run(factory_fn):
+            return factory_fn()
+
+        with ThreadPoolExecutor(max_workers=len(missing)) as pool:
+            submitted = [(key, pool.submit(_run, factory)) for key, factory in missing]
+            for key, fut in submitted:
+                try:
+                    self._cache[key] = fut.result()
+                except Exception as exc:  # noqa: BLE001 - 与 _get 保持一致的降级契约
+                    logger.warning("计算 %s 失败（%s）：%s", key, exc.__class__.__name__, exc)
+                    self._cache[key] = None
+
     def _prefetch_weather_aqi(self) -> None:
         """若 weather 或 aqi 未进实例缓存，并发拉取两者以最小化网络往返耗时。"""
-        need_weather = "weather" not in self._cache
-        need_aqi = "aqi" not in self._cache
-        if not (need_weather or need_aqi):
-            return
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            fw = pool.submit(fetch_weather, self.now) if need_weather else None
-            fa = pool.submit(fetch_aqi, self.now) if need_aqi else None
-            if fw is not None:
-                self._cache["weather"] = fw.result()
-            if fa is not None:
-                self._cache["aqi"] = fa.result()
+        self._prefetch(
+            ("weather", lambda: fetch_weather(self.now)),
+            ("aqi", lambda: fetch_aqi(self.now)),
+        )
 
     @property
     def weather(self) -> dict[str, Any] | None:
@@ -471,6 +653,12 @@ class Context:
 
         任何字段取值失败都不会抛异常（各 property 已降级为 ``None``）。
         """
+        if self.level is Level.VERBOSE:
+            self._prefetch(
+                ("weather", lambda: fetch_weather(self.now)),
+                ("aqi", lambda: fetch_aqi(self.now)),
+                ("next_deadlines", self._compute_next_deadlines),
+            )
         result: dict[str, Any] = {
             "level": self.level.value if isinstance(self.level, Level) else str(self.level),
             "now": _iso(self.now),

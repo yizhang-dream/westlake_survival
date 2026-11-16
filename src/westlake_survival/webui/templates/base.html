@@ -118,13 +118,47 @@
     opacity: 1; font-weight: 600; background: var(--accent); color: #fff;
     box-shadow: 0 2px 10px rgba(238,120,35,.45);
   }
-  #themeToggle {
+  #themeToggle, #cmdTrigger {
     font: inherit; font-size: .78rem; cursor: pointer; color: var(--navbar-text);
     background: transparent; border: 1px solid rgba(255,255,255,.28);
-    border-radius: 999px; padding: .12rem .65rem;
+    border-radius: 999px; padding: .14rem .65rem; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: .32rem;
     transition: all .18s var(--ease-spring);
   }
-  #themeToggle:hover { border-color: var(--accent); color: #ffb37a; }
+  #themeToggle:hover, #cmdTrigger:hover { border-color: var(--accent); color: #ffb37a; background: rgba(238,120,35,.12); box-shadow: none; transform: none; }
+  .topbar-actions { display: flex; align-items: center; gap: .45rem; flex-shrink: 0; }
+  #cmdTrigger kbd {
+    font-family: ui-monospace, monospace; font-size: .68rem; opacity: .8;
+    border: 1px solid rgba(255,255,255,.25); border-radius: 4px; padding: 0 .28rem;
+  }
+  #cmdOverlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(15, 16, 24, .52); backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px); align-items: flex-start; justify-content: center;
+    padding: 10vh 16px 24px;
+  }
+  #cmdOverlay.open { display: flex; }
+  .cmd-box {
+    width: 100%; max-width: 580px; background: var(--card); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  }
+  .cmd-head { display: flex; align-items: center; gap: .6rem; padding: .75rem 1rem; border-bottom: 1px solid var(--line); }
+  .cmd-head input {
+    flex: 1; border: none; background: transparent; color: var(--heading);
+    font: inherit; font-size: 1rem; outline: none; min-width: 0;
+  }
+  .cmd-list { max-height: 54vh; overflow-y: auto; padding: .4rem; }
+  .cmd-row {
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    padding: .52rem .75rem; border-radius: 10px; cursor: pointer; text-decoration: none; color: var(--ink);
+  }
+  .cmd-row:hover, .cmd-row.sel { background: var(--accent-soft); color: var(--heading); }
+  .cmd-row .cmd-main { min-width: 0; flex: 1; }
+  .cmd-row .cmd-name { font-weight: 700; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cmd-row .cmd-desc { font-size: .76rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cmd-row .cmd-tag { font-size: .7rem; border: 1px solid var(--line); border-radius: 999px; padding: .08rem .48rem; color: var(--muted); flex-shrink: 0; }
+  .cmd-foot { display: flex; justify-content: space-between; font-size: .74rem; color: var(--muted); padding: .48rem 1rem; border-top: 1px solid var(--line); background: var(--surface-2); }
 
   /* 内容卡：浮层感 + 顶部品牌渐变细条 */
   main { padding: 20px 0 0; }
@@ -482,6 +516,7 @@
       {% set here = request.path %}
       <!-- 顺序 = 使用频率分层（2026-10-25 用户裁定重排）：日常高频 → 信息浏览 → 办事工具 → 科研工具 → 系统 -->
       <a href="/" data-nav="home" class="{{ 'active' if here == '/' else '' }}">仪表盘</a>
+      <a href="/timeline" data-nav="timeline" class="{{ 'active' if here.startswith('/timeline') else '' }}">行动流</a>
       <a href="/sis" data-nav="sis" class="{{ 'active' if here.startswith('/sis') else '' }}">学业</a>
       <a href="/canvas" data-nav="canvas" class="{{ 'active' if here.startswith('/canvas') else '' }}">Canvas</a>
       <a href="/ams" data-nav="ams" class="{{ 'active' if here.startswith('/ams') else '' }}">教学</a>
@@ -512,7 +547,10 @@
       <a href="/services" data-nav="services" class="{{ 'active' if here.startswith('/services') else '' }}">服务</a>
       <a href="/setup" data-nav="setup" class="{{ 'active' if here.startswith('/setup') else '' }}">设置</a>
     </nav>
-    <button id="themeToggle" type="button" aria-label="切换明暗主题">☾ 暗色</button>
+    <div class="topbar-actions">
+      <button id="cmdTrigger" type="button" title="快速跳转与搜索 (Ctrl+K)">跳转 <kbd>Ctrl+K</kbd></button>
+      <button id="themeToggle" type="button" aria-label="切换明暗主题">☾ 暗色</button>
+    </div>
   </div>
 </header>
 <main>
@@ -785,5 +823,139 @@
       });
     })();
   </script>
+<div id="cmdOverlay" role="dialog" aria-modal="true" aria-label="快速跳转与能力搜索">
+  <div class="cmd-box">
+    <div class="cmd-head">
+      <span aria-hidden="true">⌕</span>
+      <input id="cmdInput" type="search" placeholder="输入页面名、路径或 CLI / MCP 能力关键词…" autocomplete="off">
+      <span id="cmdStatus" class="muted" style="font-size:.75rem;white-space:nowrap"></span>
+    </div>
+    <div class="cmd-list" id="cmdList"></div>
+    <div class="cmd-foot">
+      <span>↑↓ 选择 · Enter 跳转或复制命令</span>
+      <span>Esc 关闭</span>
+    </div>
+  </div>
+</div>
+<script>
+  (function () {
+    var overlay = document.getElementById('cmdOverlay');
+    var trigger = document.getElementById('cmdTrigger');
+    var input = document.getElementById('cmdInput');
+    var list = document.getElementById('cmdList');
+    var status = document.getElementById('cmdStatus');
+    if (!overlay || !input || !list) return;
+
+    var pages = Array.prototype.map.call(document.querySelectorAll('nav.main a[href]'), function (a) {
+      return { kind: '页面', name: a.textContent.trim(), desc: a.getAttribute('href'), action: 'nav', target: a.getAttribute('href') };
+    });
+    var extraItems = [];
+    var loadedCaps = false;
+    var activeIdx = 0;
+    var filtered = [];
+
+    function esc(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function ensureCaps() {
+      if (loadedCaps) return;
+      loadedCaps = true;
+      fetch('/api/capabilities').then(function (r) { return r.json(); }).then(function (data) {
+        var rows = (data && data.items) || [];
+        extraItems = rows.filter(function (r) { return r.kind === 'cli' || r.kind === 'mcp'; }).map(function (r) {
+          var subNames = (r.commands || []).map(function (c) { return c.name; }).join(' ');
+          return {
+            kind: r.kind === 'cli' ? 'CLI' : 'MCP',
+            name: r.name,
+            desc: r.summary || '',
+            search: (r.name + ' ' + (r.summary || '') + ' ' + subNames).toLowerCase(),
+            action: r.kind === 'cli' ? 'copy' : 'copy_mcp',
+            target: r.kind === 'cli' ? r.name : r.name.replace(/^mcp:/, '')
+          };
+        });
+        if (overlay.classList.contains('open')) render();
+      }).catch(function () {});
+    }
+
+    function render() {
+      var q = input.value.trim().toLowerCase();
+      var pool = q ? pages.concat(extraItems) : pages;
+      filtered = pool.filter(function (it) {
+        if (!q) return true;
+        var hay = it.search || (it.name + ' ' + it.desc + ' ' + it.target).toLowerCase();
+        return hay.indexOf(q) !== -1;
+      }).slice(0, 24);
+      if (activeIdx >= filtered.length) activeIdx = Math.max(0, filtered.length - 1);
+      if (!filtered.length) {
+        list.innerHTML = '<div class="muted" style="padding:1rem;text-align:center;font-size:.86rem">未找到匹配结果</div>';
+        return;
+      }
+      list.innerHTML = filtered.map(function (it, idx) {
+        return '<div class="cmd-row' + (idx === activeIdx ? ' sel' : '') + '" data-idx="' + idx + '">' +
+          '<div class="cmd-main"><div class="cmd-name">' + esc(it.name) + '</div>' +
+          '<div class="cmd-desc">' + esc(it.desc) + '</div></div>' +
+          '<span class="cmd-tag">' + esc(it.kind) + '</span></div>';
+      }).join('');
+    }
+
+    function runItem(it) {
+      if (!it) return;
+      if (it.action === 'nav') {
+        window.location.href = it.target;
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(it.target).then(function () {
+          status.textContent = '已复制: ' + it.target;
+          setTimeout(function () { status.textContent = ''; }, 1800);
+        }).catch(function () { status.textContent = it.target; });
+      } else {
+        status.textContent = it.target;
+      }
+    }
+
+    function open() {
+      overlay.classList.add('open');
+      activeIdx = 0;
+      input.value = '';
+      ensureCaps();
+      render();
+      setTimeout(function () { input.focus(); }, 20);
+    }
+
+    function close() { overlay.classList.remove('open'); }
+
+    if (trigger) trigger.addEventListener('click', open);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    input.addEventListener('input', function () { activeIdx = 0; render(); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(filtered.length - 1, activeIdx + 1); render(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(0, activeIdx - 1); render(); }
+      else if (e.key === 'Enter' && filtered[activeIdx]) { e.preventDefault(); runItem(filtered[activeIdx]); }
+      else if (e.key === 'Escape') { e.preventDefault(); close(); }
+    });
+    list.addEventListener('click', function (e) {
+      var row = e.target.closest('.cmd-row');
+      if (!row) return;
+      var idx = parseInt(row.getAttribute('data-idx'), 10);
+      runItem(filtered[idx]);
+    });
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        overlay.classList.contains('open') ? close() : open();
+      } else if (e.key === 'Escape' && overlay.classList.contains('open')) {
+        close();
+      } else if (e.key === '/' && !overlay.classList.contains('open')) {
+        var tag = (document.activeElement && document.activeElement.tagName || '').toUpperCase();
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+          e.preventDefault();
+          open();
+        }
+      }
+    });
+  })();
+</script>
 </body>
 </html>

@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import importlib
+import io
 import json
 import logging
 import os
@@ -21,7 +22,7 @@ import time as _time_mod
 
 from westlake_survival.discovery import SERVICE_REGISTRY
 import re as _re
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from enum import Enum
 from typing import Any
 
@@ -672,13 +673,83 @@ def _setup_context() -> dict:
     return {"creds": _creds_summary(), "canvas": _canvas_token_state(), "error": None}
 
 
-def _sis_context() -> dict:
+_PAGE_CACHE_TTL = 180.0
+_page_cache_lock = threading.Lock()
+_sis_page_cache: dict[str, Any] = {"ts": 0.0, "key": None, "data": None}
+_canvas_page_cache: dict[str, Any] = {"ts": 0.0, "key": None, "data": None}
+_sites_swr_lock = threading.Lock()
+_sites_swr_fetching = False
+
+
+def _is_testing_app() -> bool:
+    try:
+        from flask import current_app, has_app_context
+
+        return bool(has_app_context() and current_app.config.get("TESTING"))
+    except Exception:
+        return False
+
+
+def _page_cache_key() -> tuple[Any, ...]:
+    """生成仅含凭据/环境存在性（绝不读密码本体）的缓存隔离键。"""
+    return (
+        _creds_summary()["sis"],
+        _canvas_token_state()["source"],
+        os.environ.get("WESTLAKE_HOME", ""),
+    )
+
+
+def _invalidate_page_caches() -> None:
+    """凭据或令牌变更后清空页面与快照缓存。"""
+    _context_cache.clear()
+    with _page_cache_lock:
+        _sis_page_cache.update(ts=0.0, key=None, data=None)
+        _canvas_page_cache.update(ts=0.0, key=None, data=None)
+
+
+def _merge_sis_schedule_rows(raw_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """合并同一时段同课程的平行教室记录（教室去重用 `/` 拼接）。"""
+    grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
+    locs_by_key: dict[tuple[Any, ...], list[str]] = {}
+    for row in raw_rows:
+        key = (
+            row.get("name") or "",
+            row.get("teacher") or "",
+            row.get("weekday") or 0,
+            row.get("time") or "",
+        )
+        loc = str(row.get("location") or "").strip()
+        if key not in grouped:
+            grouped[key] = dict(row)
+            locs_by_key[key] = [loc] if loc else []
+        elif loc and loc not in locs_by_key[key]:
+            locs_by_key[key].append(loc)
+    merged: list[dict[str, Any]] = []
+    for key, entry in grouped.items():
+        locs = locs_by_key[key]
+        entry["location"] = " / ".join(locs) if locs else ""
+        merged.append(entry)
+    return merged
+
+
+def _sis_context(refresh: bool = False) -> dict:
     """学业页：24 块全量（课表/成绩/考试/评教 + 第二课堂 + 学业导师 + 其他申请 + 学籍档案 + 校园记录 + 社团与资助）。
 
     首块串行预热（确保 IAM 登录完成后共享会话），其余块 6 线程并行抓取；
-    每块独立降级，单块失败不影响整页。
+    每块独立降级，单块失败不影响整页；进程内短缓存 180s 避免反复重抓。
     """
-    context: dict = {"blocks": {}}
+    cache_key = _page_cache_key()
+    use_cache = not refresh and not _is_testing_app()
+    if use_cache:
+        with _page_cache_lock:
+            age = _time_mod.time() - float(_sis_page_cache["ts"] or 0.0)
+            cached = _sis_page_cache["data"]
+            if cached is not None and _sis_page_cache["key"] == cache_key and age < _PAGE_CACHE_TTL:
+                out = dict(cached)
+                out["cached_age"] = int(age)
+                return out
+
+    context: dict = {"blocks": {}, "cached_age": 0}
     # 社团简介是随包内置的离线数据（改写自 WikiLake），无凭据也能读
     from westlake_survival import clubwiki
 
@@ -792,11 +863,11 @@ def _sis_context() -> dict:
     aid = _sis_module("aid")
     loaders: dict = {
         # 学业核心
-        "schedule": lambda: [
+        "schedule": lambda: _merge_sis_schedule_rows([
             {"name": c.title, "teacher": c.teacher, "weekday": c.weekday,
              "time": _clean_time(f"{c.start_time}-{c.end_time}"), "location": _clean_room(c.room)}
             for c in _sis_module("client").get_schedule()
-        ],
+        ]),
         "grades": _grades_with_stats,
         "exams": lambda: [
             {"course": e.course_title, "date": e.date, "time": e.time, "kind": e.exam_type,
@@ -891,25 +962,41 @@ def _sis_context() -> dict:
             }
         except Exception:  # noqa: BLE001 - 网格是增强视图，失败不影响整页
             pass
+    if not _is_testing_app():
+        with _page_cache_lock:
+            _sis_page_cache.update(ts=_time_mod.time(), key=cache_key, data=dict(context))
     return context
 
 
-def _canvas_context() -> dict:
-    """Canvas 页：课程+成绩 / 公告 / 截止 / 考试 / 测验 / 过往结课课程（令牌或统一会话，逐块降级）。"""
+def _canvas_context(refresh: bool = False) -> dict:
+    """Canvas 页：课程+成绩 / 公告 / 截止 / 考试 / 测验 / 过往结课课程（并发抓 + 180s 短缓存，逐块降级）。"""
+    cache_key = _page_cache_key()
+    use_cache = not refresh and not _is_testing_app()
+    if use_cache:
+        with _page_cache_lock:
+            age = _time_mod.time() - float(_canvas_page_cache["ts"] or 0.0)
+            cached = _canvas_page_cache["data"]
+            if cached is not None and _canvas_page_cache["key"] == cache_key and age < _PAGE_CACHE_TTL:
+                out = dict(cached)
+                out["cached_age"] = int(age)
+                return out
+
     context: dict = {
         "courses": [],
         "past_courses": [],
         "past_by_term": {},
         "deadlines": [],
         "error": None,
+        "cached_age": 0,
     }
     try:
         from collections import defaultdict
+        from concurrent.futures import ThreadPoolExecutor
         from westlake_survival.canvas.client import CanvasClient
 
         client = CanvasClient()
+        # 先在主线程拿在修课程（完成 token 校验 / IAM 会话建连），后续全部并发复用会话
         courses = client.list_courses(enrollment_state="active")
-        past_courses = client.list_past_courses()
 
         def _clean_name(text: str) -> str:
             """课程名清洗：「|」分隔改「·」；中英边界补空格；压空白。"""
@@ -917,11 +1004,6 @@ def _canvas_context() -> dict:
             out = _re.sub(r"([A-Za-z])([一-鿿（])", r"\1 \2", out)
             out = _re.sub(r"([A-Za-z])([一-鿿（])", r"\1 \2", out)
             return " ".join(out.split())
-
-        name_by_id = {c.id: _clean_name(c.name) for c in courses}
-        for c in past_courses:
-            if c.id is not None and c.id not in name_by_id:
-                name_by_id[c.id] = _clean_name(c.name)
 
         context["courses"] = [
             {
@@ -931,6 +1013,98 @@ def _canvas_context() -> dict:
             }
             for c in courses
         ]
+
+        def _safe_past():
+            try:
+                return client.list_past_courses()
+            except Exception:
+                return []
+
+        def _safe_grades():
+            try:
+                return client.course_grades()
+            except Exception:
+                return []
+
+        def _safe_quizzes():
+            try:
+                return client.quizzes()[:15]
+            except Exception:
+                return []
+
+        def _safe_exams():
+            try:
+                return client.exam_events()[:10]
+            except Exception:
+                return []
+
+        def _safe_deadlines():
+            try:
+                return client.upcoming_deadlines(limit=15)
+            except Exception:
+                return []
+
+        def _safe_todo():
+            try:
+                return client.todo(limit=20)
+            except Exception:
+                return []
+
+        def _latest_announcement(course_id):
+            try:
+                items = client.list_announcements(course_id)
+                return items[0] if items else None
+            except Exception:
+                return None
+
+        def _course_extra_raw(course):
+            extra: dict[str, Any] = {
+                "id": course.id,
+                "raw_name": course.name,
+                "modules": [],
+                "files": [],
+                "discussions": [],
+            }
+            try:
+                extra["modules"] = client.modules(course.id)
+            except Exception:
+                pass
+            try:
+                extra["files"] = [
+                    {"name": f.display_name or "", "size": f.size or 0, "url": f.url or ""}
+                    for f in client.list_files(course.id)[:5]
+                ]
+            except Exception:
+                pass
+            try:
+                extra["discussions"] = client.discussions(course.id)[:3]
+            except Exception:
+                pass
+            return extra
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            f_past = pool.submit(_safe_past)
+            f_grades = pool.submit(_safe_grades)
+            f_quizzes = pool.submit(_safe_quizzes)
+            f_exams = pool.submit(_safe_exams)
+            f_deadlines = pool.submit(_safe_deadlines)
+            f_todo = pool.submit(_safe_todo)
+            f_anns = [pool.submit(_latest_announcement, c.id) for c in courses[:6]]
+            f_extras = [pool.submit(_course_extra_raw, c) for c in courses[:6]]
+
+            past_courses = f_past.result()
+            raw_grades = f_grades.result()
+            raw_quizzes = f_quizzes.result()
+            raw_exams = f_exams.result()
+            raw_deadlines = f_deadlines.result()
+            raw_todo = f_todo.result()
+            raw_anns = [f.result() for f in f_anns]
+            raw_extras = [f.result() for f in f_extras]
+
+        name_by_id = {c.id: _clean_name(c.name) for c in courses}
+        for c in past_courses:
+            if c.id is not None and c.id not in name_by_id:
+                name_by_id[c.id] = _clean_name(c.name)
 
         past_list = []
         past_by_term_map: dict[str, list] = defaultdict(list)
@@ -948,59 +1122,33 @@ def _canvas_context() -> dict:
 
         context["past_courses"] = past_list
         context["past_by_term"] = dict(sorted(past_by_term_map.items(), reverse=True))
-
-        # 课程成绩（老师未发布时为 None，页面如实显示）
-        try:
-            context["grades"] = [
-                {**row, "name": _clean_name(row.get("name", ""))}
-                for row in client.course_grades()
-            ]
-        except Exception:
-            context["grades"] = []
-        # 每门课最新一条公告（并行抓，限前 6 门）
-        def _latest_announcement(course_id):
-            try:
-                items = client.list_announcements(course_id)
-                return items[0] if items else None
-            except Exception:
-                return None
-
-        from concurrent.futures import ThreadPoolExecutor
+        context["grades"] = [
+            {**row, "name": _clean_name(row.get("name", ""))} for row in raw_grades
+        ]
 
         announcements = []
-        try:
-            with ThreadPoolExecutor(max_workers=6) as pool:
-                for ann in pool.map(_latest_announcement, [c.id for c in courses[:6]]):
-                    if ann is not None:
-                        announcements.append({
-                            "course": name_by_id.get(ann.course_id, str(ann.course_id)),
-                            "title": ann.title,
-                            "posted": ann.posted_at.strftime("%m-%d %H:%M") if ann.posted_at else "",
-                            "url": ann.html_url,
-                        })
-        except Exception:
-            announcements = []
+        for ann in raw_anns:
+            if ann is not None:
+                announcements.append({
+                    "course": name_by_id.get(ann.course_id, str(ann.course_id)),
+                    "title": ann.title,
+                    "posted": ann.posted_at.strftime("%m-%d %H:%M") if ann.posted_at else "",
+                    "url": ann.html_url,
+                })
         context["announcements"] = sorted(
             announcements, key=lambda a: a["posted"], reverse=True
         )
-        # 考试/测验（库已有：quizzes + 日历 exam 事件）
-        try:
-            context["quizzes"] = [
-                {"title": q.title, "course": name_by_id.get(q.course_id, str(q.course_id)),
-                 "due": (q.due_at.strftime("%m-%d %H:%M") if q.due_at else ""),
-                 "url": q.html_url}
-                for q in client.quizzes()[:15]
-            ]
-        except Exception:
-            context["quizzes"] = []
-        try:
-            context["exams"] = [
-                {"title": e.title, "start": (e.start_at.strftime("%m-%d %H:%M") if e.start_at else ""),
-                 "url": e.url}
-                for e in client.exam_events()[:10]
-            ]
-        except Exception:
-            context["exams"] = []
+        context["quizzes"] = [
+            {"title": q.title, "course": name_by_id.get(q.course_id, str(q.course_id)),
+             "due": (q.due_at.strftime("%m-%d %H:%M") if q.due_at else ""),
+             "url": getattr(q, "url", None) or getattr(q, "html_url", "") or ""}
+            for q in raw_quizzes
+        ]
+        context["exams"] = [
+            {"title": e.title, "start": (e.start_at.strftime("%m-%d %H:%M") if e.start_at else ""),
+             "url": e.url}
+            for e in raw_exams
+        ]
         context["deadlines"] = [
             {
                 "title": a.name,
@@ -1008,51 +1156,33 @@ def _canvas_context() -> dict:
                 "due": a.due_at.strftime("%m-%d %H:%M") if a.due_at else "",
                 "url": a.html_url,
             }
-            for a in client.upcoming_deadlines(limit=15)
+            for a in raw_deadlines
         ]
-        # Canvas 待办（users/self/todo）
-        try:
-            context["todo"] = [
-                {
-                    "course": _clean_name(row.course or ""),
-                    "type": row.type,
-                    "title": row.title or "",
-                    "due": row.due_at.strftime("%m-%d %H:%M") if row.due_at else "",
-                    "url": row.url or "",
-                }
-                for row in client.todo(limit=20)
-            ]
-        except Exception:
-            context["todo"] = []
-        # 课程内容：模块 / 文件 / 讨论（前 6 门并行，避免 10 门 × 3 接口拖慢）
-        def _course_extra(course):
-            extra = {"id": course.id, "name": name_by_id.get(course.id, str(course.id)),
-                     "modules": [], "files": [], "discussions": []}
-            try:
-                extra["modules"] = client.modules(course.id)
-            except Exception:
-                pass
-            try:
-                extra["files"] = [
-                    {"name": f.display_name or "", "size": f.size or 0,
-                     "url": f.url or ""}
-                    for f in client.list_files(course.id)[:5]
-                ]
-            except Exception:
-                pass
-            try:
-                extra["discussions"] = client.discussions(course.id)[:3]
-            except Exception:
-                pass
-            return extra
-
-        try:
-            with ThreadPoolExecutor(max_workers=6) as pool:
-                context["course_content"] = list(pool.map(_course_extra, courses[:6]))
-        except Exception:
-            context["course_content"] = []
+        context["todo"] = [
+            {
+                "course": _clean_name(row.course or ""),
+                "type": row.type,
+                "title": row.title or "",
+                "due": row.due_at.strftime("%m-%d %H:%M") if row.due_at else "",
+                "url": row.url or "",
+            }
+            for row in raw_todo
+        ]
+        context["course_content"] = [
+            {
+                "id": ex["id"],
+                "name": name_by_id.get(ex["id"], _clean_name(ex["raw_name"])),
+                "modules": ex["modules"],
+                "files": ex["files"],
+                "discussions": ex["discussions"],
+            }
+            for ex in raw_extras
+        ]
     except Exception as exc:  # pragma: no cover - 降级
         context["error"] = f"{exc.__class__.__name__}: {exc}"[:140]
+    if not _is_testing_app() and context.get("error") is None:
+        with _page_cache_lock:
+            _canvas_page_cache.update(ts=_time_mod.time(), key=cache_key, data=dict(context))
     return context
 
 
@@ -1583,26 +1713,11 @@ def _affairs_context() -> dict:
     return context
 
 
-def _sites_context(refresh: bool = False) -> dict:
-    """全站页上下文：37 站内容并行抓取，结果落盘缓存 10 分钟（卡顿修复）。
-
-    首次全量实抓（含发现器/分页/手册树）约 10s；之后走 ``sites_page.json``
-    缓存秒开，``?refresh=1`` 强制重抓。组内站点按 ``sites.SITE_ORDER``
-    常用度排序。
-    """
-    module = _import_module("sites")
-    if module is None:
-        return {"error": "sites 模块不可用", "groups": [], "stats": {}}
+def _fetch_sites_context(module) -> dict:
+    """同步抓取 37 站全量内容并落盘缓存。"""
     from concurrent.futures import ThreadPoolExecutor
 
-    from westlake_survival._cache import load_json, save_json
-
-    if not refresh:
-        cached = load_json("sites_page.json")
-        if cached and cached.get("context") and _time_mod.time() - cached.get("saved_at", 0) < 600:
-            context = cached["context"]
-            context["cached"] = True
-            return context
+    from westlake_survival._cache import save_json
 
     sites = []
     with ThreadPoolExecutor(max_workers=8) as pool:
@@ -1633,12 +1748,59 @@ def _sites_context(refresh: bool = False) -> dict:
         "entry_count": sum(c["n_items"] for c in sites),
         "section_count": sum(c["n_sections"] for c in sites),
     }
-    context = {"error": None, "groups": groups, "stats": stats, "cached": False}
+    context = {"error": None, "groups": groups, "stats": stats, "cached": False, "stale": False}
     try:
         save_json("sites_page.json", {"context": context, "saved_at": _time_mod.time()})
     except OSError:
         pass  # 缓存写失败不影响渲染
     return context
+
+
+def _sites_context(refresh: bool = False) -> dict:
+    """全站页上下文：37 站内容并行抓取 + SWR 缓存（旧缓存秒开并在后台重抓）。
+
+    首次全量实抓约 8~10s；之后走 ``sites_page.json`` 缓存秒开：
+    600s 内视为新鲜，超过 600s 若已有旧缓存且非 ``?refresh=1``，
+    先秒回旧缓存并在后台守护线程异步重抓（SWR）。
+    """
+    global _sites_swr_fetching
+    module = _import_module("sites")
+    if module is None:
+        return {"error": "sites 模块不可用", "groups": [], "stats": {}}
+
+    from westlake_survival._cache import load_json
+
+    if not refresh:
+        cached = load_json("sites_page.json")
+        cached_ctx = cached.get("context") if isinstance(cached, dict) else None
+        if cached_ctx and cached_ctx.get("groups"):
+            age = _time_mod.time() - float(cached.get("saved_at", 0) or 0)
+            out = dict(cached_ctx)
+            out["cached"] = True
+            if age < 600:
+                out["stale"] = False
+                return out
+            out["stale"] = True
+            with _sites_swr_lock:
+                should_spawn = not _sites_swr_fetching
+                if should_spawn:
+                    _sites_swr_fetching = True
+            if should_spawn:
+
+                def _bg_refresh() -> None:
+                    global _sites_swr_fetching
+                    try:
+                        _fetch_sites_context(module)
+                    except Exception:
+                        pass
+                    finally:
+                        with _sites_swr_lock:
+                            _sites_swr_fetching = False
+
+                threading.Thread(target=_bg_refresh, daemon=True, name="sites-swr").start()
+            return out
+
+    return _fetch_sites_context(module)
 
 
 def _capabilities_context():
@@ -1887,6 +2049,8 @@ _context_cache: dict[str, tuple[float, dict | None]] = {}
 
 def _context_data_cached(level: str = "verbose") -> dict | None:
     """:func:`_context_data` 的进程内短缓存（仪表盘 ``verbose`` 档专用接缝）。"""
+    if _is_testing_app():
+        return _context_data(level)
     hit = _context_cache.get(level)
     if hit and _time_mod.time() - hit[0] < _CONTEXT_CACHE_TTL:
         return hit[1]
@@ -1927,7 +2091,7 @@ def _portal_cards_snapshot() -> tuple[dict | None, bool]:
     返回 ``(缓存数据或 None, 是否新鲜)``。同一时刻至多一个刷新线程，
     避免反复撞 IAM 登录（并发审计：同账号最多 2 路登录）。
     """
-    if not _creds_summary()["sis"]:
+    if _is_testing_app() or not _creds_summary()["sis"]:
         return None, False
     with _portal_lock:
         fresh = _time_mod.time() - _portal_cards_cache["ts"] < _PORTAL_CARDS_TTL
@@ -1953,6 +2117,8 @@ def _portal_cards_snapshot() -> tuple[dict | None, bool]:
 # --------------------------------------------------------------------------- #
 def create_app() -> Flask:
     """构建并返回 webui Flask 应用。"""
+    from urllib.parse import urlsplit
+
     app = Flask(__name__)
     app.config["JSON_AS_ASCII"] = False
     # 保证中文 JSON 直出、不被转义为 \uXXXX。
@@ -1961,6 +2127,48 @@ def create_app() -> Flask:
     app.jinja_env.filters["weekday_cn"] = weekday_cn
     app.jinja_env.filters["fmt_date"] = fmt_date
     app.jinja_env.filters["days_until"] = days_until
+
+    _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+    @app.before_request
+    def _guard_loopback_and_csrf():
+        raw_host = (request.host or "").strip().lower()
+        if raw_host.startswith("["):
+            host_name = raw_host.split("]", 1)[0].lstrip("[")
+        elif raw_host.count(":") == 1:
+            host_name = raw_host.split(":", 1)[0]
+        else:
+            host_name = raw_host
+        if host_name not in _LOOPBACK_HOSTS:
+            return jsonify({"error": "非法 Host 请求头（仅允许本机回环访问）"}), 403
+
+        if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+            sec_site = (request.headers.get("Sec-Fetch-Site") or "").strip().lower()
+            if sec_site and sec_site not in {"same-origin", "none"}:
+                return jsonify({"error": "跨站请求已拦截（Sec-Fetch-Site 非同源）"}), 403
+
+            has_loopback_source = False
+            for header_name in ("Origin", "Referer"):
+                hdr = (request.headers.get(header_name) or "").strip()
+                if hdr:
+                    hdr_host = (urlsplit(hdr).hostname or "").lower()
+                    if hdr_host not in _LOOPBACK_HOSTS:
+                        return jsonify({"error": "跨站请求已拦截（仅允许本机页面发起）"}), 403
+                    has_loopback_source = True
+
+            if not has_loopback_source and sec_site != "same-origin":
+                ua = (request.headers.get("User-Agent") or "").lower()
+                ctype = (request.content_type or "").split(";", 1)[0].strip().lower()
+                if "mozilla/" in ua and ctype != "application/json":
+                    return jsonify({"error": "缺少同源凭据或 JSON Content-Type，跨站表单请求已拦截"}), 403
+        return None
+
+    @app.after_request
+    def _security_headers(response: Response) -> Response:
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        return response
 
     # 全站注入凭据状态：未配置时顶栏出引导横幅（用户主战场在网页，不在终端）。
     @app.context_processor
@@ -1977,10 +2185,8 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
-        # 第一次打开就把人送到「设置」：账号配置是启动后的第一件事。
-        # 只想看公开功能（校历/班车/新闻/地图）的走 ?skip=1，或设置页的「先逛逛」。
-        if not _creds_summary()["sis"] and request.args.get("skip") != "1":
-            return redirect(url_for("setup_page"))
+        # ``westlake go`` 首次未配置时已直接打开 ``/setup``；直接访问 ``/`` 时
+        # 不再强制重定向，而是渲染公开仪表盘并由 base.html 顶部横幅引导配置。
         try:
             # 单次构造 VERBOSE 快照：一次 I/O 拿全所有档位字段（terse 的日期 /
             # 周次、normal 的最近事件 / 下班车、verbose 的天气 / AQI / 作业），
@@ -1990,9 +2196,10 @@ def create_app() -> Flask:
             # 门户个人卡片要完整登录门户（实测 14.6s）：只读缓存，页面先出，
             # 数值由 /api/portal-cards 异步填充（后台线程负责刷新）。
             portal_cards, _portal_fresh = _portal_cards_snapshot()
-            extras = data.setdefault("extras", {})
-            extras["portal"] = portal_cards or {}
-            extras["portal_loading"] = portal_cards is None
+            if isinstance(data, dict):
+                extras = data.setdefault("extras", {})
+                extras["portal"] = portal_cards or {}
+                extras["portal_loading"] = portal_cards is None
         except Exception as exc:
             # Context 内部已优雅降级，这里兜住任何意外，转成中文错误页。
             return (
@@ -2100,6 +2307,7 @@ def create_app() -> Flask:
         from westlake_survival.canvas.client import clear_token_file
 
         removed = clear_token_file()
+        _invalidate_page_caches()
         state = _canvas_token_state()
         note = "已清除本地令牌" if removed else "本地本无令牌"
         if state["env_locked"]:
@@ -2150,6 +2358,7 @@ def create_app() -> Flask:
         if "canvas" in result:
             result["canvas"]["state"] = _canvas_token_state()
 
+        _invalidate_page_caches()
         return result
 
     # -- 学院官网聚合页 ------------------------------------------------------ #
@@ -2310,16 +2519,35 @@ def create_app() -> Flask:
         doi = request.args.get("doi", "").strip()
         if not doi:
             return {"error": "doi 参数不能为空"}, 400
+        from pathlib import Path
         import tempfile
         from flask import send_file
 
         handle = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        tmp_path = handle.name
+        handle.close()
+        resolved_path: Path | None = None
         try:
-            path = scholar.fetch_pdf(doi, out=handle.name)
+            resolved_path = Path(scholar.fetch_pdf(doi, out=tmp_path))
+            pdf_bytes = resolved_path.read_bytes()
+            download_name = resolved_path.name
         except Exception as exc:
             return {"error": str(exc)[:300]}, 502
-        return send_file(path, as_attachment=True,
-                         download_name=path.name, mimetype="application/pdf")
+        finally:
+            tmp_file = Path(tmp_path)
+            tmp_file.unlink(missing_ok=True)
+            if (
+                resolved_path is not None
+                and resolved_path != tmp_file
+                and resolved_path.parent == tmp_file.parent
+            ):
+                resolved_path.unlink(missing_ok=True)
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            as_attachment=True,
+            download_name=download_name,
+            mimetype="application/pdf",
+        )
 
     @app.route("/api/scholar/doi")
     def api_scholar_doi():
@@ -2345,12 +2573,12 @@ def create_app() -> Flask:
     # -- 学业页（SIS） ------------------------------------------------------ #
     @app.route("/sis")
     def sis_page():
-        return render_template("sis.html", **_sis_context())
+        return render_template("sis.html", **_sis_context(refresh=request.args.get("refresh") == "1"))
 
     # -- Canvas 页 ---------------------------------------------------------- #
     @app.route("/canvas")
     def canvas_page():
-        return render_template("canvas.html", **_canvas_context())
+        return render_template("canvas.html", **_canvas_context(refresh=request.args.get("refresh") == "1"))
 
     # -- 招聘页 -------------------------------------------------------------- #
     @app.route("/careers")
@@ -2483,22 +2711,47 @@ def create_app() -> Flask:
     # -- JSON API --------------------------------------------------------- #
     @app.route("/timeline")
     def timeline_page():
+        from westlake_survival.calendar import CHINA_TZ
         from westlake_survival.timeline import build_timeline
 
         offline = request.args.get("offline") == "1"
+        raw_date = (request.args.get("date") or "").strip()
+        today_d = datetime.now(CHINA_TZ).date()
+        target_d = today_d
+        if raw_date:
+            try:
+                target_d = date.fromisoformat(raw_date)
+            except ValueError:
+                target_d = today_d
         try:
-            report = build_timeline(offline=offline)
+            report = build_timeline(target_date=target_d, offline=offline)
         except Exception:
-            report = build_timeline(offline=True)
-        return render_template("timeline.html", report=report)
+            report = build_timeline(target_date=target_d, offline=True)
+        now_hhmm = datetime.now(CHINA_TZ).strftime("%H:%M") if target_d == today_d else ""
+        return render_template(
+            "timeline.html",
+            report=report,
+            viewing_date=target_d.isoformat(),
+            today_date=today_d.isoformat(),
+            prev_date=(target_d - timedelta(days=1)).isoformat(),
+            next_date=(target_d + timedelta(days=1)).isoformat(),
+            now_hhmm=now_hhmm,
+        )
 
     @app.route("/api/timeline")
     def api_timeline():
         from westlake_survival.timeline import build_timeline
 
         offline = request.args.get("offline") == "1"
+        raw_date = (request.args.get("date") or "").strip()
+        target_d = None
+        if raw_date:
+            try:
+                target_d = date.fromisoformat(raw_date)
+            except ValueError:
+                return jsonify({"error": f"无效日期：{raw_date}，需 YYYY-MM-DD"}), 400
         try:
-            report = build_timeline(offline=offline)
+            report = build_timeline(target_date=target_d, offline=offline)
             return jsonify(report.to_dict())
         except Exception as exc:
             return jsonify({"error": str(exc)}), 500

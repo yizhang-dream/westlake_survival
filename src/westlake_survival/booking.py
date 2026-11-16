@@ -44,9 +44,11 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from datetime import date as _date
 from datetime import datetime
+from http.cookiejar import Cookie as _Cookie
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import requests
@@ -91,6 +93,73 @@ DEFAULT_STEP = 30
 
 _SESSION: requests.Session | None = None
 _TOKEN: str = ""
+_SESSION_TTL = 2 * 3600
+
+
+def _save_booking_session(session: requests.Session, token: str) -> None:
+    from westlake_survival.sso.session_store import save_session_data
+
+    jar = [
+        {
+            "name": c.name,
+            "value": c.value,
+            "domain": c.domain,
+            "path": c.path,
+            "expires": c.expires,
+            "secure": bool(c.secure),
+        }
+        for c in session.cookies
+        if "westlake.edu.cn" in (c.domain or "")
+    ]
+    save_session_data("booking", {"token": token, "cookies": jar})
+
+
+def _load_booking_session() -> tuple[requests.Session, str] | None:
+    from westlake_survival.sso.session_store import load_session_data
+
+    payload = load_session_data("booking", _SESSION_TTL)
+    if not payload:
+        return None
+    token = str(payload.get("token") or "").strip()
+    if not token:
+        return None
+    session = direct_session()
+    for item in payload.get("cookies") or []:
+        expires = item.get("expires") or None
+        if expires is not None and expires <= 0:
+            expires = None
+        domain = str(item.get("domain") or "")
+        try:
+            session.cookies.set_cookie(
+                _Cookie(
+                    version=0,
+                    name=item["name"],
+                    value=item["value"],
+                    port=None,
+                    port_specified=False,
+                    domain=domain,
+                    domain_specified=bool(domain),
+                    domain_initial_dot=domain.startswith("."),
+                    path=item.get("path") or "/",
+                    path_specified=True,
+                    secure=bool(item.get("secure", True)),
+                    expires=expires,
+                    discard=expires is None,
+                    comment=None,
+                    comment_url=None,
+                    rest={},
+                    rfc2109=False,
+                )
+            )
+        except Exception:
+            continue
+    return session, token
+
+
+def _clear_booking_session() -> None:
+    from westlake_survival.sso.session_store import clear_session_data
+
+    clear_session_data("booking")
 
 
 def _auth_url(state: str = "westlake-survival", nonce: str = "westlake-survival") -> str:
@@ -125,14 +194,21 @@ def _login(user: str, password: str) -> tuple[requests.Session, str]:
     return session, token
 
 
-def _session() -> tuple[requests.Session, str]:
-    """惰性登录并缓存会话（进程内复用，换进程重登）。"""
+def _session(*, force: bool = False) -> tuple[requests.Session, str]:
+    """惰性登录并缓存会话（优先复用本地会话缓存，失效时重登）。"""
     global _SESSION, _TOKEN
-    if _SESSION is None or not _TOKEN:
-        from westlake_survival.sso import creds
+    if not force and _SESSION is not None and _TOKEN:
+        return _SESSION, _TOKEN
+    if not force:
+        cached = _load_booking_session()
+        if cached is not None:
+            _SESSION, _TOKEN = cached
+            return _SESSION, _TOKEN
+    from westlake_survival.sso import creds
 
-        user, password = creds.read_credentials()
-        _SESSION, _TOKEN = _login(user, password)
+    user, password = creds.read_credentials()
+    _SESSION, _TOKEN = _login(user, password)
+    _save_booking_session(_SESSION, _TOKEN)
     return _SESSION, _TOKEN
 
 
@@ -143,8 +219,8 @@ def reset() -> None:
     _TOKEN = ""
 
 
-def _gql(query: str, variables: dict | None = None) -> dict:
-    """打 ``/bus/graphql/me``，返回 ``data``；``errors`` 转成异常。"""
+def _gql(query: str, variables: dict | None = None, *, _retried: bool = False) -> dict:
+    """打 ``/bus/graphql/me``，返回 ``data``；鉴权失效自动重登重试一次。"""
     session, token = _session()
     response = session.post(
         GRAPHQL_ME,
@@ -152,15 +228,37 @@ def _gql(query: str, variables: dict | None = None) -> dict:
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         timeout=DEFAULT_TIMEOUT,
     )
+    stale_http = response.status_code in (401, 403) or any(
+        mark in (getattr(response, "url", "") or "")
+        for mark in ("iam.westlake.edu.cn", "/sso/", "/login")
+    )
+    if stale_http and not _retried:
+        _clear_booking_session()
+        reset()
+        _session(force=True)
+        return _gql(query, variables, _retried=True)
     try:
         payload = response.json()
     except ValueError as exc:  # pragma: no cover - 网关返回非 JSON
+        if not _retried:
+            _clear_booking_session()
+            reset()
+            _session(force=True)
+            return _gql(query, variables, _retried=True)
         raise WestlakeError(f"预约中心返回非 JSON（HTTP {response.status_code}）") from exc
     errors = payload.get("errors") or []
     if errors:
         first = errors[0] or {}
         extensions = first.get("extensions") or {}
         detail = extensions.get("detail") or first.get("message") or str(first)
+        low_detail = str(detail).lower()
+        if not _retried and any(
+            k in low_detail for k in ("401", "403", "unauth", "token", "过期", "失效", "登录", "login")
+        ):
+            _clear_booking_session()
+            reset()
+            _session(force=True)
+            return _gql(query, variables, _retried=True)
         raise WestlakeError(f"预约中心接口报错：{detail}")
     data = payload.get("data")
     if data is None:
@@ -636,12 +734,19 @@ def book(
     return result
 
 
-def cancel(appointment_id: str, *, reason: str = "") -> dict:
+def cancel(appointment_id: str, *, reason: str = "", dry_run: bool = False) -> dict:
     """取消一条预约（**写操作**）。
 
+    ``dry_run=True`` 只生成取消计划（本地，不调 mutation、不联网）。
     取消就是把 ``state`` 置成 ``"3"``（实测：取消后 ``state=3``，
     ``appointment_state`` 保留原值 2）。
     """
+    if dry_run:
+        return {
+            "dry_run": True,
+            "appointment_id": appointment_id,
+            "reason": reason,
+        }
     query = (
         "mutation($id:ID!,$state:String!,$reason:String){"
         " updateAppointmentInformationState(id:$id,state:$state,reason:$reason){"
@@ -748,10 +853,17 @@ def _cli():
         """``westlake booking types|list|slots|mine|book|cancel|sports``（首次运行自动登录）。"""
 
     @group.command(name="types")
+    @click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
     @handle
-    def types_cmd() -> None:
+    def types_cmd(as_json: bool) -> None:
         """我能预约的分类（首页卡片）。"""
         items = visible_types()
+        if as_json:
+            click.echo(json.dumps([
+                {"name": t.name, "open_time": t.open_time, "close_time": t.close_time, "step": t.step}
+                for t in items
+            ], ensure_ascii=False, indent=2))
+            return
         if not items:
             click.echo("没有可预约的分类。")
             return
@@ -761,10 +873,25 @@ def _cli():
     @group.command(name="list")
     @click.option("--type", "type_name", default=None, help="分类名（如 图书馆）")
     @click.option("--keyword", "keyword", default=None, help="名称关键词")
+    @click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
     @handle
-    def list_cmd(type_name, keyword) -> None:
+    def list_cmd(type_name, keyword, as_json: bool) -> None:
         """可预约资源列表。"""
         items = resources(type_name=type_name, keyword=keyword)
+        if as_json:
+            click.echo(json.dumps([
+                {
+                    "id": i.id,
+                    "name": i.name,
+                    "type_name": i.type_name,
+                    "campus": i.campus,
+                    "building": i.building,
+                    "floor": i.floor,
+                    "capacity": i.capacity,
+                }
+                for i in items
+            ], ensure_ascii=False, indent=2))
+            return
         if not items:
             click.echo("没有匹配的资源。")
             return
@@ -776,11 +903,15 @@ def _cli():
     @click.argument("selector")
     @click.option("--start", "start_day", required=True, help="起始日期 YYYY-MM-DD")
     @click.option("--end", "end_day", required=True, help="结束日期 YYYY-MM-DD")
+    @click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
     @handle
-    def days_cmd(selector, start_day, end_day) -> None:
+    def days_cmd(selector, start_day, end_day, as_json: bool) -> None:
         """某资源逐天的可约状态（挑日期用）。"""
         resource = _match(selector)
         rows = available_days(resource.id, start_day, end_day)
+        if as_json:
+            click.echo(json.dumps({"resource": resource.name, "id": resource.id, "days": rows}, ensure_ascii=False, indent=2))
+            return
         free = [r["date"] for r in rows if r["code"] == "0"]
         click.echo(f"{resource.name}：可约 {len(free)}/{len(rows)} 天")
         click.echo("  " + "  ".join(free))
@@ -789,26 +920,40 @@ def _cli():
     @click.argument("selector")
     @click.option("--date", "day", required=True, help="YYYY-MM-DD")
     @click.option("--duration", default=None, type=int, help="只要连续空闲≥N分钟")
+    @click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
     @handle
-    def slots_cmd(selector, day, duration) -> None:
+    def slots_cmd(selector, day, duration, as_json: bool) -> None:
         """某资源的空闲时段（名字或 id）。"""
         resource = _match(selector)
         slots = free_slots(resource.id, day, duration=duration)
-        if not slots:
-            click.echo(f"{resource.name} {day} 没有空闲时段。")
-            return
         if duration:
             spans = [f"{s.start}-{s.end}" for s in slots]
         else:
             spans = [f"{lo}-{hi}" for lo, hi in _merge(slots)]
+        if as_json:
+            click.echo(json.dumps({
+                "resource": resource.name,
+                "id": resource.id,
+                "date": day,
+                "duration": duration,
+                "spans": spans,
+            }, ensure_ascii=False, indent=2))
+            return
+        if not slots:
+            click.echo(f"{resource.name} {day} 没有空闲时段。")
+            return
         click.echo(f"{resource.name} {day} 空闲（{duration or '整段'}）：")
         click.echo("  " + "  ".join(spans))
 
     @group.command(name="mine")
+    @click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
     @handle
-    def mine_cmd() -> None:
+    def mine_cmd(as_json: bool) -> None:
         """我的预约。"""
         items = my_bookings()
+        if as_json:
+            click.echo(json.dumps([b.to_dict() for b in items], ensure_ascii=False, indent=2))
+            return
         if not items:
             click.echo("没有预约记录。")
             return
@@ -879,21 +1024,27 @@ def _cli():
     @group.command(name="cancel")
     @click.argument("appointment_id")
     @click.option("--reason", default="")
+    @click.option("--dry-run", is_flag=True, help="只校验不取消（输出事务预览卡片）")
     @click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket")
     @click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
     @handle
-    def cancel_cmd(appointment_id, reason, ticket, skip_confirm) -> None:
-        """取消预约（写操作；--ticket 或 --yes 执行）。"""
+    def cancel_cmd(appointment_id, reason, dry_run, ticket, skip_confirm) -> None:
+        """取消预约（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
         from westlake_survival.consequence import gate_cli
 
         gate_cli(
             "booking.cancel",
             confirmed=skip_confirm,
+            dry_run=dry_run,
             ticket=ticket,
             target=f"预约ID: {appointment_id}",
-            payload={"reason": reason},
+            payload={"appointment_id": appointment_id, "reason": reason},
         )
-        click.echo(json.dumps(cancel(appointment_id, reason=reason), ensure_ascii=False))
+        result = cancel(appointment_id, reason=reason, dry_run=dry_run)
+        if dry_run:
+            click.echo("校验通过（未提交）：" + json.dumps(result, ensure_ascii=False))
+            return
+        click.echo(json.dumps(result, ensure_ascii=False))
 
     @group.command(name="sports")
     @handle

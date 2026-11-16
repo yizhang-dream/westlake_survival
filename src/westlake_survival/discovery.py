@@ -345,7 +345,7 @@ def portal_services(*, refresh: bool = False) -> list[dict]:
 HPC_PORTAL = "https://hpc.westlake.edu.cn:9002/login.html"
 HPC_MAIN = "https://hpc.westlake.edu.cn/"
 BOOKING_URL = "https://booking.westlake.edu.cn/yy-sys/"
-MIRRORS_URL = "https://mirrors.westlake.edu.cn/posts/mirrors.html"
+MIRRORS_URL = "https://mirrors.westlake.edu.cn/"
 
 
 def _handle_errors(func):

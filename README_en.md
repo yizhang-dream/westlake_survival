@@ -19,14 +19,14 @@ English | [简体中文](README.md)
 Westlake University campus services are split across dozens of isolated portals: SIS, AMS, Canvas, venue reservations, the central campus portal, the library, sports facilities, and more. **westlake_survival** unifies them at the API layer into a single, coherent toolkit:
 
 - **Python library (in-process API)** — `pip install westlake-survival`, then `import westlake_survival` to access the full structured API with typed data structures. This is the fastest, lowest-overhead path for code-capable AI agents (see [examples/](examples/) for runnable samples).
-- **CLI** — `westlake` provides complete read coverage and guarded write operations. Not sure where a command lives? Run `westlake find <keyword>` (supports plain-language queries such as `paper`, `borrow`, or `holiday`).
-- **Local WebUI** — run `westlake` (or double-click a launch script) to open the browser dashboard with 30+ pages, visual account setup, and a full `/capabilities` directory.
+- **CLI** — `westlake` covers read queries and guarded writes, with `--json` output on common read commands (`context`, `digest`, `find`, `probe`, `timeline`, `sis`, `canvas`, `booking`, `lib`). Run `westlake find <keyword>` to look up a command by topic (e.g. `paper`, `borrow`, `timeline`, `holiday`).
+- **Local WebUI** — run `westlake` (or double-click a launch script) to open the local dashboard with 30+ pages, `Ctrl+K` quick jump, short-lived caching (`?refresh=1` to bypass), and visual account setup.
 - **MCP server (compatibility layer)** — `westlake-mcp` bridges clients that interact strictly via registered tools (e.g., Claude Desktop, chat sidebars). Agents with shell or Python execution access (such as ZCode or Claude Code) should prefer the in-process API or CLI.
 
 Three core principles:
 
 1. **Read-only by default & Action Card verification.** Write operations are strictly restricted to a safe whitelist (Canvas assignment submission, replies, direct messages, course starring; venue booking & cancellation; library loan renewals; iCalendar export). Each write operation is guarded by `consequence.py`, generating a structured **Action Card** with an ephemeral single-use confirmation ticket (`--ticket`) or explicit per-execution confirmation (`--yes`). No automated course-sniping, no seat-grabbing, and no permission bypasses.
-2. **Offline-first architecture (SWR).** Low-frequency datasets such as class schedules, academic calendar weeks, and shuttle timetables support Stale-While-Revalidate caching and `--offline` flags. Lookups return instant local snapshots even in basements, offline environments, or outside campus without VPN.
+2. **Offline-first architecture (SWR).** Low-frequency datasets such as academic calendar weeks and shuttle timetables use Stale-While-Revalidate caching; `calendar`, `transit`, and `timeline` accept `--offline` to render bundled/cached snapshots instantly, even in basements, offline environments, or outside campus without VPN. Some other modules can degrade from existing caches, but forced offline is not guaranteed — check each command's help.
 3. **Credentials stay local.** Stored in your native OS keychain, saved exactly once, never logged to terminals or committed to git, and never synced across machines. Enter your credentials once via the local web settings UI. See [Credentials & Privacy](#credentials--privacy).
 4. **Independent community project.** Structurally inspired by [sustech_survival](https://github.com/dumixthestpd/sustech_survival); not officially affiliated with or endorsed by Westlake University.
 
@@ -40,11 +40,11 @@ Three core principles:
 | Venue booking | 17 venue categories (study rooms, seminar rooms, piano rooms, etc.): composite availability solver (`booking recommend`), slot discovery, active reservations, booking & cancellation | unified password |
 | Sports venues | facilities, courts, daily availability, personal bookings (read-only) | unified password |
 | Tasks & portal | administrative service catalog, pending tasks, portal dashboard cards (unread mail, book loans, pending approvals) | unified password |
-| Portal data market (skill script) | [Read-only guide](skills/westlake-survival/references/data-market.md) (Chinese): dataset catalog and the current account's profile, education history, completed courses, honors, clubs, and volunteering; no dedicated CLI/MCP entry yet | unified password |
+| Portal data market | `westlake market` CLI / `westlake_survival.market` Python API / `market_query` MCP tool (sanitized summaries by default; see [Read-only guide](skills/westlake-survival/references/data-market.md)) | unified password |
 | Research | subscribed database registry, CARSI off-campus SSO (`scholar ensure`), DOI→PDF full text, research news, faculty directory, HPC clusters, reimbursement rules | most require none |
 | Careers | job postings, campus fairs, employer info sessions: recent digests and detailed listings | none |
 | Curriculum | major requirements & degree roadmaps, course system, general education catalog, cross-department course search | none |
-| Campus life | academic calendar, shuttle schedules & ICS export, daily status summaries (`context`/`digest`), dining halls & cafés, residential buildings, campus services (supermarket, deliveries, dry cleaning, barbershop, banking), campus map & panoramas, cloud printing stations | none |
+| Campus life | timeline scheduler (`timeline` merging timetable, Canvas deadlines, reservations, shuttles & memos), academic calendar, shuttle schedules & ICS export, daily status summaries (`context`/`digest`), dining halls & cafés, residential buildings, campus services (supermarket, deliveries, dry cleaning, barbershop, banking), campus map & panoramas, cloud printing stations | none |
 | Lecture notes | shared OneDrive/SharePoint course folders, public index browsing & file downloads (requires optional `[browser]` extra) | none |
 | Information | university-wide search, news feeds, academic lectures, announcements, WikiLake student encyclopedia | none |
 | System inventory | directory of 90+ internal services, subdomain mapping, endpoint reachability probes, Sangfor VPN status & routing | none |
@@ -74,11 +74,13 @@ This repository is engineered agent-first. You can integrate via three primary m
 1. **Instruction-driven agents via `AGENTS.md`** (ZCode, DSH, Codex, Claude Code, Cursor, etc.): Clone and start. The root [AGENTS.md](AGENTS.md) outlines operating rules, execution boundaries, and verification procedures. Agents read this file automatically on session initialization and invoke the `westlake` CLI directly once credentials are configured.
 2. **Skill-based agents & SkillVM toolchain**: The packaged skill definition is located at [skills/westlake-survival/SKILL.md](skills/westlake-survival/SKILL.md). To install or compile across heterogeneous harnesses and machines, run:
    ```bash
-   westlake skill install --target all    # automatically detects ZCode, Claude Code, and Cursor on your machine
+   westlake skill status                 # inspect ZCode, Claude Code, Cursor sync status & symlinks
+   westlake skill install --target all    # safely mount skills without overwriting external symlinks
    westlake skill compile --target all    # AOT compiles tailored specs (supporting -O0 frontier and -Os compact profiles)
+   westlake skill mcp-config              # print ready-to-paste mcpServers JSON snippet
    ```
    Or manually copy `skills/westlake-survival` into your agent framework directory (`~/.zcode/skills/`, `~/.claude/skills/`, etc.).
-3. **Model Context Protocol (MCP)**: Register the `westlake-mcp` entry point in your client configuration. See [docs/skill_reference.md](docs/skill_reference.md) (Chinese) for client configuration snippets and the complete MCP tool catalog.
+3. **Model Context Protocol (MCP)**: Register the `westlake-mcp` entry point in your client configuration (or copy the output of `westlake skill mcp-config`). See [docs/skill_reference.md](docs/skill_reference.md) (Chinese) for the complete MCP tool catalog.
 
 An agent's standard health check should always begin with **`westlake doctor`** (or `westlake doctor --json` for structured output). Agents must never request or write credentials directly; users configure authentication once via the local web Settings UI.
 
@@ -95,11 +97,13 @@ An agent's standard health check should always begin with **`westlake doctor`** 
 In accordance with project architecture, this repository relies strictly on end-to-end validation rather than synthetic unit tests or mocks:
 
 ```bash
-python tools/module_smoke.py   # curated tier (anonymous + offline, no account needed) runs every public read-only CLI command
-python tools/module_smoke.py --auth   # credential tier (68 commands): personal data, requires campus network + local account
+python tools/module_smoke.py   # curated tier (anonymous + offline, 71 commands, no account needed) runs every public read-only CLI command
+python tools/module_smoke.py --auth   # credential tier (72 commands): personal data, requires campus network + local account
 python tools/webui_smoke.py    # starts an in-process web instance and validates HTTP 200 across all routes (no credentials needed)
 python tools/pii_scan.py       # pre-commit linting to prevent exposure of real student identifiers or credentials
 ```
+
+Every command in the default curated tier runs in a **sandboxed subprocess**: `WESTLAKE_HOME` points to a one-off empty temp directory, `WESTLAKE_NO_KEYRING=1`, and credential/token environment variables (`WESTLAKE_CREDENTIALS` / `WESTLAKE_CANVAS_TOKEN` / `WESTLAKE_HPC_TOKEN` / `HPC_API_KEY`) are removed — locally configured credentials are unreadable. `--auth` / `--all` run unsandboxed.
 
 ## Documentation
 

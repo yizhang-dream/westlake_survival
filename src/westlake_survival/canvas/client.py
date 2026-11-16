@@ -22,13 +22,17 @@ Token 解析顺序（`:class:`CanvasClient` 构造时确定）：
 from __future__ import annotations
 
 import html
+import json
 import mimetypes
 import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from http.cookiejar import Cookie as _Cookie
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
+from urllib.parse import unquote
 
 import requests
 
@@ -165,6 +169,78 @@ def check_token(token: str) -> tuple[str, str]:
     return "unknown", f"校验失败（HTTP {response.status_code}）"
 
 
+#: IAM 登录模式下的 Canvas 会话缓存有效期（秒）。
+_IAM_COOKIE_TTL = 4 * 3600
+
+
+def _save_canvas_jar(session: requests.Session) -> None:
+    from westlake_survival.sso.session_store import save_session_data
+
+    jar = [
+        {
+            "name": c.name,
+            "value": c.value,
+            "domain": c.domain,
+            "path": c.path,
+            "expires": c.expires,
+            "secure": bool(c.secure),
+        }
+        for c in session.cookies
+        if "westlake.edu.cn" in (c.domain or "")
+    ]
+    if not jar:
+        return
+    save_session_data("canvas", {"cookies": jar})
+
+
+def _load_canvas_jar() -> requests.Session | None:
+    from westlake_survival.sso.session_store import load_session_data
+
+    payload = load_session_data("canvas", _IAM_COOKIE_TTL)
+    if not payload:
+        return None
+    jar = payload.get("cookies") or []
+    if not jar:
+        return None
+    session = http_session()
+    for item in jar:
+        expires = item.get("expires") or None
+        if expires is not None and expires <= 0:
+            expires = None
+        domain = str(item.get("domain") or "")
+        try:
+            session.cookies.set_cookie(
+                _Cookie(
+                    version=0,
+                    name=item["name"],
+                    value=item["value"],
+                    port=None,
+                    port_specified=False,
+                    domain=domain,
+                    domain_specified=bool(domain),
+                    domain_initial_dot=domain.startswith("."),
+                    path=item.get("path") or "/",
+                    path_specified=True,
+                    secure=bool(item.get("secure", True)),
+                    expires=expires,
+                    discard=expires is None,
+                    comment=None,
+                    comment_url=None,
+                    rest={},
+                    rfc2109=False,
+                )
+            )
+        except Exception:
+            continue
+    return session
+
+
+def _clear_canvas_jar() -> None:
+    from westlake_survival.sso.session_store import clear_session_data
+
+    clear_session_data("canvas")
+
+
 class CanvasClient:
     """Canvas REST API 客户端。
 
@@ -207,15 +283,30 @@ class CanvasClient:
         if not self._token and not getattr(self, "_iam_session", False):
             raise AuthError(_TOKEN_HELP)
 
-    def _auth_headers(self) -> dict[str, str]:
+    def _csrf_token(self) -> str | None:
+        for cookie in getattr(self._session, "cookies", ()):
+            if getattr(cookie, "name", None) == "_csrf_token" and getattr(cookie, "value", None):
+                return unquote(str(cookie.value))
+        return None
+
+    def _auth_headers(self, *, mutating: bool = False) -> dict[str, str]:
         if not self._token:
-            # 统一认证会话模式：认证靠 Cookie，不带 Authorization 头。
-            return {"Accept": "application/json"}
+            # 统一认证会话模式：认证靠 Cookie；写操作须携带 X-CSRF-Token（解码 _csrf_token Cookie）。
+            headers = {"Accept": "application/json"}
+            if mutating:
+                csrf = self._csrf_token()
+                if csrf:
+                    headers["X-CSRF-Token"] = csrf
+            return headers
         return {"Authorization": f"Bearer {self._token}", "Accept": "application/json"}
 
     @staticmethod
-    def _iam_canvas_session() -> "requests.Session":
-        """用已存统一凭据登 Canvas（IAM CAS）；失败抛 ``AuthError``。"""
+    def _iam_canvas_session(*, force: bool = False) -> "requests.Session":
+        """用已存统一凭据登 Canvas（IAM CAS，优先复用本地会话缓存）；失败抛 ``AuthError``。"""
+        if not force:
+            cached = _load_canvas_jar()
+            if cached is not None:
+                return cached
         try:
             from westlake_survival.iam import canvas_login
             from westlake_survival.sso import read_credentials
@@ -227,10 +318,45 @@ class CanvasClient:
                 "可设 WESTLAKE_CANVAS_TOKEN，或先用 westlake setup 配置统一密码。"
             ) from exc
         try:
-            return canvas_login(user, password)
+            session = canvas_login(user, password)
         except Exception as exc:
             raise AuthError(f"统一认证登 Canvas 失败：{exc}") from exc
+        _save_canvas_jar(session)
+        return session
 
+    def _is_iam_stale(self, response: requests.Response) -> bool:
+        if self._token or not getattr(self, "_iam_session", False):
+            return False
+        if response.status_code == 401:
+            return True
+        final_url = str(getattr(response, "url", "") or "")
+        return any(mark in final_url for mark in ("iam.westlake.edu.cn", "/login/cas", "/login/ldap"))
+
+    def _refresh_iam_session(self) -> None:
+        _clear_canvas_jar()
+        self._session = self._iam_canvas_session(force=True)
+        self._iam_session = True
+
+    def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        mutating: bool = False,
+        _retried: bool = False,
+        **kwargs: Any,
+    ) -> requests.Response:
+        response = self._session.request(
+            method,
+            url,
+            headers=self._auth_headers(mutating=mutating),
+            **kwargs,
+        )
+        if not _retried and self._is_iam_stale(response):
+            self._refresh_iam_session()
+            return self._request(method, url, mutating=mutating, _retried=True, **kwargs)
+        self._raise_for_status(response)
+        return response
 
     def _url(self, path: str) -> str:
         if path.startswith(("http://", "https://")):
@@ -249,6 +375,13 @@ class CanvasClient:
                 "本地令牌会抢先于统一密码，可在网页「设置」清除令牌回退统一认证，"
                 f"或更新 {TOKEN_ENV_VAR} / 令牌文件后重试。{body}"
             )
+        if status == 403:
+            if "require_initial_post" in body:
+                raise ActionError(
+                    "无权访问该讨论回帖（HTTP 403 require_initial_post）："
+                    "教师设置了「须先发布本人回帖后方可查看他人回复」。"
+                )
+            raise ActionError(f"Canvas 无权访问该资源（HTTP 403）：{body}")
         if status == 404:
             raise NotFound(f"Canvas 资源不存在（HTTP 404）：{body}")
         raise WestlakeError(f"Canvas 请求失败（HTTP {status}）：{body}")
@@ -271,25 +404,21 @@ class CanvasClient:
 
     def _get(self, path: str, params: Mapping[str, Any] | None = None) -> requests.Response:
         self._require_token()
-        response = self._session.get(
+        return self._request(
+            "GET",
             self._url(path),
             params=dict(params) if params else None,
-            headers=self._auth_headers(),
             timeout=DEFAULT_TIMEOUT,
         )
-        self._raise_for_status(response)
-        return response
 
     def _get_url(self, url: str, params: Mapping[str, Any] | None = None) -> requests.Response:
         """按完整 URL 请求（分页翻页用）；错误映射同 :meth:`_get`。"""
-        response = self._session.get(
+        return self._request(
+            "GET",
             url,
             params=dict(params) if params else None,
-            headers=self._auth_headers(),
             timeout=DEFAULT_TIMEOUT,
         )
-        self._raise_for_status(response)
-        return response
 
     def _post(
         self,
@@ -300,14 +429,13 @@ class CanvasClient:
     ) -> requests.Response:
         """带认证的 POST；错误映射同 :meth:`_get`。"""
         self._require_token()
-        response = self._session.post(
+        return self._request(
+            "POST",
             self._url(path),
+            mutating=True,
             data=data,
-            headers=self._auth_headers(),
             timeout=timeout,
         )
-        self._raise_for_status(response)
-        return response
 
     def _delete(
         self,
@@ -317,13 +445,12 @@ class CanvasClient:
     ) -> requests.Response:
         """带认证的 DELETE；错误映射同 :meth:`_get`。"""
         self._require_token()
-        response = self._session.delete(
+        return self._request(
+            "DELETE",
             self._url(path),
-            headers=self._auth_headers(),
+            mutating=True,
             timeout=timeout,
         )
-        self._raise_for_status(response)
-        return response
 
     def _paginate(self, path: str, params: Mapping[str, Any] | None = None) -> Iterator[dict]:
         """按 Link 响应头 ``rel=next`` 翻页，逐条 yield 字典。
@@ -1157,12 +1284,9 @@ class CanvasClient:
             }
 
         if target_ignore.startswith("http"):
-            resp = self._session.delete(
-                target_ignore, headers=self._auth_headers(), timeout=DEFAULT_TIMEOUT
-            )
+            resp = self._request("DELETE", target_ignore, mutating=True, timeout=DEFAULT_TIMEOUT)
         else:
             resp = self._delete(target_ignore)
-        self._raise_for_status(resp)
         return {
             "success": True,
             "msg": f"已成功忽略/归档 Canvas 待办：[{matched_item.title}]",

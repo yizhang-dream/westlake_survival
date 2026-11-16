@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Canvas · 西湖生存手册{% endblock %}
 {% block content %}
-<h1 class="page">Canvas</h1>
+<h1 class="page">Canvas
+  {% if cached_age %}<a class="chip plain" href="/canvas?refresh=1" title="{{ cached_age }} 秒前缓存，点击强制重抓">缓存 {{ cached_age }}s · ↻ 刷新</a>
+  {% else %}<a class="chip" href="/canvas?refresh=1" title="点击刷新 Canvas 数据">实时 · ↻ 刷新</a>{% endif %}
+</h1>
 {% if error %}<div class="note">Canvas 数据不可用：{{ error }}（令牌或统一凭据，及校园网）</div>{% endif %}
 
 {# —— 概览数字条 —— #}

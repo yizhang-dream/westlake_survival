@@ -3,9 +3,33 @@
 {% block title %}今日时空行动流 · 西湖生存手册{% endblock %}
 
 {% block content %}
-<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+<style>
+  .tl-head { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1.35rem; }
+  .tl-title { margin:0 0 .3rem; font-size:1.75rem; font-weight:800; color:var(--heading); letter-spacing:-.01em; }
+  .tl-actions { display:flex; gap:.45rem; flex-wrap:wrap; align-items:center; }
+  .tl-pill {
+    text-decoration:none; font:inherit; font-size:.82rem; font-weight:600;
+    padding:.35rem .78rem; border-radius:999px; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--ink); display:inline-flex; align-items:center; gap:.28rem;
+    transition:all .18s var(--ease-spring);
+  }
+  .tl-pill:hover { border-color:var(--accent); color:var(--accent); transform:translateY(-1px); }
+  .tl-pill.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .tl-layout { display:grid; grid-template-columns:minmax(0, 1fr) 320px; gap:1.6rem; align-items:start; }
+  .tl-card {
+    display:flex; gap:1rem; align-items:flex-start; padding:.9rem 1.1rem;
+    background:var(--surface-2); border-radius:12px; border:1px solid var(--line); position:relative;
+  }
+  .tl-card.conflict { border-color:rgba(229,62,62,0.45); }
+  .tl-card.next-up { border-left:4px solid var(--accent); background:color-mix(in srgb, var(--accent) 6%, var(--surface-2)); }
+  @media (max-width: 860px) {
+    .tl-layout { grid-template-columns: 1fr; gap:1.2rem; }
+    .tl-card { flex-direction:column; gap:.4rem; }
+  }
+</style>
+<div class="tl-head">
   <div>
-    <h1 style="margin:0 0 .3rem; font-size:1.8rem; font-weight:800; color:var(--heading);">今日时空行动流</h1>
+    <h1 class="tl-title">今日时空行动流</h1>
     <div style="color:var(--muted); font-size:.95rem;">
       {{ report.date_str }} · <strong>{{ report.term_info }}</strong>
       {% if report.meta.is_stale %}
@@ -15,9 +39,12 @@
       {% endif %}
     </div>
   </div>
-  <div style="display:flex; gap:.5rem;">
-    <a href="/api/calendar/export" download="westlake_schedule.ics" style="text-decoration:none; font:inherit; font-size:.85rem; padding:.4rem .9rem; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); display:inline-flex; align-items:center; gap:.3rem; cursor:pointer;">📅 导出日历 (.ics)</a>
-    <button onclick="location.reload()" style="font:inherit; font-size:.85rem; padding:.4rem .9rem; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer;">刷新行动流</button>
+  <div class="tl-actions">
+    <a class="tl-pill" href="/timeline?date={{ prev_date }}">← 前一天</a>
+    <a class="tl-pill {{ 'active' if viewing_date == today_date else '' }}" href="/timeline">今天</a>
+    <a class="tl-pill" href="/timeline?date={{ next_date }}">后一天 →</a>
+    <a class="tl-pill" href="/api/calendar/export" download="westlake_schedule.ics">📅 导出日历</a>
+    <a class="tl-pill" href="/timeline?date={{ viewing_date }}" title="重新同步">↻ 刷新</a>
   </div>
 </div>
 
@@ -32,25 +59,34 @@
 </div>
 {% endif %}
 
-<div style="display:grid; grid-template-columns:minmax(0, 1fr) 320px; gap:1.8rem; align-items:start;">
+<div class="tl-layout">
   <!-- 时间轴主日程 -->
-  <div>
+  <div style="min-width:0;">
     <h2 style="font-size:1.15rem; font-weight:700; margin:0 0 1rem; color:var(--heading); display:flex; align-items:center; gap:.5rem;">
       <span style="width:4px; height:16px; border-radius:2px; background:var(--accent); display:inline-block;"></span>
       全天编排事件 ({{ report.items|length }})
     </h2>
 
     {% if not report.items %}
-    <div class="empty" style="padding:2rem; text-align:center; background:var(--surface-2); border-radius:12px;">今日无日程安排或待办事项。</div>
+    <div class="empty" style="padding:2rem; text-align:center; background:var(--surface-2); border-radius:12px;">
+      当日暂无日程安排或待办事项。{% if needs_setup %}<br><span class="muted" style="font-size:.86rem;">提示：如需同步课表与 Canvas 作业截止，请先前往 <a href="/setup">账号设置</a>。</span>{% endif %}
+    </div>
     {% else %}
+    {% set ns = namespace(found_next=false) %}
     <div style="display:flex; flex-direction:column; gap:.8rem;">
       {% for it in report.items %}
-      <div style="display:flex; gap:1rem; align-items:flex-start; padding:.9rem 1.1rem; background:var(--surface-2); border-radius:12px; border:1px solid {{ 'rgba(229,62,62,0.4)' if it.is_conflict else 'var(--line)' }}; position:relative;">
-        <div style="min-width:90px; font-variant-numeric:tabular-nums; font-weight:700; font-size:1rem; color:var(--accent);">
+      {% set end_t = it.time_str.split('-', 1)[1].strip() if '-' in it.time_str else it.sort_time %}
+      {% set is_next = false %}
+      {% if now_hhmm and not ns.found_next and it.category != 'holiday' and end_t >= now_hhmm %}
+        {% set is_next = true %}
+        {% set ns.found_next = true %}
+      {% endif %}
+      <div class="tl-card{{ ' conflict' if it.is_conflict else '' }}{{ ' next-up' if is_next else '' }}">
+        <div style="min-width:96px; font-variant-numeric:tabular-nums; font-weight:700; font-size:1rem; color:var(--accent);">
           {{ it.time_str }}
         </div>
         <div style="flex:1; min-width:0;">
-          <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.2rem;">
+          <div style="display:flex; align-items:center; flex-wrap:wrap; gap:.45rem; margin-bottom:.22rem;">
             {% if it.category == 'course' %}
             <span class="chip ok">课程</span>
             {% elif it.category == 'canvas' %}
@@ -66,6 +102,9 @@
             {% endif %}
 
             <strong style="font-size:1rem; color:var(--heading);">{{ it.title }}</strong>
+            {% if is_next %}
+            <span class="chip ok" style="font-size:.72rem;">▶ 接下来</span>
+            {% endif %}
             {% if it.is_conflict %}
             <span class="chip" style="background:#fed7d7; color:#9b2c2c; font-weight:700;">时间冲突</span>
             {% endif %}

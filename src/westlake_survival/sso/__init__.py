@@ -35,6 +35,11 @@ from westlake_survival.sso.providers import (
     LibAuth,
     SISAuth,
 )
+from westlake_survival.sso.session_store import (
+    clear_session_data,
+    load_session_data,
+    save_session_data,
+)
 
 __all__ = [
     # 认证器
@@ -54,6 +59,10 @@ __all__ = [
     "save_credentials_keyring",
     "read_credentials_keyring",
     "delete_credentials_keyring",
+    # 受保护会话缓存
+    "save_session_data",
+    "load_session_data",
+    "clear_session_data",
     # 常量
     "CAS_LOGIN",
     # 异常（便于调用方只 import 本模块）

@@ -1,21 +1,25 @@
 # 门户数据市集：本人数据与数据目录
 
-当用户查询个人履历、已修学分/课程、志愿记录，或询问门户“数据市集”有哪些数据时，使用本指南。已验证的七类查询由本技能的 [只读脚本](../scripts/data_market.py) 提供；尚无 `westlake market` 命令或专用 MCP 工具。
+当用户查询个人履历、已修学分/课程、志愿记录，或询问门户“数据市集”有哪些数据时，使用本指南。已验证的七类查询已正式集成至 `westlake market` CLI、`westlake_survival.market` Python API 与 MCP 工具 `market_query`（同时保留技能内 [兼容脚本](../scripts/data_market.py)）。
 
 ## 调用方法
 
-先运行 `westlake doctor`，使用与 `westlake` 相同的 Python 解释器。下方 `<skill-root>` 指本技能 `SKILL.md` 所在目录，由 Agent 按实际安装位置替换；路径不依赖当前工作目录，也不限定操作系统。
+先运行 `westlake doctor`，确保使用与 `westlake` 相同的 Python 解释器。命令行与 MCP 默认只输出目录元数据或条数/字段名概要（支持 `--summary`、`--page-size 1..100`、`--json`）：
 
-安装时需复制完整技能目录，保留 `scripts/` 和 `references/`。仅生成或复制 `SKILL.md` 的编译/安装流程不携带本扩展的附件，需要另行复制这两个目录。
+```bash
+westlake market catalog [--summary] [--json]
+westlake market profile [--json]
+westlake market resume [--json]
+westlake market courses [--json]
+westlake market honors [--json]
+westlake market clubs [--json]
+westlake market volunteer [--json]
+```
+
+如需在未安装包环境下直接运行脚本，仍可调用技能内脚本（`<skill-root>` 替换为 `SKILL.md` 所在目录）：
 
 ```bash
 python "<skill-root>/scripts/data_market.py" catalog
-python "<skill-root>/scripts/data_market.py" profile
-python "<skill-root>/scripts/data_market.py" resume
-python "<skill-root>/scripts/data_market.py" courses
-python "<skill-root>/scripts/data_market.py" honors
-python "<skill-root>/scripts/data_market.py" clubs
-python "<skill-root>/scripts/data_market.py" volunteer
 ```
 
 | 查询名 | 内容 | 命令行输出 |
@@ -28,23 +32,16 @@ python "<skill-root>/scripts/data_market.py" volunteer
 | `clubs` | 本人学生社团记录 | 条数与字段名，区别于全校社团目录 |
 | `volunteer` | 本人志愿服务 | 条数与字段名，包括名称、类型、时长和起止时间 |
 
-脚本在一个进程内复用会话并遍历全部分页，空列表是有效结果；分页缺失、中断或数量不符时明确报错。`--page-size 5` 可用于需要小页分页的场景，缺省每页100条。多个查询应通过下方的进程内 API 复用一次登录，不要并发运行多个登录进程。
+脚本与客户端在一个进程内复用会话并遍历全部分页，空列表是有效结果；分页缺失、中断或数量不符时明确报错。`--page-size 5` 可用于需要小页分页的场景，缺省每页100条。多个查询应通过下方的进程内 API 复用一次登录，不要并发运行多个登录进程。
 
 ## 读取具体业务字段
 
-命令行缺省只展示概要，避免把证件、联系方式和关联人员对象整包写进终端或对话。Agent 需要回答具体问题时，可按本机技能目录载入脚本，在进程内取值并只选择本次所需字段：
+命令行与 MCP 缺省只展示概要，避免把证件、联系方式和关联人员对象整包写进终端或对话。Agent 需要回答具体问题时，应在进程内载入 `westlake_survival.market`（或兼容脚本），只选择本次所需字段：
 
 ```python
-import importlib.util
-from pathlib import Path
+from westlake_survival.market import MarketClient
 
-skill_root = Path("<skill-root>")  # 替换为 SKILL.md 所在的实际目录
-script = skill_root / "scripts" / "data_market.py"
-spec = importlib.util.spec_from_file_location("westlake_data_market", script)
-market = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(market)
-
-with market.MarketClient() as client:
+with MarketClient() as client:
     courses = client.fetch("courses")["content"]
     # 按问题选择字段；不输出完整个人档案或人员关联对象。
     for course in courses:

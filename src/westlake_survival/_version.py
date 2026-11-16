@@ -10,10 +10,10 @@ from __future__ import annotations
 import re
 from typing import NamedTuple
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 #: 发布日期（ISO-8601）
-__release_date__ = "2026-11-02"
+__release_date__ = "2026-11-17"
 
 #: 默认发布渠道：stable（稳定版）或 development（预发布/开发版）
 __channel__ = "stable"

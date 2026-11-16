@@ -51,7 +51,12 @@ logger = logging.getLogger(__name__)
 
 TASKCENTER_HOME = "https://one.westlake.edu.cn/taskcenter/workflow/index"
 
-PROFILE_DIR = config_root() / "taskcenter_profile"
+
+def _profile_dir() -> Path:
+    return config_root() / "taskcenter_profile"
+
+
+PROFILE_DIR = _profile_dir()
 
 
 @dataclass

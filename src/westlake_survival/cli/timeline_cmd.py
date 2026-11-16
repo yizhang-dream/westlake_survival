@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 import click
 
+from westlake_survival.calendar import CHINA_TZ
 from westlake_survival.consequence import gate_cli
 from westlake_survival.exceptions import WestlakeError
 from westlake_survival.timeline import (
@@ -71,7 +72,17 @@ def cli_group(ctx: click.Context, target_date_str: str, offline: bool, as_json: 
         click.echo("\n今日无日程安排或待办事项。")
     else:
         click.echo("")
-        for it in report.items:
+        next_idx: int | None = None
+        if target_d is None or target_d == datetime.now(CHINA_TZ).date():
+            now_hhmm = datetime.now(CHINA_TZ).strftime("%H:%M")
+            for idx, it in enumerate(report.items):
+                if it.category == "holiday":
+                    continue
+                end_hhmm = it.time_str.split("-", 1)[1].strip() if "-" in it.time_str else it.sort_time
+                if end_hhmm >= now_hhmm:
+                    next_idx = idx
+                    break
+        for idx, it in enumerate(report.items):
             # 状态色彩与分类标记
             color = "white"
             tag = "📅"
@@ -94,9 +105,15 @@ def cli_group(ctx: click.Context, target_date_str: str, offline: bool, as_json: 
                 tag = "📌 备忘"
                 color = "bright_yellow"
 
+            is_next = idx == next_idx
+            lead = click.style("▶ ", fg="bright_green", bold=True) if is_next else "  "
+            next_badge = click.style(" [接下来]", fg="bright_green", bold=True) if is_next else ""
             conflict_mark = click.style(" [冲突]", fg="red", bold=True) if it.is_conflict else ""
             loc = f" @ {it.location}" if it.location else ""
-            click.echo(f"  {click.style(it.time_str.ljust(13), fg='cyan', bold=True)} {tag} {click.style(it.title, fg=color, bold=True)}{conflict_mark}{loc}")
+            click.echo(
+                f"{lead}{click.style(it.time_str.ljust(13), fg='cyan', bold=True)} "
+                f"{tag} {click.style(it.title, fg=color, bold=True)}{next_badge}{conflict_mark}{loc}"
+            )
             if it.details:
                 click.echo(f"  {' ' * 13}   ↳ {it.details}")
 
@@ -134,27 +151,38 @@ def memo_add_cmd(text: str, time_str: str, dry_run: bool, ticket: str | None, sk
 
 @cli_group.command(name="done")
 @click.argument("memo_id")
+@click.option("--dry-run", is_flag=True, help="只预检不勾选（输出事务预览卡片）。")
 @click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
 @click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（受控写操作确认门）。")
 @_handle_errors
-def memo_done_cmd(memo_id: str, ticket: str | None, skip_confirm: bool) -> None:
-    """标记一条备忘已完成（写操作：--ticket 或 --yes 执行）。"""
+def memo_done_cmd(
+    memo_id: str, dry_run: bool, ticket: str | None, skip_confirm: bool
+) -> None:
+    """标记一条备忘已完成（写操作：--dry-run 预检 / --ticket 或 --yes 执行）。"""
     gate_cli(
         "timeline.memo",
         confirmed=skip_confirm,
+        dry_run=dry_run,
         ticket=ticket,
         target=f"备忘ID: {memo_id}",
         payload={"memo_id": memo_id, "action": "done"},
     )
+    if dry_run:
+        click.secho(f"预检通过：准备标记备忘 [{memo_id}] 完成。", fg="cyan")
+        return
     memo = toggle_memo(memo_id, done=True)
     click.secho(f"备忘 [{memo.id}] 已标记完成！", fg="green")
 
 
 @cli_group.command(name="list")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def memo_list_cmd() -> None:
+def memo_list_cmd(as_json: bool) -> None:
     """列出全部个人备忘。"""
     memos = list_memos()
+    if as_json:
+        click.echo(json.dumps([m.to_dict() for m in memos], ensure_ascii=False, indent=2))
+        return
     if not memos:
         click.echo("暂无个人备忘。")
         return

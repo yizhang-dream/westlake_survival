@@ -20,24 +20,23 @@
   等子系统链接；
 * ``/notice-view/get-all-notice`` —— 通知。
 
-会话：IAM 登录一次后把 ``ams.westlake.edu.cn`` 的 cookie 存
-``~/.westlake_survival/ams_cookies.json``（0600），之后先用缓存验活，避免每次
+会话：IAM 登录一次后把 ``ams.westlake.edu.cn`` 的 cookie 存入受保护本地会话区
+（Windows 下 DPAPI 加密，POSIX 下 0600），之后先用缓存验活，避免每次
 都去 IAM 走一遍密码（减少验证码风控与锁号风险）。cookie 只存不打印。
 """
 
 from __future__ import annotations
 
-import json
 import os
-import time
+import re
 from datetime import date, timedelta
 from http.cookiejar import Cookie as _Cookie
-from pathlib import Path
 from typing import Any
 
 from westlake_survival._net import DEFAULT_TIMEOUT
 from westlake_survival.discovery import direct_session
 from westlake_survival.exceptions import AuthError, WestlakeError
+from westlake_survival.sso.session_store import load_session_data, save_session_data
 
 __all__ = [
     "BASE",
@@ -54,17 +53,8 @@ BASE = os.environ.get("WESTLAKE_AMS_BASE", "https://ams.westlake.edu.cn")
 PORTAL = BASE + "/portal-service/api/v1"
 ENTRY = BASE + "/sso/login"
 
-#: 缓存会话的落盘位置（遵循 ``WESTLAKE_HOME`` 重定位约定）。
-COOKIES_FILENAME = "ams_cookies.json"
-
 #: 缓存有效期（秒）：8 小时，覆盖一个工作日的反复调用。
 _TTL = 8 * 3600
-
-
-def _cookies_path() -> Path:
-    override = os.environ.get("WESTLAKE_HOME")
-    root = Path(override) if override else Path.home() / ".westlake_survival"
-    return root / COOKIES_FILENAME
 
 
 def _save_jar(session) -> None:
@@ -74,26 +64,13 @@ def _save_jar(session) -> None:
         for c in session.cookies
         if "ams.westlake.edu.cn" in (c.domain or "")
     ]
-    path = _cookies_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"ts": time.time(), "cookies": jar}, ensure_ascii=False),
-                    encoding="utf-8")
-    try:
-        path.chmod(0o600)
-    except OSError:  # pragma: no cover - Windows 上权限语义有限
-        pass
+    save_session_data("ams", {"cookies": jar})
 
 
 def _load_jar():
-    """从缓存 cookie 建会话；无缓存或过期返回 ``None``。"""
-    path = _cookies_path()
-    if not path.exists():
-        return None
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    if time.time() - float(payload.get("ts") or 0) > _TTL:
+    """从受保护缓存 cookie 建会话；无缓存或过期返回 ``None``。"""
+    payload = load_session_data("ams", _TTL)
+    if not payload:
         return None
     jar = payload.get("cookies") or []
     if not jar:
@@ -177,8 +154,54 @@ def overview() -> dict:
     }
 
 
+def _clean_address(raw: str) -> str:
+    """规范化 AMS 拼接粘连的地址串，如去掉重复校区后缀并在楼宇与房号间补空格。"""
+    s = (raw or "").strip()
+    if not s:
+        return ""
+    s = re.sub(
+        r"[,，]\s*(?:Yungu\s*Campus|Yunqi\s*Campus|云谷校区|云栖校区)\s*$",
+        "",
+        s,
+        flags=re.IGNORECASE,
+    ).strip()
+    s = re.sub(r"^Campus\s+of\s+YUNGU\s*", "云谷校区 ", s, flags=re.IGNORECASE)
+    s = re.sub(r"^Campus\s+of\s+YUNQI\s*", "云栖校区 ", s, flags=re.IGNORECASE)
+    s = re.sub(r"^Yungu\s+Campus\s*", "云谷校区 ", s, flags=re.IGNORECASE)
+    s = re.sub(r"^Yunqi\s+Campus\s*", "云栖校区 ", s, flags=re.IGNORECASE)
+    s = re.sub(r"([A-Za-z]{3,})([A-Z]\d+[-A-Za-z0-9]*)$", r"\1 \2", s)
+    s = re.sub(r"\bAcademic\s+Laboratories\s+", "学术实验室 ", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bAcademic\s+Ring\s+", "学术环 ", s, flags=re.IGNORECASE)
+    s = re.sub(r"\s{2,}", " ", s).strip()
+    s = re.sub(r"^(云谷校区|云栖校区)\s*\1\s*", r"\1 ", s).strip()
+    return s
+
+
+def _merge_addresses(addrs: list[str]) -> str:
+    """合并平行教室地址列表，共享同一校区前缀时省略后续重复前缀。"""
+    unique: list[str] = []
+    for addr in addrs:
+        cleaned = _clean_address(addr)
+        if cleaned and cleaned not in unique:
+            unique.append(cleaned)
+    if not unique:
+        return ""
+    if len(unique) == 1:
+        return unique[0]
+    for prefix in ("云谷校区", "云栖校区"):
+        if unique[0].startswith(prefix):
+            rest = [unique[0]]
+            for item in unique[1:]:
+                if item.startswith(prefix):
+                    rest.append(item[len(prefix) :].lstrip())
+                else:
+                    rest.append(item)
+            return " / ".join(x for x in rest if x)
+    return " / ".join(unique)
+
+
 def schedule(start: date | str, end: date | str) -> list[dict]:
-    """课程日程：给定日期区间返回排课条目（按开始时间排序）。"""
+    """课程日程：给定日期区间返回排课条目（按开始时间排序，合并平行教室）。"""
     start_s = start.isoformat() if isinstance(start, date) else str(start)
     end_s = end.isoformat() if isinstance(end, date) else str(end)
     data = _get_json(
@@ -187,31 +210,42 @@ def schedule(start: date | str, end: date | str) -> list[dict]:
         {"startDateStr": start_s, "endDateStr": end_s, "reqType": "Date"},
     )
     days = (data or {}).get("schedule") or {}
-    rows: list[dict] = []
-    seen: set[tuple] = set()
+    grouped: dict[tuple, dict] = {}
     for day, payload in days.items():
         for item in (payload or {}).get("calendarList") or []:
-            row = (
+            whole_day = item.get("isWholeDay") in ("1", 1, True)
+            key = (
                 day,
                 item.get("startTime") or "",
                 item.get("endTime") or "",
                 item.get("title") or "",
-                item.get("address") or "",
+                whole_day,
             )
-            # 同一门课的分组/重复行会被接口重复吐回来，按「日期+时段+课名+地点」去重。
-            if row in seen:
-                continue
-            seen.add(row)
-            rows.append(
-                {
+            addr = item.get("address") or ""
+            entry = grouped.get(key)
+            if entry is None:
+                grouped[key] = {
                     "date": day,
-                    "title": row[3],
-                    "start": row[1],
-                    "end": row[2],
-                    "address": row[4],
-                    "whole_day": item.get("isWholeDay") in ("1", 1, True),
+                    "title": key[3],
+                    "start": key[1],
+                    "end": key[2],
+                    "addrs": [addr] if addr else [],
+                    "whole_day": whole_day,
                 }
-            )
+            elif addr:
+                entry["addrs"].append(addr)
+
+    rows = [
+        {
+            "date": entry["date"],
+            "title": entry["title"],
+            "start": entry["start"],
+            "end": entry["end"],
+            "address": _merge_addresses(entry["addrs"]),
+            "whole_day": entry["whole_day"],
+        }
+        for entry in grouped.values()
+    ]
     rows.sort(key=lambda r: (r["date"], r["start"]))
     return rows
 

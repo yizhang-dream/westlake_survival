@@ -15,6 +15,18 @@
 * ``auth``：要本机凭据 / 登录态 / 个人数据 / 校园网——用**使用者自己的**
   账号真跑，结果含个人数据，只适合本机验证，绝不在 CI 或他人环境执行。
 
+子进程强制沙箱（2026-11-03）
+============================
+默认（及任何不含 auth 条目的选择）跑的每条命令都在强制沙箱子进程里执行：
+``WESTLAKE_HOME`` 指向本次运行新建的临时空目录（跑完即删）、
+``WESTLAKE_NO_KEYRING=1``，并移除凭据/令牌类环境变量
+（``WESTLAKE_CREDENTIALS``、``WESTLAKE_CANVAS_TOKEN``、
+``WESTLAKE_HPC_TOKEN``、``HPC_API_KEY``）。本机已配置的钥匙串凭据、
+配置文件、token 文件因此**读不到**——公开聚合命令（``context``/``digest``
+terse 档、``probe``、``share saved``、``sso creds status``）在沙箱内只能
+降级为匿名/无凭据结果（EMPTY/AUTH/失败行），这是有效结果而非缺陷。
+选中含 auth 条目时（--auth/--all）不套沙箱，否则自举与真实凭据全废。
+
 参数自举（2026-11-03，auth 组不再绑具体账号的内容）
 ==================================================
 每个人账号里的课程、作业、讨论、会话、可约资源、已登记分享都不同——
@@ -36,7 +48,7 @@
 
 用法
 ====
-    python tools/module_smoke.py            # 默认：匿名+离线精选集，不碰账号
+    python tools/module_smoke.py            # 默认：匿名+离线精选集（沙箱子进程），不碰账号
     python tools/module_smoke.py --auth     # 只跑需凭据组（本机、自己账号）
     python tools/module_smoke.py --all      # 全量（≈旧版默认行为）
     python tools/module_smoke.py --offline  # 只跑纯离线条目（CI 用的子集）
@@ -54,6 +66,10 @@
 ``FAIL``    其他错误（含超时、解析异常）
 ``MISSING`` 命令不存在（文档承诺了但没实现）
 
+退出码：出现 FAIL/MISSING（匿名选择下还有 AUTH）→ 退出 1，文本与
+``--json`` 各输出分支一致；EMPTY/SKIP 与 auth 组内的 AUTH 是有效结果，
+不影响退出码。
+
 只跑只读命令。不进表的命令（2026-10-27 对账口径）：
 * 写操作：canvas submit/reply/send、booking book/cancel、setup、sso creds set、
   share add/remove、cache clear（清本地缓存）；
@@ -67,11 +83,15 @@ FAIL 时先换新参数再定性（空结果/缺凭据归 AUTH/EMPTY，属有效
 
 from __future__ import annotations
 
+import atexit
 import json
+import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import asdict, dataclass
 from datetime import date, timedelta
@@ -92,8 +112,8 @@ COMMANDS: list[tuple[str, list[str], str, tuple[str, ...]]] = [
     ("version", ["version", "--json"], "版本信息结构化 JSON", ("offline",)),
     ("skill", ["skill", "runtime"], "SkillVM JIT 运行时画像探测", ()),
     ("skill", ["skill", "compile", "--target", "zcode"], "SkillVM AOT 编译 (ZCode)", ("offline",)),
-    ("booking", ["booking", "recommend", "--date", "today", "--limit", "2"], "场地空闲推荐复合求解", ()),
-    ("context", ["context", "--level", "terse"], "此刻快照", ()),
+    ("timeline", ["timeline", "--offline"], "时空行动流（离线模式，沙箱无快照时回退内置校历与班车）", ("offline",)),
+    ("context", ["context", "--level", "terse"], "此刻快照（terse 档纯本地快算）", ()),
     ("digest", ["digest", "--level", "terse"], "晨报", ()),
     ("find", ["find", "论文"], "按需求搜能力（本地索引，CLI/MCP/网页/学术库/注册表）", ("offline",)),
     ("search", ["search", "西湖", "--limit", "3"], "官网搜索", ()),
@@ -131,31 +151,33 @@ COMMANDS: list[tuple[str, list[str], str, tuple[str, ...]]] = [
     ("affairs", ["affairs", "apps", "预约"], "办事大厅应用", ()),
     ("affairs", ["affairs", "app", "证明"], "办事流程应用详情与直达链接", ()),
     ("affairs", ["affairs", "links"], "常用服务入口直达（HPC/预约中心/镜像站）", ()),
-    ("affairs", ["affairs", "portal"], "门户服务", ()),
     ("hpc", ["hpc", "overview"], "集群队列", ()),
     ("hpc", ["hpc", "ai"], "AI 网关", ()),
-    ("hpc", ["hpc", "chat", "1+1=?", "--no-think"], "集群 AI 大模型对话", ()),
-    ("portal", ["portal", "ask", "图书馆开放时间"], "官方 AI 助手问答", ()),
+    ("portal", ["portal", "ask", "图书馆开放时间"], "官方 AI 助手问答（匿名 WebApp 通道，不读凭据）", ()),
     ("instrument", ["instrument", "search", "质谱", "--limit", "2"], "大型仪器共享检索", ()),
     ("finance", ["finance", "sections"], "财务栏目", ()),
     ("mirrors", ["mirrors"], "镜像目录", ()),
     ("wiki", ["wiki", "list", "--cat", "guides"], "百科目录（WikiLake，学生自建）", ()),
     ("wiki", ["wiki", "search", "班车"], "百科标题检索", ()),
     ("wiki", ["wiki", "page", "guides/班车"], "百科单页正文（抓整页）", ()),
-    ("probe", ["probe"], "堵点探测", ()),
+    ("probe", ["probe"], "堵点探测（SIS 探测项沙箱内降级失败行，其余匿名）", ()),
     ("pms", ["pms", "stations"], "打印网点（匿名）", ()),
     ("scholar", ["scholar", "dbs"], "订阅数据库", ()),
     ("scholar", ["scholar", "campus"], "校园 IP 信标", ()),
     ("scholar", ["scholar", "carsi"], "CARSI 目录（随包快照，356 个 SP）", ("offline",)),
     ("scholar", ["scholar", "open", "cnki"], "打印某库直达/CARSI 入口 URL（本地拼链）", ("offline",)),
     ("scholar", ["scholar", "doi", "10.1038/nature12373"], "DOI 题录解析（不带 --out 不下载）", ()),
-    ("share", ["share", "saved"], "已登记分享（本地登记表）", ("offline",)),
+    ("share", ["share", "saved"], "已登记分享（本地登记表；沙箱空 HOME 下为空表）", ("offline",)),
     ("institute", ["institute", "news"], "理论院新闻动态", ()),
     ("institute", ["institute", "events"], "理论院学术活动", ()),
     ("schools", ["schools", "list"], "学院清单", ()),
     ("schools", ["schools", "news", "science"], "学院最新新闻", ()),
     ("sso", ["sso", "creds", "status"], "凭据来源有无（本地探测；无凭据时 AUTH 属预期，不回显密码）", ("offline",)),
     # —— 需凭据 / 登录态 / 个人数据 / 校园网（--auth，用自己账号真跑）——
+    ("affairs", ["affairs", "portal"], "门户服务（浏览器登录 my.westlake.edu.cn，匿名实测 AUTH）", ("auth",)),
+    ("market", ["market", "catalog", "--summary"], "门户数据市集目录概要（进程内只读会话）", ("auth",)),
+    ("booking", ["booking", "recommend", "--date", "today", "--limit", "2"], "场地空闲推荐复合求解（预约中心登录态，并发拉空闲网格）", ("auth",)),
+    ("hpc", ["hpc", "chat", "1+1=?", "--no-think"], "集群 AI 大模型对话（消耗额度；无令牌时自动走统一认证同步 sk-）", ("auth",)),
     ("scholar", ["scholar", "status"], "CARSI 会话有效性（依赖本机已有会话）", ("auth",)),
     ("share", ["share", "files", "--name", "{share_name}"], "列分享文件夹（自举：第一笔已登记分享）", ("auth",)),
     ("lib", ["lib", "search", "数据结构"], "书目检索", ("auth",)),
@@ -232,6 +254,45 @@ _SELECTOR_FLAGS: dict[str, str] = {
     "--offline": "offline",
 }
 
+# --------------------------------------------------------------------------- #
+# 子进程强制沙箱（见模块 docstring「子进程强制沙箱」节）：
+#   * WESTLAKE_HOME → 本次运行新建的临时空目录（keyring 与配置文件随之隔离，
+#     codebase 的 keyring_isolated() 对 HOME 重定向本就整体跳过钥匙串）；
+#   * WESTLAKE_NO_KEYRING=1 显式关钥匙串（双保险）；
+#   * 移除凭据/令牌类环境变量，本机已配置的凭据在冒烟子进程里读不到。
+# 选中含 auth 条目时关闭沙箱（--auth/--all 必须用使用者本机真实凭据自举）。
+# --------------------------------------------------------------------------- #
+
+#: 沙箱子进程一律移除的环境变量名（凭据与令牌，只动键名、不回显值）。
+_SANDBOX_SCRUB_ENV: tuple[str, ...] = (
+    "WESTLAKE_CREDENTIALS",   # sso：学号:密码
+    "WESTLAKE_CANVAS_TOKEN",  # canvas 个人访问令牌
+    "WESTLAKE_HPC_TOKEN",     # HPC 集群 API Key
+    "HPC_API_KEY",            # HPC 集群 API Key（备用变量名）
+)
+
+#: 本次运行的沙箱 HOME（懒创建，进程退出时删除）。
+_sandbox_home: pathlib.Path | None = None
+
+#: 当前选择是否套沙箱；main() 按选中口径设置。
+_sandbox_enabled: bool = True
+
+
+def _sandbox_env() -> dict[str, str]:
+    """冒烟子进程环境：未启用沙箱时原样继承，启用时强制隔离。"""
+    env = dict(os.environ)
+    if not _sandbox_enabled:
+        return env
+    global _sandbox_home
+    if _sandbox_home is None:
+        _sandbox_home = pathlib.Path(tempfile.mkdtemp(prefix="westlake-smoke-"))
+        atexit.register(shutil.rmtree, _sandbox_home, True)
+    for name in _SANDBOX_SCRUB_ENV:
+        env.pop(name, None)
+    env["WESTLAKE_HOME"] = str(_sandbox_home)
+    env["WESTLAKE_NO_KEYRING"] = "1"
+    return env
+
 
 @dataclass
 class Result:
@@ -271,7 +332,24 @@ def _classify(output: str, code: int) -> tuple[str, str]:
     return "OK", first[:90]
 
 
-def run(argv: list[str], timeout: float = 90.0) -> tuple[str, str, float]:
+def _redact_auth_detail(module: str, argv: list[str], out: str, status: str, detail: str) -> str:
+    """``--auth`` 模式下对个人敏感行与凭据模式脱敏（可用 ``--no-redact`` 关闭）。"""
+    if _sandbox_enabled or "--no-redact" in sys.argv:
+        return detail
+    head = tuple(argv[:2])
+    if status == "OK" and (
+        module in {"profile", "records", "aid"}
+        or head in {("sis", "grades"), ("canvas", "conversation"), ("canvas", "inbox")}
+    ):
+        line_count = len([ln for ln in out.splitlines() if ln.strip()])
+        return f"[个人数据已脱敏，共 {line_count} 行]"
+    masked = re.sub(r"\bsk-[A-Za-z0-9_-]{6,}\b", "sk-****", detail)
+    masked = re.sub(r"([A-Za-z0-9._%+-])[^@\s]{0,30}(@[A-Za-z0-9.-]+)", r"\1***\2", masked)
+    masked = re.sub(r"(?<!\d)(\d{2})\d{4,14}(\d{2})(?!\d)", r"\1****\2", masked)
+    return masked
+
+
+def run(argv: list[str], timeout: float = 90.0, *, module: str = "") -> tuple[str, str, float]:
     started = time.time()
     try:
         proc = subprocess.run(
@@ -281,9 +359,11 @@ def run(argv: list[str], timeout: float = 90.0) -> tuple[str, str, float]:
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            env=_sandbox_env(),
         )
         out = (proc.stdout or "") + (proc.stderr or "")
         status, detail = _classify(out, proc.returncode)
+        detail = _redact_auth_detail(module, argv, out, status, detail)
     except subprocess.TimeoutExpired:
         status, detail = "FAIL", f"超时 {timeout:.0f}s"
     except FileNotFoundError:
@@ -304,7 +384,7 @@ def _capture(argv: list[str], timeout: float = 60.0) -> str:
         proc = subprocess.run(
             ["westlake", *argv],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=timeout,
+            timeout=timeout, env=_sandbox_env(),
         )
         return (proc.stdout or "") + (proc.stderr or "")
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
@@ -323,13 +403,20 @@ def _pick_assignment(out: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
-def _pick_topic(out: str) -> str | None:
-    """discussions 表第一行主题：第 4 列（或空未读时第 3 列后）是日期时间。"""
+def _pick_topics(out: str) -> list[str]:
+    """discussions 表全部主题：第 4 列（或空未读时第 3 列后）是日期时间。"""
+    topics: list[str] = []
     for line in out.splitlines():
         parts = re.split(r"\s{2,}", line.strip())
         if len(parts) >= 4 and re.match(r"^\d{4}-\d{2}-\d{2}", parts[-2] if len(parts) > 4 else parts[3]):
-            return parts[0]
-    return None
+            topics.append(parts[0])
+    return topics
+
+
+def _pick_topic(out: str) -> str | None:
+    """discussions 表第一行主题：第 4 列（或空未读时第 3 列后）是日期时间。"""
+    topics = _pick_topics(out)
+    return topics[0] if topics else None
 
 
 def _pick_conversation(out: str) -> str | None:
@@ -368,21 +455,29 @@ def _pick_share_name(out: str) -> str | None:
 
 
 def _scan_course_with(kind: str) -> tuple[str, str] | None:
-    """扫课程表（最多 12 门）找第一门有作业/讨论主题的课，返回 (课程id, 第一项)。
+    """扫课程表（最多 12 门）找第一门有作业/可查看讨论主题的课，返回 (课程id, 第一项)。
 
     第一门课未必有作业或讨论（实测本账号讨论在第 10 门）——直接取第一门
-    会让这两类条目在多数账号上常年 SKIP/EMPTY，扫描保证自举命中。
+    会让这两类条目在多数账号上常年 SKIP/EMPTY，扫描保证自举命中；对于设了
+    ``require_initial_post`` 需先发帖才能看回复的主题则顺位尝试下一个可读主题。
     """
     out = _capture(["canvas", "courses"])
     ids = re.findall(r"(?m)^\s*(\d+)\s", out)[:12]
+    fallback: tuple[str, str] | None = None
     for cid in ids:
         if kind == "assignment":
             item = _pick_assignment(_capture(["canvas", "assignments", "--course", cid]))
-        else:
-            item = _pick_topic(_capture(["canvas", "discussions", "--course", cid]))
-        if item:
-            return cid, item
-    return None
+            if item:
+                return cid, item
+            continue
+        topics = _pick_topics(_capture(["canvas", "discussions", "--course", cid]))
+        for topic in topics[:5]:
+            if fallback is None:
+                fallback = (cid, topic)
+            probe = _capture(["canvas", "entries", "--course", cid, "--topic", topic, "--limit", "1"])
+            if "require_initial_post" not in probe:
+                return cid, topic
+    return fallback
 
 
 def _boot_value(token: str) -> str | None:
@@ -460,6 +555,11 @@ def _select(argv: list[str]) -> tuple[list[tuple[str, list[str], str, tuple[str,
 
 def main() -> int:
     argv = sys.argv[1:]
+    # Windows 控制台默认 GBK 代码页时，状态行里的「←」与命令输出里的
+    # 特殊字符会把整场冒烟中途炸掉——stdout/stderr 钉死 UTF-8（替换不可编码字符）。
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     list_only = "--list" in argv
     argv = [a for a in argv if a != "--list"]
     out_path = ""
@@ -474,6 +574,12 @@ def main() -> int:
             argv = argv[:index] + argv[index + 1 :]
     as_json = bool(out_path) or bare_json or "--stdout-json" in sys.argv
     chosen, label = _select(argv)
+    # 选中含 auth 条目时必须用本机真实凭据（--auth/--all/过滤到 auth 行），
+    # 不套沙箱；纯匿名/离线选择一律强制沙箱，防读本机凭据。
+    global _sandbox_enabled
+    _sandbox_enabled = not any("auth" in tags for *_, tags in chosen)
+    if _sandbox_enabled and not list_only:
+        label += "，沙箱子进程（空 WESTLAKE_HOME + 无钥匙串 + 凭据 env 已移除）"
 
     if list_only:  # 审计口径：只列清单不执行，供核对精选了哪些、砍掉了哪些
         for module, cmd, note, tags in chosen:
@@ -491,10 +597,20 @@ def main() -> int:
             if not as_json:
                 print(f"{'SKIP':8}{module:12}{' '.join(cmd)}  ← {skip_reason}", flush=True)
             continue
-        status, detail, seconds = run(boot_cmd)
+        status, detail, seconds = run(boot_cmd, module=module)
         results.append(Result(module, " ".join(boot_cmd), note, status, detail, seconds, tags))
         if not as_json:
             print(f"{status:8}{module:12}{' '.join(boot_cmd)}  ← {detail}", flush=True)
+        if not _sandbox_enabled:
+            time.sleep(0.15)
+
+    # 退出码契约（2026-11-03）：FAIL/MISSING 一律传播为失败（不掩盖上游 500
+    # 之类的真实故障）；AUTH 在匿名选择（未选任何 auth 行，即沙箱开启）下
+    # 同样算失败——匿名组冒出 AUTH 说明该条目违反免账号契约或上游要求登录，
+    # 不能默默当成功；auth 组（--auth/--all）里 AUTH（本机未配凭据等）维持
+    # 原口径的有效结果。EMPTY/SKIP 永不算失败。文本与 --json 输出一致生效。
+    broken = [r for r in results if r.status in ("FAIL", "MISSING")
+              or (r.status == "AUTH" and _sandbox_enabled)]
 
     if not as_json:
         print()
@@ -503,7 +619,6 @@ def main() -> int:
             counts[item.status] = counts.get(item.status, 0) + 1
         print(f"口径：{label}，本次 {len(results)} 条")
         print("汇总：" + "　".join(f"{k} {v}" for k, v in sorted(counts.items())))
-        broken = [r for r in results if r.status in ("FAIL", "MISSING")]
         if broken:
             print("\n需要处理：")
             for item in broken:
@@ -518,7 +633,7 @@ def main() -> int:
             print(f"写入 {out_path}；" + "　".join(f"{k} {v}" for k, v in sorted(counts.items())))
         else:
             print(payload)
-    return 0
+    return 1 if broken else 0
 
 
 if __name__ == "__main__":

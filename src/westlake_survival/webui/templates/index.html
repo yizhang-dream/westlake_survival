@@ -23,6 +23,15 @@
 </div>
 <h1 class="page" style="display:none">现在</h1>
 
+<div class="chip-cloud" style="margin:-.4rem 0 1.1rem">
+  <a class="chip" href="/timeline">🗓 今日行动流</a>
+  <a class="chip" href="/sis">🎓 学业课表</a>
+  <a class="chip" href="/canvas">📝 Canvas 作业</a>
+  <a class="chip" href="/shuttle">🚌 校园班车</a>
+  <a class="chip" href="/sport">🏟 体育场馆</a>
+  <a class="chip" href="/capabilities">🧭 能力检索</a>
+</div>
+
 {% set portal = ctx.get('extras', {}).get('portal', {}) if ctx is mapping else {} %}
 {% set portal_loading = ctx.get('extras', {}).get('portal_loading') if ctx is mapping else False %}
 {% if portal or portal_loading %}
@@ -57,7 +66,7 @@
 {% endif %}
 
 {% if not available %}
-  <div class="note">概览数据暂未就绪，指标项暂以「—」占位。其他页面功能不受影响。</div>
+  <div class="note">概览数据暂不可用，指标项暂以「—」占位。其他页面功能不受影响。</div>
 {% endif %}
 
 <div class="grid cols-2">
@@ -86,6 +95,23 @@
   </div>
   {% endfor %}
 </div>
+
+{% set ddl_items = ctx.get('next_deadlines') if ctx is mapping else none %}
+{% if ddl_items and ddl_items is sequence and ddl_items is not string and ddl_items[0] is mapping %}
+<h2 class="section">近期作业截止</h2>
+<table class="data">
+  <thead><tr><th>作业</th><th>截止时间</th><th>直达</th></tr></thead>
+  <tbody>
+    {% for d in ddl_items[:5] %}
+    <tr>
+      <td>{{ d.get('name') or '（未命名作业）' }}</td>
+      <td class="time">{{ (d.get('due_at') or '')[:16] | replace('T', ' ') }}</td>
+      <td>{% if d.get('html_url') %}<a href="{{ d.get('html_url') }}" target="_blank" rel="noopener">打开</a>{% else %}<a href="/canvas#cv-deadlines">查看</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
 
 <h2 class="section">最近事件</h2>
 {% if next_event and next_event.get('title') %}

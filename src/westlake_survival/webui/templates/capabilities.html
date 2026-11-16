@@ -20,11 +20,16 @@
   <div class="card cap-item">
     <div style="display:flex;justify-content:space-between;gap:.8rem;align-items:baseline">
       <strong>{{ row.name }}</strong>
-      {% if row.needs_auth %}
-      <span class="muted" style="font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:.1rem .5rem">需凭据</span>
-      {% else %}
-      <span class="muted" style="font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:.1rem .5rem">公开</span>
-      {% endif %}
+      <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
+        {% if row.kind in ('cli', 'mcp') %}
+        <button type="button" class="copy-cmd" data-cmd="{{ row.name if row.kind == 'cli' else row.name.split(':', 1)[1] }}" style="font-size:.72rem;padding:.12rem .5rem;border-radius:999px">复制</button>
+        {% endif %}
+        {% if row.needs_auth %}
+        <span class="muted" style="font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:.1rem .5rem">需凭据</span>
+        {% else %}
+        <span class="muted" style="font-size:.76rem;border:1px solid var(--line);border-radius:999px;padding:.1rem .5rem">公开</span>
+        {% endif %}
+      </div>
     </div>
     <div class="muted" style="font-size:.86rem;margin-top:.25rem">{{ row.summary }}</div>
     {% if row.auth_hint %}
@@ -110,6 +115,18 @@
       const visible = Array.from(group.querySelectorAll('.cap-item')).some((el) => el.style.display !== 'none');
       group.style.display = visible ? '' : 'none';
     });
+  });
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.copy-cmd');
+    if (!btn) return;
+    const cmd = btn.getAttribute('data-cmd') || '';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(cmd).then(() => {
+        const old = btn.textContent;
+        btn.textContent = '已复制 ✓';
+        setTimeout(() => { btn.textContent = old; }, 1400);
+      });
+    }
   });
 })();
 </script>

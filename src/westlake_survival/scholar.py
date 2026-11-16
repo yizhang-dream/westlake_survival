@@ -32,6 +32,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -81,7 +82,11 @@ CARSI_SPLIST_URL = "https://www.carsi.edu.cn/SPlist.html"
 _CARSI_FIXTURE = Path(__file__).parent / "data" / "carsi_sps.json"
 
 #: SSO 持久化浏览器 profile（IdP/IAM 会话跨命令复用，遵循 WESTLAKE_HOME）。
-PROFILE_DIR = config_root() / "scholar_profile"
+def _profile_dir() -> Path:
+    return config_root() / "scholar_profile"
+
+
+PROFILE_DIR = _profile_dir()
 
 
 # --------------------------------------------------------------------------- #
@@ -741,12 +746,13 @@ def sso_browser(target: str = "cnki", *, headless: bool = False,
         raise AuthError("未配置统一凭据；先 westlake setup 或网页「设置」页配置") from exc
 
     entry = carsi_sso_entry(target, return_url)
-    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    profile_dir = _profile_dir()
+    profile_dir.mkdir(parents=True, exist_ok=True)
     landing = ""
     merged = 0
     with _browser() as playwright:
         context = playwright.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=headless, viewport={"width": 1280, "height": 860},
+            str(profile_dir), headless=headless, viewport={"width": 1280, "height": 860},
             args=["--disable-features=PasswordSavingOnSignIn,PasswordManagerEnabled"],
         )
         page = context.pages[0] if context.pages else context.new_page()
@@ -767,7 +773,7 @@ def sso_browser(target: str = "cnki", *, headless: bool = False,
                                 page.evaluate(_BANNER_JS)
                             except Exception:
                                 pass
-                            print("已在 IAM 表单填入账号密码；请在窗口输入验证码并登录。")
+                            print("已在 IAM 表单填入账号密码；请在窗口输入验证码并登录。", file=sys.stderr, flush=True)
                 elif _left_identity_layer(url):
                     landing = url
                     break

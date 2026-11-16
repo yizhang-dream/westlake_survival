@@ -9,7 +9,7 @@
 - 认证协议：登录后下发长效 userJwt（多日有效），业务请求走 ``PrimoAuthorization: Bearer <userJwt>``。
 
 本模块实现：
-1. 自动登录与 JWT 跨会话缓存（~/.westlake_survival/lib_jwt.json）；
+1. 自动登录与 JWT 受保护跨会话缓存（通过 ``sso.session_store`` 加密/0600 落盘）；
 2. 借阅查询 ``get_reader_loans()`` 封装为通用 :class:`~westlake_survival.lib.models.Loan` 模型；
 3. 失效自愈：JWT 过期或被服务端拒收时自动重新建立会话。
 """
@@ -19,16 +19,20 @@ from __future__ import annotations
 import json
 import logging
 import time
-from pathlib import Path
 from typing import Any
 
 import requests
 
-from westlake_survival._cache import config_root, load_cached, save_cached
+from westlake_survival._cache import load_cached, save_cached
 from westlake_survival._net import DEFAULT_TIMEOUT
 from westlake_survival.discovery import direct_session
 from westlake_survival.exceptions import AuthError, NotFound, OffCampusError, WestlakeError
 from westlake_survival.lib.models import Loan
+from westlake_survival.sso.session_store import (
+    clear_session_data,
+    load_session_data,
+    save_session_data,
+)
 
 __all__ = [
     "MYLIB_BASE_URL",
@@ -40,48 +44,36 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 MYLIB_BASE_URL = "https://mylib.westlake.edu.cn"
-_JWT_CACHE_FILE = "lib/user_jwt.json"
-
-
-def _jwt_cache_path() -> Path:
-    return config_root() / "cache" / _JWT_CACHE_FILE
 
 
 def _load_cached_jwt() -> str | None:
-    path = _jwt_cache_path()
-    if not path.exists():
+    data = load_session_data("mylib", ttl=None)
+    if not data:
         return None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
         token = data.get("token")
         exp = float(data.get("exp") or 0)
         # 预留 10 分钟缓冲区
         if token and exp > time.time() + 600:
-            return token
-    except Exception:
+            return str(token)
+    except (TypeError, ValueError):
         pass
     return None
 
 
 def _save_cached_jwt(token: str, exp: float, user_info: dict | None = None) -> None:
-    path = _jwt_cache_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "token": token,
-        "exp": exp,
-        "user_info": user_info or {},
-        "updated_at": time.time(),
-    }
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_session_data(
+        "mylib",
+        {
+            "token": token,
+            "exp": exp,
+            "user_info": user_info or {},
+        },
+    )
 
 
 def _clear_cached_jwt() -> None:
-    path = _jwt_cache_path()
-    if path.exists():
-        try:
-            path.unlink()
-        except OSError:
-            pass
+    clear_session_data("mylib")
 
 
 def get_mylib_jwt(*, force_refresh: bool = False) -> str:

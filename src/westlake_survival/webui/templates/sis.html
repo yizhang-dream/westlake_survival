@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}学业 · 西湖生存手册{% endblock %}
 {% block content %}
-<h1 class="page">学业（SIS）</h1>
+<h1 class="page">学业（SIS）
+  {% if cached_age %}<a class="chip plain" href="/sis?refresh=1" title="{{ cached_age }} 秒前缓存，点击强制重抓">缓存 {{ cached_age }}s · ↻ 刷新</a>
+  {% else %}<a class="chip" href="/sis?refresh=1" title="点击刷新学业数据">实时 · ↻ 刷新</a>{% endif %}
+</h1>
 
 {% set sched = blocks.get('schedule') %}
 {% set gr = blocks.get('grades') %}

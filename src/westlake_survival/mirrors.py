@@ -35,8 +35,13 @@ def _parse_html(html: str) -> list[MirrorRepo]:
         title = re.sub(r"<[^>]+>", " ", title)
         title = re.sub(r"\s+", " ", title).strip()
         if href.startswith("/posts/") and "_help" in href:
-            # Help 链接跟在它所属仓库之后：挂到上一个仓库。
-            slug = href.rsplit("/", 1)[-1].replace("_help.html", "")
+            # Help 链接跟在它所属仓库之后：挂到上一个仓库（兼容 _help/ 与 _help.html）。
+            slug = (
+                href.rstrip("/")
+                .rsplit("/", 1)[-1]
+                .removesuffix("_help.html")
+                .removesuffix("_help")
+            )
             for item in items:
                 if item.name.lower().replace("-", "") == slug.lower().replace("-", ""):
                     # 存绝对地址：CLI 输出可复制、页面 href 也可直接点。
@@ -47,7 +52,13 @@ def _parse_html(html: str) -> list[MirrorRepo]:
                         item.help_url = "/".join(origin[:3]) + href
                     break
             continue
-        if href.startswith("https://mirrors.westlake.edu.cn/") and title and title != "Help" and href not in seen:
+        if (
+            href.startswith("https://mirrors.westlake.edu.cn/")
+            and href.rstrip("/") != "https://mirrors.westlake.edu.cn"
+            and title
+            and title != "Help"
+            and href not in seen
+        ):
             seen.add(href)
             items.append(MirrorRepo(name=title, url=href))
     if len(items) < 6:

@@ -1265,16 +1265,9 @@ def _tool_canvas_deadlines(args: dict) -> Any:
 
 
 def _tool_canvas_submit(args: dict) -> Any:
-    """提交 Canvas 作业（写操作）；``confirm=true`` 才真正提交，否则只预检。"""
-    from westlake_survival.canvas import canvas, resolve_token
-
-    if resolve_token() is None:
-        raise ToolHint(
-            "未配置 Canvas API token，无法提交作业。请在 Canvas 网页"
-            "「账户 → 设置 → 新建访问令牌」生成令牌后，设置环境变量 "
-            "WESTLAKE_CANVAS_TOKEN（或写入 ~/.westlake_survival/canvas_token.txt "
-            "首行），再重试。"
-        )
+    """提交 Canvas 作业（写操作）；先预检取 Action Card，传 ``ticket`` 或 ``confirm=true`` 才真正提交。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.consequence import gate_mcp
 
     course = _opt_keyword(args, "course")
     assignment = _opt_keyword(args, "assignment")
@@ -1286,27 +1279,40 @@ def _tool_canvas_submit(args: dict) -> Any:
     text = _opt_str(args, "text")
     url = _opt_str(args, "url")
     confirm = bool(args.get("confirm"))
+    ticket = _opt_str(args, "ticket")
+
+    authorized, card = gate_mcp(
+        "canvas.submit",
+        confirm=confirm,
+        ticket=ticket,
+        target=f"课程 {course} / 作业 {assignment}",
+        payload={"files": raw_files, "text": text, "url": url},
+    )
 
     client = canvas()
     found_course = client.find_course(course)
     found_assignment = client.find_assignment(found_course.id, assignment)
-    plan = client.submit_assignment(
-        found_course.id,
-        found_assignment.id,
-        file_paths=raw_files,
-        text=text,
-        url=url,
-        dry_run=True,
-    )
-    plan.update(
-        {
-            "course_id": found_course.id,
-            "course": f"{found_course.course_code or ''} {found_course.name}".strip(),
-            "confirm": confirm,
-        }
-    )
-    if not confirm:
-        plan["hint"] = "预检通过但未提交。确认无误后带 confirm=true 重新调用才会真正提交。"
+    if not authorized:
+        plan = client.submit_assignment(
+            found_course.id,
+            found_assignment.id,
+            file_paths=raw_files,
+            text=text,
+            url=url,
+            dry_run=True,
+        )
+        plan.update(
+            {
+                "course_id": found_course.id,
+                "course": f"{found_course.course_code or ''} {found_course.name}".strip(),
+                "confirm": False,
+                "action_card": card.to_dict(),
+                "hint": (
+                    f"预检通过但未提交。确认无误后带 ticket={card.ticket!r}"
+                    "（或保持同参数传 confirm=true）重新调用才会真正提交。"
+                ),
+            }
+        )
         return _to_plain(plan)
     submission = client.submit_assignment(
         found_course.id,
@@ -1332,20 +1338,34 @@ def _tool_canvas_submit(args: dict) -> Any:
 
 
 def _tool_canvas_upload(args: dict) -> Any:
-    """上传本地文件到 Canvas 个人云盘/文件区（写操作）；confirm=true 才真正上传，否则只预检。"""
-    from westlake_survival.canvas import canvas, resolve_token
+    """上传本地文件到 Canvas 个人云盘/文件区（写操作）；先预检取 Action Card，传 ``ticket`` 或 ``confirm=true`` 才上传。"""
+    from pathlib import Path
+    from westlake_survival.canvas import canvas
+    from westlake_survival.consequence import gate_mcp
 
-    if resolve_token() is None:
-        raise ToolHint("未配置 Canvas API token，无法上传文件。")
     file_path = _opt_str(args, "file_path")
     if not file_path:
         raise ValueError("参数 file_path 必填（本地文件绝对路径）。")
     confirm = bool(args.get("confirm"))
+    ticket = _opt_str(args, "ticket")
+    path = Path(file_path).resolve()
+    authorized, card = gate_mcp(
+        "canvas.upload",
+        confirm=confirm,
+        ticket=ticket,
+        target=path.name,
+        payload={"file": str(path)},
+    )
 
     client = canvas()
-    result = client.upload_user_file(file_path, dry_run=not confirm)
-    if not confirm:
-        result["hint"] = "文件预检通过。确认无误后带 confirm=true 重新调用才会真正上传至 Canvas 个人文件区。"
+    result = client.upload_user_file(file_path, dry_run=not authorized)
+    if not authorized:
+        result["confirm"] = False
+        result["action_card"] = card.to_dict()
+        result["hint"] = (
+            f"文件预检通过。确认无误后带 ticket={card.ticket!r}"
+            "（或保持同参数传 confirm=true）重新调用才会真正上传至 Canvas 个人文件区。"
+        )
         return result
     return {
         "success": True,
@@ -1357,20 +1377,32 @@ def _tool_canvas_upload(args: dict) -> Any:
 
 
 def _tool_canvas_dismiss_todo(args: dict) -> Any:
-    """忽略/归档一条 Canvas 个人待办事项（写操作）；confirm=true 才真正忽略，否则只预检。"""
-    from westlake_survival.canvas import canvas, resolve_token
+    """忽略/归档一条 Canvas 个人待办事项（写操作）；先预检取 Action Card，传 ``ticket`` 或 ``confirm=true`` 才执行。"""
+    from westlake_survival.canvas import canvas
+    from westlake_survival.consequence import gate_mcp
 
-    if resolve_token() is None:
-        raise ToolHint("未配置 Canvas API token，无法操作待办。")
     keyword_or_id = _opt_str(args, "keyword_or_id")
     if not keyword_or_id:
         raise ValueError("参数 keyword_or_id 必填（待办作业 ID 或标题/课程关键词）。")
     confirm = bool(args.get("confirm"))
+    ticket = _opt_str(args, "ticket")
+    authorized, card = gate_mcp(
+        "canvas.dismiss_todo",
+        confirm=confirm,
+        ticket=ticket,
+        target=f"待办匹配: {keyword_or_id}",
+        payload={"query": keyword_or_id},
+    )
 
     client = canvas()
-    result = client.dismiss_todo(keyword_or_id, dry_run=not confirm)
-    if not confirm:
-        result["hint"] = "待办匹配成功。确认无误后带 confirm=true 重新调用才会真正从待办列表中忽略/归档。"
+    result = client.dismiss_todo(keyword_or_id, dry_run=not authorized)
+    if not authorized:
+        result["confirm"] = False
+        result["action_card"] = card.to_dict()
+        result["hint"] = (
+            f"待办匹配成功。确认无误后带 ticket={card.ticket!r}"
+            "（或保持同参数传 confirm=true）重新调用才会真正从待办列表中忽略/归档。"
+        )
     return result
 
 
@@ -1417,7 +1449,9 @@ def _tool_pms_jobs(args: dict) -> Any:
 
 
 def _tool_pms_print(args: dict) -> Any:
-    """上传本地文件并创建自助文印作业（写操作）；confirm=true 才真正提交，否则只预检。"""
+    """上传本地文件并创建自助文印作业（写操作）；先预检取 Action Card，传 ``ticket`` 或 ``confirm=true`` 才提交。"""
+    from pathlib import Path
+    from westlake_survival.consequence import gate_mcp
     from westlake_survival.pms import pms
 
     file_path = _opt_str(args, "file_path")
@@ -1427,6 +1461,16 @@ def _tool_pms_print(args: dict) -> Any:
     duplex = int(args.get("duplex") or 1)
     color = int(args.get("color") or 1)
     confirm = bool(args.get("confirm"))
+    ticket = _opt_str(args, "ticket")
+
+    path = Path(file_path).resolve()
+    authorized, card = gate_mcp(
+        "pms.print",
+        confirm=confirm,
+        ticket=ticket,
+        target=f"{path.name} ({copies} 份)",
+        payload={"file": str(path), "copies": copies, "duplex": duplex, "color": color},
+    )
 
     client = pms()
     result = client.submit_print_job_safe(
@@ -1434,29 +1478,50 @@ def _tool_pms_print(args: dict) -> Any:
         copies=copies,
         duplex=duplex,
         color=color,
-        dry_run=not confirm,
+        dry_run=not authorized,
     )
-    if not confirm:
-        result["hint"] = "文印预检通过。确认无误后带 confirm=true 重新调用才会真正上传并进入打印队列。"
+    if not authorized:
+        result["confirm"] = False
+        result["action_card"] = card.to_dict()
+        result["hint"] = (
+            f"文印预检通过。确认无误后带 ticket={card.ticket!r}"
+            "（或保持同参数传 confirm=true）重新调用才会真正上传并进入打印队列。"
+        )
     return result
 
 
 def _tool_pms_cancel(args: dict) -> Any:
-    """从自助文印云队列中删除指定作业（写操作）；confirm=true 才真正删除，否则只预检。"""
+    """从自助文印云队列中删除指定作业（写操作）；先预检取 Action Card，传 ``ticket`` 或 ``confirm=true`` 才删除。"""
+    from westlake_survival.consequence import gate_mcp
     from westlake_survival.pms import pms
 
     job_id = args.get("job_id")
     if job_id is None:
         raise ValueError("参数 job_id 必填（打印作业 ID）。")
     confirm = bool(args.get("confirm"))
+    ticket = _opt_str(args, "ticket")
+    jid = int(job_id)
+
+    authorized, card = gate_mcp(
+        "pms.cancel",
+        confirm=confirm,
+        ticket=ticket,
+        target=f"文印作业 ID: {jid}",
+        payload={"job_id": jid},
+    )
 
     client = pms()
     result = client.cancel_print_job_safe(
-        job_id=int(job_id),
-        dry_run=not confirm,
+        job_id=jid,
+        dry_run=not authorized,
     )
-    if not confirm:
-        result["hint"] = f"作业 ID {job_id} 存在于待打印队列。带 confirm=true 重新调用将正式从队列删除。"
+    if not authorized:
+        result["confirm"] = False
+        result["action_card"] = card.to_dict()
+        result["hint"] = (
+            f"作业 ID {jid} 存在于待打印队列。带 ticket={card.ticket!r}"
+            "（或保持同参数传 confirm=true）重新调用将正式从队列删除。"
+        )
     return result
 
 
@@ -1478,27 +1543,46 @@ def _tool_timeline(args: dict) -> Any:
 
 
 def _tool_calendar_export(args: dict) -> Any:
-    """把课表/融合日程导出为 .ics 文件（写操作）；confirm=true 才真正写入，否则只预检。"""
+    """把课表/融合日程导出为 .ics 文件（写操作）；先预检取 Action Card，传 ``ticket`` 或 ``confirm=true`` 才写入。"""
     from pathlib import Path
+    from westlake_survival.consequence import gate_mcp
     from westlake_survival.ical import save_ics
     from westlake_survival.sis import get_schedule
 
     output_path = _opt_str(args, "output_path") or "schedule.ics"
     dest = Path(output_path).resolve()
     confirm = bool(args.get("confirm"))
+    ticket = _opt_str(args, "ticket")
+
+    authorized, card = gate_mcp(
+        "calendar.export",
+        confirm=confirm,
+        ticket=ticket,
+        target=f"{dest.name} ({dest})",
+        payload={"output_path": str(dest)},
+    )
+    if not authorized:
+        preview: dict[str, Any] = {
+            "dry_run": True,
+            "confirm": False,
+            "output_path": str(dest),
+            "action_card": card.to_dict(),
+        }
+        try:
+            sessions = get_schedule()
+            preview["sessions_count"] = len(sessions)
+            preview["msg"] = f"课表包含 {len(sessions)} 门课程节次，符合导出条件。"
+        except Exception:
+            preview["msg"] = "预览已生成，课表待执行时读取（需已配置教务凭据与校园网/VPN）。"
+        preview["hint"] = (
+            f"预检通过。确认无误后带 ticket={card.ticket!r}"
+            "（或保持同参数传 confirm=true）重新调用将正式写入 .ics 文件。"
+        )
+        return preview
 
     sessions = get_schedule()
     if not sessions:
         raise ValueError("当前课表为空，无法导出日历文件。")
-
-    if not confirm:
-        return {
-            "dry_run": True,
-            "msg": f"课表包含 {len(sessions)} 门课程节次，符合导出条件。",
-            "sessions_count": len(sessions),
-            "output_path": str(dest),
-            "hint": "预检通过。确认无误后带 confirm=true 重新调用将正式写入 .ics 文件。",
-        }
 
     target = save_ics(sessions, dest)
     return {
@@ -1533,27 +1617,26 @@ def _tool_booking_recommend(args: dict) -> Any:
 def _tool_canvas_star(args: dict) -> Any:
     """将课程加入个人收藏/星标（置顶于面板）。"""
     from westlake_survival.canvas import canvas
-    from westlake_survival.consequence import require_confirmation
+    from westlake_survival.consequence import gate_mcp
 
     course = _opt_str(args, "course")
     if not course:
         raise ValueError("参数 course 不能为空")
-    confirm = bool(args.get("confirm"))
-    client = canvas()
-    found = client.find_course(course)
-    _, card = require_confirmation(
+    authorized, card = gate_mcp(
         "canvas.star",
-        confirmed=confirm,
-        dry_run=not confirm,
-        target=f"{found.course_code or ''} {found.name}",
-        payload={"course_id": found.id, "name": found.name},
+        confirm=bool(args.get("confirm")),
+        ticket=_opt_str(args, "ticket"),
+        target=course,
+        payload={"course": course},
     )
-    if not confirm:
+    if not authorized:
         return {
             "confirm": False,
-            "action_card": card.to_dict() if card else None,
-            "hint": "预检通过。带 confirm=true 即可真正执行加入收藏。",
+            "action_card": card.to_dict(),
+            "hint": f"预览已生成，课程尚未查询。核对后带 ticket={card.ticket!r}（或同参数传 confirm=true）执行加入收藏。",
         }
+    client = canvas()
+    found = client.find_course(course)
     client.star_course(found.id)
     return {"starred": True, "course_id": found.id, "name": found.name}
 
@@ -1561,90 +1644,161 @@ def _tool_canvas_star(args: dict) -> Any:
 def _tool_canvas_unstar(args: dict) -> Any:
     """取消课程个人收藏/星标。"""
     from westlake_survival.canvas import canvas
-    from westlake_survival.consequence import require_confirmation
+    from westlake_survival.consequence import gate_mcp
 
     course = _opt_str(args, "course")
     if not course:
         raise ValueError("参数 course 不能为空")
-    confirm = bool(args.get("confirm"))
-    client = canvas()
-    found = client.find_course(course)
-    _, card = require_confirmation(
+    authorized, card = gate_mcp(
         "canvas.unstar",
-        confirmed=confirm,
-        dry_run=not confirm,
-        target=f"{found.course_code or ''} {found.name}",
-        payload={"course_id": found.id, "name": found.name},
+        confirm=bool(args.get("confirm")),
+        ticket=_opt_str(args, "ticket"),
+        target=course,
+        payload={"course": course},
     )
-    if not confirm:
+    if not authorized:
         return {
             "confirm": False,
-            "action_card": card.to_dict() if card else None,
-            "hint": "预检通过。带 confirm=true 即可真正执行取消收藏。",
+            "action_card": card.to_dict(),
+            "hint": f"预览已生成，课程尚未查询。核对后带 ticket={card.ticket!r}（或同参数传 confirm=true）执行取消收藏。",
         }
+    client = canvas()
+    found = client.find_course(course)
     client.unstar_course(found.id)
     return {"unstarred": True, "course_id": found.id, "name": found.name}
 
 
 def _tool_lib_renew(args: dict) -> Any:
     """在借图书在线续借。"""
-    from westlake_survival.consequence import require_confirmation
+    from westlake_survival.consequence import gate_mcp
     from westlake_survival.lib.mylib import renew_loan
 
     barcode = _opt_str(args, "barcode")
     if not barcode:
         raise ValueError("参数 barcode 不能为空（图书条形码）")
-    confirm = bool(args.get("confirm"))
-    _, card = require_confirmation(
+    authorized, card = gate_mcp(
         "lib.renew",
-        confirmed=confirm,
-        dry_run=not confirm,
+        confirm=bool(args.get("confirm")),
+        ticket=_opt_str(args, "ticket"),
         target=f"条码: {barcode}",
         payload={"barcode": barcode},
     )
-    res = renew_loan(barcode, dry_run=not confirm)
-    if not confirm:
+    res = renew_loan(barcode, dry_run=not authorized)
+    if not authorized:
         return {
             "confirm": False,
-            "action_card": card.to_dict() if card else None,
+            "action_card": card.to_dict(),
             "result": res,
-            "hint": "续借预检通过。带 confirm=true 重新调用即可完成在线续借。",
+            "hint": f"续借预检通过。带 ticket={card.ticket!r}（或同参数传 confirm=true）重新调用即可完成在线续借。",
         }
     return res
 
 
+def _tool_lib_search(args: dict) -> Any:
+    """检索图书馆书目（按题名/关键词）。"""
+    from westlake_survival.lib import search
+
+    keyword = _opt_str(args, "keyword")
+    if not keyword:
+        raise ValueError("参数 keyword 不能为空")
+    page = _opt_int(args, "page", 1, minimum=1, maximum=100)
+    return [book.to_dict() for book in search(keyword, page=page)]
+
+
+def _tool_lib_loans(args: dict) -> Any:
+    """列出个人当前借阅记录（含条码、应还日期与可续借状态）。"""
+    from westlake_survival.lib import my_loans
+
+    refresh = bool(args.get("refresh", False))
+    return [loan.to_dict() for loan in my_loans(force_refresh=refresh)]
+
+
 def _tool_timeline_add_memo(args: dict) -> Any:
-    """添加个人日程生活备忘。"""
+    """添加个人日程生活备忘（写操作，受 Action Card 保护）。"""
+    from westlake_survival.consequence import gate_mcp
     from westlake_survival.timeline import add_memo
 
     text = _opt_str(args, "text")
     if not text:
         raise ValueError("参数 text 不能为空")
     time_str = _opt_str(args, "time") or ""
+    authorized, card = gate_mcp(
+        "timeline.memo",
+        confirm=bool(args.get("confirm")),
+        ticket=_opt_str(args, "ticket"),
+        target=f"备忘: {text}",
+        payload={"text": text, "time": time_str, "action": "add"},
+    )
+    if not authorized:
+        return {
+            "confirm": False,
+            "action_card": card.to_dict(),
+            "hint": f"预检通过，尚未保存。确认后带 ticket={card.ticket!r}（或同参数传 confirm=true）执行添加备忘。",
+        }
     memo = add_memo(text, time_str=time_str)
     return memo.to_dict()
 
 
 def _tool_timeline_done_memo(args: dict) -> Any:
-    """标记个人生活备忘完成。"""
+    """标记个人生活备忘完成（写操作，受 Action Card 保护）。"""
+    from westlake_survival.consequence import gate_mcp
     from westlake_survival.timeline import toggle_memo
 
     memo_id = _opt_str(args, "memo_id")
     if not memo_id:
         raise ValueError("参数 memo_id 不能为空")
+    authorized, card = gate_mcp(
+        "timeline.memo",
+        confirm=bool(args.get("confirm")),
+        ticket=_opt_str(args, "ticket"),
+        target=f"备忘ID: {memo_id}",
+        payload={"memo_id": memo_id, "action": "done"},
+    )
+    if not authorized:
+        return {
+            "confirm": False,
+            "action_card": card.to_dict(),
+            "hint": f"预检通过，尚未改动。确认后带 ticket={card.ticket!r}（或同参数传 confirm=true）标记备忘完成。",
+        }
     memo = toggle_memo(memo_id, done=True)
     return memo.to_dict()
 
 
 def _tool_timeline_delete_memo(args: dict) -> Any:
-    """删除指定个人生活备忘。"""
+    """删除指定个人生活备忘（写操作，受 Action Card 保护）。"""
+    from westlake_survival.consequence import gate_mcp
     from westlake_survival.timeline import delete_memo
 
     memo_id = _opt_str(args, "memo_id")
     if not memo_id:
         raise ValueError("参数 memo_id 不能为空")
+    authorized, card = gate_mcp(
+        "timeline.memo",
+        confirm=bool(args.get("confirm")),
+        ticket=_opt_str(args, "ticket"),
+        target=f"备忘ID: {memo_id}",
+        payload={"memo_id": memo_id, "action": "delete"},
+    )
+    if not authorized:
+        return {
+            "confirm": False,
+            "action_card": card.to_dict(),
+            "hint": f"预检通过，尚未删除。确认后带 ticket={card.ticket!r}（或同参数传 confirm=true）删除该备忘。",
+        }
     ok = delete_memo(memo_id)
     return {"ok": ok, "memo_id": memo_id}
+
+
+def _tool_market_query(args: dict) -> Any:
+    """门户数据市集只读查询（返回脱敏概要：目录元数据或条数+字段名）。"""
+    from westlake_survival.market import KINDS, fetch_summary
+
+    query = _opt_str(args, "query")
+    if not query or query not in KINDS:
+        raise ValueError(f"参数 query 必填，且须为 {', '.join(KINDS)} 之一")
+    summary = bool(args.get("summary", False))
+    page_size = _opt_int(args, "page_size", 100, minimum=1, maximum=100)
+    return fetch_summary(query, counts_only=summary, page_size=page_size)
 
 
 # --------------------------------------------------------------------------- #
@@ -1686,6 +1840,9 @@ def _str_param(description: str, *, enum: list[str] | None = None) -> dict[str, 
     if enum:
         param["enum"] = enum
     return param
+
+
+_TICKET_PARAM = _str_param("预检 Action Card 返回的一次性放行凭据（15 分钟内单次有效，绑定目标与参数摘要，推荐）。")
 
 _TOOL_SPECS: tuple[dict[str, Any], ...] = (
     {
@@ -2228,8 +2385,8 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
     {
         "name": "canvas_submit",
         "description": (
-            "提交 Canvas 作业（写操作，需 Canvas API token）：上传文件 / 文本 / 链接。"
-            "缺省只预检返回提交计划；confirm=true 才真正提交。"
+            "提交 Canvas 作业（写操作，令牌或统一密码均可）：上传文件 / 文本 / 链接。"
+            "缺省只预检返回提交计划与一次性 ticket；传 ticket 或同参数 confirm=true 才真正提交。"
         ),
         "inputSchema": _schema(
             {
@@ -2242,9 +2399,10 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
                 },
                 "text": _str_param("文本提交内容（online_text_entry）。"),
                 "url": _str_param("链接提交地址（online_url）。"),
+                "ticket": _TICKET_PARAM,
                 "confirm": {
                     "type": "boolean",
-                    "description": "true 时真正提交；缺省只预检。文件/文本/链接三选一。",
+                    "description": "预检后同参数传 true 执行提交（建议优先传 ticket）；禁止跳过预检。",
                 },
             },
             ["course", "assignment"],
@@ -2254,15 +2412,16 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
     {
         "name": "canvas_upload",
         "description": (
-            "上传本地文件至 Canvas 个人文件云盘（写操作，需 Canvas API token）："
-            "缺省只预检文件大小与类型；confirm=true 才真正上传。"
+            "上传本地文件至 Canvas 个人文件云盘（写操作，令牌或统一密码均可）："
+            "缺省只预检文件大小与类型；传 ticket 或同参数 confirm=true 才真正上传。"
         ),
         "inputSchema": _schema(
             {
                 "file_path": _str_param("本地文件的绝对路径。"),
+                "ticket": _TICKET_PARAM,
                 "confirm": {
                     "type": "boolean",
-                    "description": "true 时真正执行上传；缺省只预检。",
+                    "description": "预检后同参数传 true 执行上传（建议优先传 ticket）。",
                 },
             },
             ["file_path"],
@@ -2272,15 +2431,16 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
     {
         "name": "canvas_dismiss_todo",
         "description": (
-            "忽略/归档一条 Canvas 个人待办事项（写操作，需 Canvas API token）："
-            "支持按作业 ID 或标题/课程关键词匹配；confirm=true 才真正执行忽略。"
+            "忽略/归档一条 Canvas 个人待办事项（写操作，令牌或统一密码均可）："
+            "支持按作业 ID 或标题/课程关键词匹配；传 ticket 或同参数 confirm=true 才执行。"
         ),
         "inputSchema": _schema(
             {
                 "keyword_or_id": _str_param("待办作业 ID 或标题/课程关键词。"),
+                "ticket": _TICKET_PARAM,
                 "confirm": {
                     "type": "boolean",
-                    "description": "true 时真正忽略/归档该待办；缺省只预检。",
+                    "description": "预检后同参数传 true 执行忽略/归档（建议优先传 ticket）。",
                 },
             },
             ["keyword_or_id"],
@@ -2307,7 +2467,7 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "name": "pms_print",
         "description": (
             "上传本地文档并创建自助文印作业（写操作，联创云打印）："
-            "支持设置份数、单双面、色彩。缺省只预检；confirm=true 才真正上传并入队。"
+            "支持设置份数、单双面、色彩。缺省只预检；传 ticket 或同参数 confirm=true 才上传入队。"
         ),
         "inputSchema": _schema(
             {
@@ -2315,9 +2475,10 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
                 "copies": _int_param("打印份数，默认 1。", minimum=1, maximum=100),
                 "duplex": _int_param("单双面：1 单面，2 双面长边，3 双面短边；默认 1。", minimum=1, maximum=3),
                 "color": _int_param("颜色：1 黑白，2 彩色；默认 1。", minimum=1, maximum=2),
+                "ticket": _TICKET_PARAM,
                 "confirm": {
                     "type": "boolean",
-                    "description": "true 时真正上传提交云队列；缺省只预检。",
+                    "description": "预检后同参数传 true 执行上传（建议优先传 ticket）。",
                 },
             },
             ["file_path"],
@@ -2328,14 +2489,15 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "name": "pms_cancel",
         "description": (
             "从自助文印云打印队列中删除指定作业（写操作）："
-            "缺省只校验作业存在性并输出预检结果；confirm=true 才真正删除。"
+            "缺省只校验作业存在性并输出预检结果；传 ticket 或同参数 confirm=true 才真正删除。"
         ),
         "inputSchema": _schema(
             {
                 "job_id": _int_param("打印作业 ID（dwJobId）。"),
+                "ticket": _TICKET_PARAM,
                 "confirm": {
                     "type": "boolean",
-                    "description": "true 时真正删除作业；缺省只预检。",
+                    "description": "预检后同参数传 true 执行删除（建议优先传 ticket）。",
                 },
             },
             ["job_id"],
@@ -2346,14 +2508,15 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
         "name": "calendar_export",
         "description": (
             "将 SIS 课表导出为标准 iCalendar (.ics) 日历文件（写操作）："
-            "缺省只校验课表节次并返回预检计划；confirm=true 才真正写入指定路径。"
+            "缺省只校验课表节次并返回预检计划；传 ticket 或同参数 confirm=true 才真正写入。"
         ),
         "inputSchema": _schema(
             {
                 "output_path": _str_param("输出文件路径（默认 schedule.ics）。"),
+                "ticket": _TICKET_PARAM,
                 "confirm": {
                     "type": "boolean",
-                    "description": "true 时真正写入 .ics 文件；缺省只预检。",
+                    "description": "预检后同参数传 true 写入 .ics 文件（建议优先传 ticket）。",
                 },
             }
         ),
@@ -2470,11 +2633,12 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
     },
     {
         "name": "canvas_star",
-        "description": "将课程加入个人收藏/星标（置顶于课程面板，写操作）。",
+        "description": "将课程加入个人收藏/星标（置顶于课程面板，写操作；需先预检后传 ticket 或同参数 confirm=true）。",
         "inputSchema": _schema(
             {
                 "course": _str_param("课程 id 或名称关键词。"),
-                "confirm": {"type": "boolean", "description": "true 时真正执行，缺省仅预检。"},
+                "ticket": _TICKET_PARAM,
+                "confirm": {"type": "boolean", "description": "预检后同参数传 true 执行（建议优先传 ticket）。"},
             },
             ["course"],
         ),
@@ -2482,27 +2646,118 @@ _TOOL_SPECS: tuple[dict[str, Any], ...] = (
     },
     {
         "name": "canvas_unstar",
-        "description": "取消课程个人收藏/星标（写操作）。",
+        "description": "取消课程个人收藏/星标（写操作；需先预检后传 ticket 或同参数 confirm=true）。",
         "inputSchema": _schema(
             {
                 "course": _str_param("课程 id 或名称关键词。"),
-                "confirm": {"type": "boolean", "description": "true 时真正执行，缺省仅预检。"},
+                "ticket": _TICKET_PARAM,
+                "confirm": {"type": "boolean", "description": "预检后同参数传 true 执行（建议优先传 ticket）。"},
             },
             ["course"],
         ),
         "handler": _tool_canvas_unstar,
     },
     {
+        "name": "lib_search",
+        "description": "检索西湖大学图书馆书目（按题名/关键词；新版阿法迪云平台，免账号或校园网可用）。",
+        "inputSchema": _schema(
+            {
+                "keyword": _str_param("书名或关键词。"),
+                "page": _int_param("页码，从 1 起，默认 1。", minimum=1, maximum=100),
+            },
+            ["keyword"],
+        ),
+        "handler": _tool_lib_search,
+    },
+    {
+        "name": "lib_loans",
+        "description": "查询个人当前在借图书清单（含条形码、应还日期与可续借状态；需统一账号与校园网）。",
+        "inputSchema": _schema(
+            {
+                "refresh": {"type": "boolean", "description": "true 时忽略缓存重新拉取。"},
+            }
+        ),
+        "handler": _tool_lib_loans,
+    },
+    {
         "name": "lib_renew",
-        "description": "在借图书在线续借（写操作，带校验门禁）。",
+        "description": "在借图书在线续借（写操作，先预检后传 ticket 或同参数 confirm=true）。",
         "inputSchema": _schema(
             {
                 "barcode": _str_param("图书条形码。"),
-                "confirm": {"type": "boolean", "description": "true 时真正提交续借，缺省仅预检。"},
+                "ticket": _TICKET_PARAM,
+                "confirm": {"type": "boolean", "description": "预检后同参数传 true 提交续借（建议优先传 ticket）。"},
             },
             ["barcode"],
         ),
         "handler": _tool_lib_renew,
+    },
+    {
+        "name": "timeline",
+        "description": "今日时空行动流（跨系统日程融合：校历、课表、Canvas DDL、预约、班车与个人备忘；支持离线模式）。",
+        "inputSchema": _schema(
+            {
+                "date": _str_param("目标日期 YYYY-MM-DD（缺省今天）。"),
+                "offline": {"type": "boolean", "description": "true 时强制只读本地快照。"},
+            }
+        ),
+        "handler": _tool_timeline,
+    },
+    {
+        "name": "timeline_add_memo",
+        "description": "添加个人日程生活备忘（写操作；缺省只出 Action Card 预检，传 ticket 或同参数 confirm=true 才写入）。",
+        "inputSchema": _schema(
+            {
+                "text": _str_param("备忘内容。"),
+                "time": _str_param("可选时间点，如 14:30。"),
+                "ticket": _TICKET_PARAM,
+                "confirm": {"type": "boolean", "description": "预检后同参数传 true 执行写入（建议优先传 ticket）。"},
+            },
+            ["text"],
+        ),
+        "handler": _tool_timeline_add_memo,
+    },
+    {
+        "name": "timeline_done_memo",
+        "description": "标记个人生活备忘为已完成（写操作；缺省只预检，传 ticket 或同参数 confirm=true 才写入）。",
+        "inputSchema": _schema(
+            {
+                "memo_id": _str_param("备忘 ID（如 memo-a1b2c3）。"),
+                "ticket": _TICKET_PARAM,
+                "confirm": {"type": "boolean", "description": "预检后同参数传 true 执行写入（建议优先传 ticket）。"},
+            },
+            ["memo_id"],
+        ),
+        "handler": _tool_timeline_done_memo,
+    },
+    {
+        "name": "timeline_delete_memo",
+        "description": "删除指定个人生活备忘（写操作；缺省只预检，传 ticket 或同参数 confirm=true 才删除）。",
+        "inputSchema": _schema(
+            {
+                "memo_id": _str_param("备忘 ID（如 memo-a1b2c3）。"),
+                "ticket": _TICKET_PARAM,
+                "confirm": {"type": "boolean", "description": "预检后同参数传 true 执行删除（建议优先传 ticket）。"},
+            },
+            ["memo_id"],
+        ),
+        "handler": _tool_timeline_delete_memo,
+    },
+    {
+        "name": "market_query",
+        "description": "门户数据市集只读查询：目录元数据或本人档案/履历/已修课程/荣誉/社团/志愿脱敏概要（仅返回条数与字段名）。",
+        "inputSchema": _schema(
+            {
+                "query": _str_param(
+                    "查询类型：catalog / profile / resume / courses / honors / clubs / volunteer。",
+                    enum=["catalog", "profile", "resume", "courses", "honors", "clubs", "volunteer"],
+                ),
+                "summary": {"type": "boolean", "description": "true 时 catalog 也仅输出数量与字段名。"},
+                "page_size": _int_param("分页大小（1..100），默认 100。", minimum=1, maximum=100),
+            },
+            ["query"],
+        ),
+        "handler": _tool_market_query,
     },
 )
 

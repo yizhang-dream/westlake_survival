@@ -103,7 +103,7 @@ class AOTCompiler:
             micro_rules = [
                 "【严格安全】写操作必须先带 --dry-run 预检；严禁越界或进行未授权的写操作；",
                 "【意图固化】日程查 timeline，空闲场地查 booking recommend，不确定查 find <词>；",
-                "【离线优先】若遇网络异常，追加 --offline 即可直接拉取本地快照。",
+                "【按命令离线】仅 calendar / transit / timeline 支持 --offline 读取本地快照，其余命令勿盲加 --offline。",
             ]
             return SkillIR(
                 name=ir.name,
@@ -120,9 +120,9 @@ class AOTCompiler:
         # 剪枝次要修饰语，强调精确的命令输入输出与防偏离规则
         compensated_rules = [
             "【输出约束】只调用确定的 westlake 命令，严禁臆造子命令；",
-            "【写操作门禁】遇到任何写操作，第一步必须带 --dry-run 查看 Action Card 预览；",
+            "【写操作门禁】遇到任何写操作，第一步必须带 --dry-run 查看 Action Card 预览，确认后带相同参数加 --ticket 运行；",
             "【复合命令优先】查日程优先使用 westlake timeline，查房间优先使用 westlake booking recommend；",
-            "【离线自愈】遇到网络故障或无 VPN，必须追加 --offline 重新运行；",
+            "【按命令降级】仅 calendar / transit / timeline 支持显式 --offline，其余命令断网时先检查 westlake vpn status；",
             "【隐私守卫】绝不向终端回显密码或学号。",
         ]
         return SkillIR(
@@ -239,8 +239,7 @@ class AOTCompiler:
         config = {
             "mcpServers": {
                 "westlake": {
-                    "command": "python",
-                    "args": ["-m", "westlake_survival.mcp_server"],
+                    "command": "westlake-mcp",
                     "description": ir.summary,
                 }
             }

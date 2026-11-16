@@ -66,6 +66,7 @@ LAZY_COMMANDS: dict[str, tuple[str, str, str]] = {
     "scholar": ("westlake_survival.scholar", "cli_group", "学术资源：数据库注册表 / CARSI 联盟登录 / DOI 全文。"),
     "career": ("westlake_survival.careersite", "cli_group", "就业服务网：三区块免登录 + 登录态深列表/详情。"),
     "instrument": ("westlake_survival.instruments", "cli_group", "大型仪器共享平台：检索科研仪器、实验室地点、联系人与预约入口。"),
+    "market": ("westlake_survival.market", "cli_group", "门户数据市集：数据目录与本人档案/履历/已修课程/荣誉/社团/志愿概要（只读）。"),
     "timeline": ("westlake_survival.cli.timeline_cmd", "cli_group", "今日时空行动流：跨系统日程编排、冲突检测与个人备忘。"),
     "skill": ("westlake_survival.cli.skill_cmd", "cli_group", "SkillVM 工具链：AOT 静态编译、JIT 运行时探测与跨机一键挂载。"),
 }
@@ -157,13 +158,21 @@ class LazyGroup(click.Group):
                 continue
             commands.append((subcommand, help_str))
 
+        with formatter.section("Quick Start"):
+            formatter.write_dl([
+                ("westlake go", "打开本地 WebUI（首次未配置账号自动引导设置）"),
+                ("westlake doctor", "一键体检环境、依赖、账号来源与校内外网络"),
+                ("westlake timeline", "今日时空行动流（课表 + Canvas DDL + 预约 + 班车 + 备忘）"),
+                ("westlake context", "此刻西湖即时速览（日期 / 教学周 / 校历 / 班车 / 天气）"),
+                ("westlake find <词>", "按口语关键词搜索 CLI / MCP / Web / 学术库能力"),
+            ])
+
         if commands:
-            limit = formatter.width - 6 - max(len(cmd[0]) for cmd in commands)
-            rows = []
-            for subcommand, help_str in commands:
-                if len(help_str) > limit:
-                    help_str = help_str[: max(0, limit - 3)] + "..."
-                rows.append((subcommand, help_str))
+            limit = max(24, formatter.width - 6 - max(len(cmd[0]) for cmd in commands))
+            rows = [
+                (subcommand, _truncate_width(help_str, limit))
+                for subcommand, help_str in commands
+            ]
             with formatter.section("Commands"):
                 formatter.write_dl(rows)
 
@@ -209,6 +218,22 @@ def _handle_errors(func):
 def _width(text: str) -> int:
     """按东亚宽度估算显示宽度（全角/宽字符记 2 列）。"""
     return sum(2 if east_asian_width(ch) in ("W", "F") else 1 for ch in text)
+
+
+def _truncate_width(text: str, max_cols: int) -> str:
+    """按东亚显示宽度安全截断文本，避免中文说明过早截断或换行溢出。"""
+    if _width(text) <= max_cols:
+        return text
+    budget = max(0, max_cols - 3)
+    cols = 0
+    chars: list[str] = []
+    for ch in text:
+        w = 2 if east_asian_width(ch) in ("W", "F") else 1
+        if cols + w > budget:
+            break
+        chars.append(ch)
+        cols += w
+    return "".join(chars) + "..."
 
 
 def _print_table(rows, headers) -> None:
@@ -773,8 +798,9 @@ def canvas_cmd() -> None:
 )
 @click.option("--past", is_flag=True, help="等同于 --state completed，查看过往已结课课程。")
 @click.option("--all", "show_all", is_flag=True, help="等同于 --state all，查看全部（在修+过往）课程。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_canvas_errors
-def canvas_courses(state: str, past: bool, show_all: bool) -> None:
+def canvas_courses(state: str, past: bool, show_all: bool, as_json: bool) -> None:
     """列出当前账号的 Canvas 课程（支持在修与过往结课课程）。"""
     from westlake_survival.canvas import canvas
 
@@ -785,6 +811,18 @@ def canvas_courses(state: str, past: bool, show_all: bool) -> None:
         target_state = "all"
 
     courses = canvas().list_courses(enrollment_state=target_state)
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "id": getattr(c, "id", None),
+                "course_code": getattr(c, "course_code", None),
+                "name": getattr(c, "name", None),
+                "term_name": getattr(c, "term_name", None),
+                "is_completed": bool(getattr(c, "is_completed", False)),
+            }
+            for c in courses
+        ], ensure_ascii=False, indent=2))
+        return
     show_status_col = target_state in ("all", "completed")
     if show_status_col:
         rows = [
@@ -825,8 +863,9 @@ def canvas_courses(state: str, past: bool, show_all: bool) -> None:
 )
 @click.option("--past", is_flag=True, help="等同于 --state completed，查看过往已结课课程成绩。")
 @click.option("--all", "show_all", is_flag=True, help="等同于 --state all，查看全部课程成绩。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_canvas_errors
-def canvas_grades(state: str, past: bool, show_all: bool) -> None:
+def canvas_grades(state: str, past: bool, show_all: bool, as_json: bool) -> None:
     """列出 Canvas 课程成绩（支持在修与过往结课课程）。"""
     from westlake_survival.canvas import canvas
 
@@ -837,6 +876,9 @@ def canvas_grades(state: str, past: bool, show_all: bool) -> None:
         target_state = "all"
 
     grades = canvas().course_grades(enrollment_state=target_state)
+    if as_json:
+        click.echo(json.dumps(grades, ensure_ascii=False, indent=2, default=str))
+        return
     rows = [
         (
             g.get("course_code") or "—",
@@ -858,13 +900,27 @@ def canvas_grades(state: str, past: bool, show_all: bool) -> None:
 
 @canvas_cmd.command(name="deadlines")
 @click.option("--limit", type=int, default=10, show_default=True, help="返回条数。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_canvas_errors
-def canvas_deadlines(limit: int) -> None:
+def canvas_deadlines(limit: int, as_json: bool) -> None:
     """列出即将到期的作业截止时间与精确倒计时。"""
     from westlake_survival.canvas import canvas
     from westlake_survival.canvas.models import format_remaining
 
     items = canvas().upcoming_deadlines(limit=limit)
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "id": getattr(a, "id", None),
+                "course_id": getattr(a, "course_id", None),
+                "name": getattr(a, "name", None),
+                "due_at": a.due_at.isoformat() if getattr(a, "due_at", None) else None,
+                "remaining": format_remaining(getattr(a, "due_at", None)),
+                "html_url": getattr(a, "html_url", None),
+            }
+            for a in items
+        ], ensure_ascii=False, indent=2))
+        return
     rows = [
         (
             a.due_at.strftime("%Y-%m-%d %H:%M") if a.due_at else "—",
@@ -879,13 +935,27 @@ def canvas_deadlines(limit: int) -> None:
 
 @canvas_cmd.command(name="todo")
 @click.option("--limit", type=int, default=20, show_default=True, help="返回条数。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_canvas_errors
-def canvas_todo(limit: int) -> None:
+def canvas_todo(limit: int, as_json: bool) -> None:
     """列出 Canvas 待办（users/self/todo）与精确倒计时。"""
     from westlake_survival.canvas import canvas
     from westlake_survival.canvas.models import format_remaining
 
     items = canvas().todo(limit=limit)
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "course": getattr(item, "course", None),
+                "type": getattr(item, "type", None),
+                "title": getattr(item, "title", None),
+                "due_at": item.due_at.isoformat() if getattr(item, "due_at", None) else None,
+                "remaining": format_remaining(getattr(item, "due_at", None)),
+                "url": getattr(item, "url", None),
+            }
+            for item in items
+        ], ensure_ascii=False, indent=2))
+        return
     if not items:
         click.echo("暂无待办")
         return
@@ -931,8 +1001,9 @@ def canvas_modules(course: str) -> None:
     default=None,
     help="下载到该目录（不存在会自动创建）；不给则只列清单。",
 )
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出清单。")
 @_handle_canvas_errors
-def canvas_files(course: str, match: str | None, download_dir: str | None) -> None:
+def canvas_files(course: str, match: str | None, download_dir: str | None, as_json: bool) -> None:
     """列出课程文件区；给 --download 时一并下载。"""
     from westlake_survival.canvas import canvas
 
@@ -942,6 +1013,17 @@ def canvas_files(course: str, match: str | None, download_dir: str | None) -> No
     if match:
         needle = match.lower()
         files = [item for item in files if needle in (item.display_name or "").lower()]
+    if as_json and not download_dir:
+        click.echo(json.dumps([
+            {
+                "id": getattr(item, "id", None),
+                "display_name": getattr(item, "display_name", None),
+                "size": getattr(item, "size", None),
+                "url": getattr(item, "url", None),
+            }
+            for item in files
+        ], ensure_ascii=False, indent=2))
+        return
     if not files:
         click.echo("没有匹配的课程文件")
         return
@@ -964,14 +1046,18 @@ def canvas_files(course: str, match: str | None, download_dir: str | None) -> No
 
 @canvas_cmd.command(name="discussions")
 @click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_canvas_errors
-def canvas_discussions(course: str) -> None:
+def canvas_discussions(course: str, as_json: bool) -> None:
     """列出课程讨论主题（标题 / 未读 / 回复数 / 时间）。"""
     from westlake_survival.canvas import canvas
 
     client = canvas()
     found = client.find_course(course)
     items = client.discussions(found.id)
+    if as_json:
+        click.echo(json.dumps(items, ensure_ascii=False, indent=2, default=str))
+        return
     if not items:
         click.echo("该课程没有讨论主题")
         return
@@ -990,14 +1076,27 @@ def canvas_discussions(course: str) -> None:
 
 @canvas_cmd.command(name="announcements")
 @click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_canvas_errors
-def canvas_announcements(course: str) -> None:
+def canvas_announcements(course: str, as_json: bool) -> None:
     """列出课程公告（时间 / 标题 / 链接）。"""
     from westlake_survival.canvas import canvas
 
     client = canvas()
     found = client.find_course(course)
     items = client.list_announcements(found.id)
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "id": getattr(item, "id", None),
+                "course_id": getattr(item, "course_id", None),
+                "title": getattr(item, "title", None),
+                "posted_at": item.posted_at.isoformat() if getattr(item, "posted_at", None) else None,
+                "html_url": getattr(item, "html_url", None),
+            }
+            for item in items
+        ], ensure_ascii=False, indent=2))
+        return
     if not items:
         click.echo("该课程没有公告")
         return
@@ -1020,8 +1119,9 @@ def _resolve_topic(client, course_id, keyword: str) -> int:
 @canvas_cmd.command(name="inbox")
 @click.option("--limit", type=int, default=20, show_default=True, help="返回条数。")
 @click.option("--unread", "only_unread", is_flag=True, help="只看未读会话。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_canvas_errors
-def canvas_inbox(limit: int, only_unread: bool) -> None:
+def canvas_inbox(limit: int, only_unread: bool, as_json: bool) -> None:
     """收件箱会话列表（未读 / 时间 / 课程 / 主题 / 参与者）。"""
     from westlake_survival.canvas import canvas
 
@@ -1030,6 +1130,9 @@ def canvas_inbox(limit: int, only_unread: bool) -> None:
     items = client.conversations(limit=limit if not only_unread else 100)
     if only_unread:
         items = [item for item in items if item["unread"]][:limit]
+    if as_json:
+        click.echo(json.dumps({"unread": unread, "conversations": items}, ensure_ascii=False, indent=2, default=str))
+        return
     if not items:
         click.echo(f"收件箱没有{'未读' if only_unread else ''}会话" + (f"（未读 {unread}）" if unread else ""))
         return
@@ -1090,20 +1193,27 @@ def canvas_conversation(conversation_id: int, download_dir: str | None) -> None:
 @canvas_cmd.command(name="send")
 @click.option("--conversation", "conversation_id", type=int, required=True, help="会话 id（canvas inbox 可见）。")
 @click.option("--text", required=True, help="回复正文（纯文本）。")
+@click.option("--dry-run", is_flag=True, help="只预检不发送（输出事务预览卡片）。")
 @click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
 @click.option("--yes", "skip_confirm", is_flag=True, help="跳过确认直接发送。")
 @_handle_canvas_errors
-def canvas_send(conversation_id: int, text: str, ticket: str | None, skip_confirm: bool) -> None:
-    """在已有会话里回一条消息（写操作；统一确认门，--ticket 或 --yes 才执行）。"""
+def canvas_send(
+    conversation_id: int, text: str, dry_run: bool, ticket: str | None, skip_confirm: bool
+) -> None:
+    """在已有会话里回一条消息（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
     from westlake_survival.consequence import gate_cli
 
     gate_cli(
         "canvas.send",
         confirmed=skip_confirm,
+        dry_run=dry_run,
         ticket=ticket,
         target=f"会话 ID: {conversation_id}",
         payload={"conversation_id": conversation_id, "text": text},
     )
+    if dry_run:
+        click.secho("预检通过（dry-run，未发送）。", fg="yellow")
+        return
     from westlake_survival.canvas import canvas
 
     client = canvas()
@@ -1183,20 +1293,27 @@ def canvas_entries(course: str, topic: str, limit: int, full: bool) -> None:
 @click.option("--course", required=True, help="课程 id 或名称关键词。")
 @click.option("--topic", required=True, help="讨论主题 id 或标题关键词。")
 @click.option("--text", required=True, help="回帖正文（纯文本）。")
+@click.option("--dry-run", is_flag=True, help="只预检不发布（输出事务预览卡片）。")
 @click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
 @click.option("--yes", "skip_confirm", is_flag=True, help="跳过确认直接发布。")
 @_handle_canvas_errors
-def canvas_reply(course: str, topic: str, text: str, ticket: str | None, skip_confirm: bool) -> None:
-    """在讨论主题下回帖（写操作；统一确认门，--ticket 或 --yes 才执行）。"""
+def canvas_reply(
+    course: str, topic: str, text: str, dry_run: bool, ticket: str | None, skip_confirm: bool
+) -> None:
+    """在讨论主题下回帖（写操作；--dry-run 预检 / --ticket 或 --yes 执行）。"""
     from westlake_survival.consequence import gate_cli
 
     gate_cli(
         "canvas.reply",
         confirmed=skip_confirm,
+        dry_run=dry_run,
         ticket=ticket,
         target=f"课程 {course} / 主题 {topic}",
         payload={"course": course, "topic": topic, "text": text},
     )
+    if dry_run:
+        click.secho("预检通过（dry-run，未发布）。", fg="yellow")
+        return
     from westlake_survival.canvas import canvas
 
     client = canvas()
@@ -1239,13 +1356,29 @@ def canvas_exams(days: int | None) -> None:
 
 @canvas_cmd.command(name="assignments")
 @click.option("--course", required=True, help="课程 id 或名称关键词。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_canvas_errors
-def canvas_assignments(course: str) -> None:
+def canvas_assignments(course: str, as_json: bool) -> None:
     """列出课程作业（查作业 id / 名称关键词）。"""
     from westlake_survival.canvas import canvas
 
     found = canvas().find_course(course)
     items = canvas().list_assignments(found.id)
+    if as_json:
+        click.echo(json.dumps({
+            "course": {"id": found.id, "course_code": getattr(found, "course_code", None), "name": found.name},
+            "assignments": [
+                {
+                    "id": getattr(a, "id", None),
+                    "name": getattr(a, "name", None),
+                    "due_at": a.due_at.isoformat() if getattr(a, "due_at", None) else None,
+                    "submission_types": list(getattr(a, "submission_types", ()) or ()),
+                    "html_url": getattr(a, "html_url", None),
+                }
+                for a in items
+            ],
+        }, ensure_ascii=False, indent=2))
+        return
     rows = [
         (
             str(a.id or "—"),
@@ -1393,7 +1526,7 @@ def canvas_submit(
     target_desc = f"课程 {course} / 作业 {assignment}"
     payload_desc = {
         "files": list(files),
-        "text": text[:60] + "..." if text and len(text) > 60 else text,
+        "text": text,
         "url": url,
     }
     gate_cli(
@@ -1442,46 +1575,61 @@ def canvas_submit(
 
 @canvas_cmd.command(name="star")
 @click.argument("course")
+@click.option("--dry-run", is_flag=True, help="只预检不收藏（输出事务预览卡片）。")
 @click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
 @click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
 @_handle_canvas_errors
-def canvas_star(course: str, ticket: str | None, skip_confirm: bool) -> None:
-    """将课程加入个人收藏/星标（写操作：置顶面板，--ticket 或 --yes 执行）。"""
+def canvas_star(course: str, dry_run: bool, ticket: str | None, skip_confirm: bool) -> None:
+    """将课程加入个人收藏/星标（写操作：--dry-run 预检 / --ticket 或 --yes 执行）。"""
     from westlake_survival.consequence import gate_cli
+
+    # 门在 find_course 解析之前：无凭据沙箱也能出卡，target/payload 用原始 selector，
+    # 保证 dry-run 出票与 --ticket 执行走同一份业务参数（闭环匹配）。
+    gate_cli(
+        "canvas.star",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=course,
+        payload={"course": course},
+    )
+    if dry_run:
+        click.secho("预检通过（dry-run，未收藏）。", fg="yellow")
+        return
     from westlake_survival.canvas import canvas
 
     client = canvas()
     found = client.find_course(course)
-    gate_cli(
-        "canvas.star",
-        confirmed=skip_confirm,
-        ticket=ticket,
-        target=f"{found.course_code or ''} {found.name} (id={found.id})",
-        payload={"course_id": found.id, "name": found.name},
-    )
     client.star_course(found.id)
     click.secho(f"已将课程 [{found.name}] 加入收藏置顶。", fg="green")
 
 
 @canvas_cmd.command(name="unstar")
 @click.argument("course")
+@click.option("--dry-run", is_flag=True, help="只预检不取消收藏（输出事务预览卡片）。")
 @click.option("--ticket", default=None, help="通过预览卡片生成的单次放行凭证 Ticket。")
 @click.option("--yes", "skip_confirm", is_flag=True, help="确认执行（统一写操作确认门）。")
 @_handle_canvas_errors
-def canvas_unstar(course: str, ticket: str | None, skip_confirm: bool) -> None:
-    """取消课程个人收藏/星标（写操作：--ticket 或 --yes 执行）。"""
+def canvas_unstar(course: str, dry_run: bool, ticket: str | None, skip_confirm: bool) -> None:
+    """取消课程个人收藏/星标（写操作：--dry-run 预检 / --ticket 或 --yes 执行）。"""
     from westlake_survival.consequence import gate_cli
+
+    # 同 star：门在解析之前，target/payload 用原始 selector 保持出票/执行同参。
+    gate_cli(
+        "canvas.unstar",
+        confirmed=skip_confirm,
+        dry_run=dry_run,
+        ticket=ticket,
+        target=course,
+        payload={"course": course},
+    )
+    if dry_run:
+        click.secho("预检通过（dry-run，未取消收藏）。", fg="yellow")
+        return
     from westlake_survival.canvas import canvas
 
     client = canvas()
     found = client.find_course(course)
-    gate_cli(
-        "canvas.unstar",
-        confirmed=skip_confirm,
-        ticket=ticket,
-        target=f"{found.course_code or ''} {found.name} (id={found.id})",
-        payload={"course_id": found.id, "name": found.name},
-    )
     client.unstar_course(found.id)
     click.secho(f"已将课程 [{found.name}] 移出收藏列表。", fg="green")
 
@@ -1579,30 +1727,75 @@ def sis_cmd() -> None:
 
 
 @sis_cmd.command(name="schedule")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def sis_schedule() -> None:
-    """打印本学期课表节次。"""
+def sis_schedule(as_json: bool) -> None:
+    """打印本学期课表节次（自动合并同课同时段平行教室）。"""
     from westlake_survival.sis import get_schedule
 
     sessions = get_schedule()
-    if not sessions:
-        click.echo("课表为空（可能尚未选课或未到教学周）。")
-        return
-    rows = []
+    grouped: dict[tuple[str, str, int, str], dict] = {}
+    rooms_map: dict[tuple[str, str, int, str], list[str]] = {}
     for s in sessions:
         weekday = _WEEKDAY_CN[s.weekday - 1] if 1 <= s.weekday <= 7 else str(s.weekday)
-        time_slot = f"{s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}"
-        rows.append((s.title or "—", s.teacher or "—", weekday, time_slot, s.room or "—"))
+        start_s = s.start_time.strftime("%H:%M")
+        end_s = s.end_time.strftime("%H:%M")
+        time_slot = f"{start_s}-{end_s}"
+        key = (s.title or "", s.teacher or "", int(s.weekday), time_slot)
+        room = (getattr(s, "room", "") or "").strip()
+        if key not in grouped:
+            grouped[key] = {
+                "course_code": getattr(s, "course_code", "") or "",
+                "title": s.title or "",
+                "teacher": s.teacher or "",
+                "weekday": int(s.weekday),
+                "weekday_cn": weekday,
+                "start": start_s,
+                "end": end_s,
+                "time": time_slot,
+            }
+            rooms_map[key] = [room] if room else []
+        elif room and room not in rooms_map[key]:
+            rooms_map[key].append(room)
+
+    merged_rows = []
+    for key, item in grouped.items():
+        item["room"] = " / ".join(rooms_map[key]) if rooms_map[key] else ""
+        merged_rows.append(item)
+
+    if as_json:
+        click.echo(json.dumps(merged_rows, ensure_ascii=False, indent=2))
+        return
+    if not merged_rows:
+        click.echo("课表为空（可能尚未选课或未到教学周）。")
+        return
+    rows = [
+        (r["title"] or "—", r["teacher"] or "—", r["weekday_cn"], r["time"], r["room"] or "—")
+        for r in merged_rows
+    ]
     _print_table(rows, ("课程", "教师", "星期", "时间", "地点"))
 
 
 @sis_cmd.command(name="grades")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def sis_grades() -> None:
+def sis_grades(as_json: bool) -> None:
     """打印全部学期成绩（按页面顺序，最近学期在前）。"""
     from westlake_survival.sis import grades as _grades
 
     items = _grades()
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "term": getattr(g, "term", None),
+                "course_code": getattr(g, "course_code", None),
+                "course_title": getattr(g, "course_title", None),
+                "grade": getattr(g, "grade", None),
+                "credits": getattr(g, "credits", None),
+            }
+            for g in items
+        ], ensure_ascii=False, indent=2))
+        return
     if not items:
         click.echo("成绩为空（可能尚无成绩记录）。")
         return
@@ -1620,12 +1813,28 @@ def sis_grades() -> None:
 
 
 @sis_cmd.command(name="exams")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def sis_exams() -> None:
+def sis_exams(as_json: bool) -> None:
     """打印当前学期考试安排（页头学期由 SIS 决定）。"""
     from westlake_survival.sis import exam_schedule
 
     items = exam_schedule()
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "course_code": getattr(e, "course_code", None),
+                "course_title": getattr(e, "course_title", None),
+                "date": getattr(e, "date", None),
+                "time": getattr(e, "time", None),
+                "exam_type": getattr(e, "exam_type", None),
+                "method": getattr(e, "method", None),
+                "venue": getattr(e, "venue", None),
+                "seat": getattr(e, "seat", None),
+            }
+            for e in items
+        ], ensure_ascii=False, indent=2))
+        return
     if not items:
         click.echo("考试安排为空（可能尚未排期）。")
         return
@@ -1884,12 +2093,24 @@ def _lib_backend_guard() -> bool:
 @lib_cmd.command(name="search")
 @click.argument("keyword")
 @click.option("--page", type=int, default=1, show_default=True, help="页码。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def lib_search(keyword: str, page: int) -> None:
+def lib_search(keyword: str, page: int, as_json: bool) -> None:
     """检索图书馆书目（按题名/关键词）。"""
     from westlake_survival.lib import search
 
     books = search(keyword, page=page)
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "title": getattr(b, "title", None),
+                "author": getattr(b, "author", None),
+                "call_no": getattr(b, "call_no", None),
+                "location": getattr(b, "location", None),
+            }
+            for b in books
+        ], ensure_ascii=False, indent=2))
+        return
     if not books:
         click.echo("未找到匹配的书目。")
         return
@@ -1899,17 +2120,31 @@ def lib_search(keyword: str, page: int) -> None:
 
 @lib_cmd.command(name="loans")
 @click.option("--refresh", is_flag=True, help="忽略缓存强制重新拉取借阅。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def lib_loans(refresh: bool) -> None:
+def lib_loans(refresh: bool, as_json: bool) -> None:
     """列出个人当前借阅记录（需登录）。"""
     from westlake_survival.lib import my_loans
 
     loans = my_loans(force_refresh=refresh)
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "barcode": getattr(loan, "barcode", None),
+                "title": getattr(loan, "title", None),
+                "due_date": getattr(loan, "due_date", None),
+                "renewable": getattr(loan, "renewable", None),
+                "location": getattr(loan, "location", None),
+            }
+            for loan in loans
+        ], ensure_ascii=False, indent=2))
+        return
     if not loans:
         click.echo("当前无借阅记录。")
         return
     rows = [
         (
+            loan.barcode or "—",
             loan.title or "—",
             loan.due_date or "—",
             "—" if loan.renewable is None else ("可续借" if loan.renewable else "不可续借"),
@@ -1917,7 +2152,7 @@ def lib_loans(refresh: bool) -> None:
         )
         for loan in loans
     ]
-    _print_table(rows, ("题名", "应还日期", "续借", "馆藏地"))
+    _print_table(rows, ("条码", "题名", "应还日期", "续借", "馆藏地"))
 
 
 @lib_cmd.command(name="renew")
@@ -1989,6 +2224,7 @@ def pms_jobs() -> None:
         return
     rows = [
         (
+            str(job.id) if job.id is not None else "—",
             job.name or "—",
             str(job.copies) if job.copies is not None else "—",
             str(job.pages) if job.pages is not None else "—",
@@ -1996,7 +2232,7 @@ def pms_jobs() -> None:
         )
         for job in jobs
     ]
-    _print_table(rows, ("文件", "份数", "页数", "状态"))
+    _print_table(rows, ("作业ID", "文件", "份数", "页数", "状态"))
 
 
 @pms_cmd.command(name="print")
@@ -2102,12 +2338,17 @@ def pms_cancel(job_id: int, dry_run: bool, ticket: str | None, skip_confirm: boo
     show_default=True,
     help="信息量档位。",
 )
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def context_cmd(level: str) -> None:
+def context_cmd(level: str, as_json: bool) -> None:
     """打印"此刻西湖"中文快照（日期 / 周次 / 事件 / 班车 / 天气）。"""
     from westlake_survival.context import Level, snapshot
 
-    click.echo(snapshot(Level(level)).to_str())
+    snap = snapshot(Level(level))
+    if as_json:
+        click.echo(json.dumps(snap.to_dict(), ensure_ascii=False, indent=2))
+        return
+    click.echo(snap.to_str())
 
 
 # --------------------------------------------------------------------------- #
@@ -2183,17 +2424,15 @@ def _digest_week() -> list[str]:
 
 
 def _digest_canvas() -> list[str]:
-    """Canvas 截止节：仅在配置了 WESTLAKE_CANVAS_TOKEN 时并入。"""
-    token_env = "WESTLAKE_CANVAS_TOKEN"
-    try:
-        from westlake_survival.canvas import TOKEN_ENV_VAR as token_env  # type: ignore[assignment]
-    except Exception:  # noqa: BLE001 - 模块形状异常时用默认变量名
-        pass
-    if not (os.environ.get(token_env) or "").strip():
-        return [f"（未配置 {token_env}，跳过 Canvas 截止）"]
-    from westlake_survival.canvas import canvas
+    """Canvas 截止节：已配置独立令牌或统一凭据时并入。"""
+    from westlake_survival.canvas import canvas, resolve_token
 
-    items = canvas().upcoming_deadlines(limit=5)
+    if not resolve_token() and not _first_run_configured():
+        return ["（未配置 Canvas 令牌或统一凭据，跳过 Canvas 截止）"]
+    try:
+        items = canvas().upcoming_deadlines(limit=5)
+    except AuthError as exc:
+        return [f"（Canvas 认证跳过：{exc}）"]
     if not items:
         return ["暂无即将到期的 Canvas 作业。"]
     return [
@@ -2210,7 +2449,8 @@ def _digest_canvas() -> list[str]:
     show_default=True,
     help="信息量档位：normal 含活动/班车/周次/Canvas 截止，terse 只保留本地快算与周次。",
 )
-def digest_cmd(level: str) -> None:
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
+def digest_cmd(level: str, as_json: bool) -> None:
     """晨报一条龙：快照 + 活动 + 班车 + 周次（可选 Canvas 截止）合成一段可推送中文文本。"""
     terse = level == "terse"
     header = f"# 西湖大学晨报 · {date.today().isoformat()} {_WEEKDAY_CN[date.today().weekday()]}"
@@ -2222,7 +2462,11 @@ def digest_cmd(level: str) -> None:
     _digest_source(lines, "本周次", _digest_week)
     if not terse:
         _digest_source(lines, "Canvas 截止", _digest_canvas)
-    click.echo("\n".join(lines).rstrip())
+    rendered = "\n".join(lines).rstrip()
+    if as_json:
+        click.echo(json.dumps({"date": date.today().isoformat(), "level": level, "markdown": rendered}, ensure_ascii=False, indent=2))
+        return
+    click.echo(rendered)
 
 
 # --------------------------------------------------------------------------- #
@@ -2382,8 +2626,9 @@ def _run_probe_item(func) -> tuple[str, str]:
 
 
 @click.group(name="probe", invoke_without_command=True)
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @click.pass_context
-def probe_cmd(ctx: click.Context) -> None:
+def probe_cmd(ctx: click.Context, as_json: bool) -> None:
     """堵点与服务发现：不带参数跑四项常规探测；scan 做子域普查。"""
     if ctx.invoked_subcommand is not None:
         return
@@ -2395,6 +2640,13 @@ def probe_cmd(ctx: click.Context) -> None:
         for name, fut in futures:
             status, detail = fut.result()
             rows.append((name, status, detail))
+    if as_json:
+        click.echo(json.dumps(
+            [{"item": name, "status": status, "detail": detail} for name, status, detail in rows],
+            ensure_ascii=False,
+            indent=2,
+        ))
+        return
     _print_table(rows, ("探测项", "状态", "说明"))
 
 
@@ -2402,8 +2654,9 @@ def probe_cmd(ctx: click.Context) -> None:
 @click.option("--full", is_flag=True, help="扫全量候选（默认精选 36 个）。")
 @click.option("--hosts", default=None, help="只扫这些主机（逗号分隔，调试/测试用）。")
 @click.option("--timeout", type=float, default=6.0, show_default=True, help="单主机超时秒数。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def probe_scan(full: bool, hosts: str | None, timeout: float) -> None:
+def probe_scan(full: bool, hosts: str | None, timeout: float, as_json: bool) -> None:
     """子域直连普查 + 办事大厅目录（绕系统代理；通配 502 不算活）。"""
     from westlake_survival import discovery
 
@@ -2413,6 +2666,15 @@ def probe_scan(full: bool, hosts: str | None, timeout: float) -> None:
         host_list = None if full else discovery.CENSUS_HOSTS
     results = discovery.subdomain_census(host_list, timeout=timeout)
     alive = [r for r in results if r.alive]
+    if as_json:
+        click.echo(json.dumps({
+            "total": len(results),
+            "alive": [
+                {"host": r.host, "domain": f"{r.host}.westlake.edu.cn", "status": r.status, "title": r.title}
+                for r in sorted(alive, key=lambda x: x.host)
+            ],
+        }, ensure_ascii=False, indent=2))
+        return
     click.echo(f"子域普查：{len(alive)} 活 / {len(results)} 探测（直连、绕系统代理）")
     for r in sorted(alive, key=lambda x: x.host):
         click.echo(f"  {r.status:<4} {r.host + '.westlake.edu.cn':.<34} {r.title[:28]}")
@@ -2608,11 +2870,15 @@ def doctor_cmd(as_json: bool, offline: bool) -> None:
 # --------------------------------------------------------------------------- #
 @click.command(name="find", help="按需求找能力：搜 CLI / MCP / 网页 / 学术库 / 服务注册表。")
 @click.argument("query", required=False)
-def find_cmd(query: str | None) -> None:
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
+def find_cmd(query: str | None, as_json: bool) -> None:
     """``westlake find 作业`` —— Agent 不确定某需求归哪条命令时的路由入口。"""
     from westlake_survival.capabilities import find_capabilities
 
     result = find_capabilities(query or "")
+    if as_json:
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+        return
     if not query:
         click.echo(result["hint"])
         click.echo("例：westlake find 作业 / 论文 / 班车 / 待办 / 预约 / 打印 / 成绩")

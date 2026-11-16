@@ -64,14 +64,16 @@ class JITRuntime:
         except ImportError:
             has_kr = False
 
-        # 3. 网络环境（校内/校外/VPN）
+        # 3. 网络环境（校内/校外/VPN）——探测校内直连端点，而非公网可达的 IAM 门户
         try:
             from westlake_survival.discovery import direct_session
 
-            # 探校内信标
             s = direct_session()
-            resp = s.get("https://iam.westlake.edu.cn/", timeout=3.0)
-            offcampus = False
+            resp = s.get(
+                "http://print.lib.westlake.edu.cn:9130/api/client/Station/GetList",
+                timeout=2.0,
+            )
+            offcampus = resp.status_code >= 500
         except Exception:
             offcampus = True
 
@@ -122,7 +124,7 @@ class JITRuntime:
         # 网络环境补丁
         if host.network_is_offcampus:
             patches.append(
-                "- ⚠️ 当前处于校外且未连接校园 VPN：教务实时接口受限，已自动启用 --offline 优先模式（历史快照秒出）；"
+                "- ⚠️ 当前处于校外或未连校园 VPN：内网实时接口受限，先检查 `westlake vpn status`；其中 `calendar` / `transit` / `timeline` 支持加 `--offline` 读本地快照；"
             )
         else:
             patches.append("- ✓ 当前处于校园网或 VPN 连接态：全域在线服务均可直达；")
