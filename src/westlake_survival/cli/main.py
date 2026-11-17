@@ -168,13 +168,34 @@ class LazyGroup(click.Group):
             ])
 
         if commands:
+            cmd_map = dict(commands)
             limit = max(24, formatter.width - 6 - max(len(cmd[0]) for cmd in commands))
-            rows = [
-                (subcommand, _truncate_width(help_str, limit))
-                for subcommand, help_str in commands
+            groups: tuple[tuple[str, tuple[str, ...]], ...] = (
+                ("日常高频 (Daily)", ("timeline", "context", "digest", "calendar", "transit", "campus", "map", "contact")),
+                ("学业与课程 (Study)", ("sis", "ams", "canvas", "profile", "records", "aid", "sis-evals", "market", "share")),
+                ("预约与办事 (Life & Booking)", ("booking", "sport", "lib", "pms", "affairs", "todo", "portal")),
+                ("学术与科研 (Research)", ("scholar", "hpc", "instrument", "program", "faculty", "research")),
+                ("资讯与发现 (Info & Sites)", ("news", "events", "careers", "career", "search", "wiki", "sites", "hosts", "schools", "institute", "finance", "mirrors")),
+            )
+            placed: set[str] = set()
+            for title, names in groups:
+                rows = []
+                for name in names:
+                    if name in cmd_map:
+                        placed.add(name)
+                        rows.append((name, _truncate_width(cmd_map[name], limit)))
+                if rows:
+                    with formatter.section(title):
+                        formatter.write_dl(rows)
+
+            rest_rows = [
+                (name, _truncate_width(help_str, limit))
+                for name, help_str in commands
+                if name not in placed
             ]
-            with formatter.section("Commands"):
-                formatter.write_dl(rows)
+            if rest_rows:
+                with formatter.section("Commands"):
+                    formatter.write_dl(rest_rows)
 
 #: 星期几的中文名（``date.weekday()`` 0=周一）。
 _WEEKDAY_CN = ("周一", "周二", "周三", "周四", "周五", "周六", "周日")
@@ -517,15 +538,28 @@ def _load_calendar(offline: bool = False):
 
 @calendar_cmd.command(name="today")
 @click.option("--offline", is_flag=True, help="离线模式：使用本地离线快照数据。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def calendar_today(offline: bool) -> None:
+def calendar_today(offline: bool, as_json: bool) -> None:
     """显示今天的日期、星期、学期、周次与当日事件。"""
     calendar = _load_calendar(offline=offline)
     today = date.today()
+    semester = calendar.current(today)
+    if as_json:
+        week = semester.week_of(today) if semester else None
+        events = [e.title for e in semester.events if e.covers(today)] if semester else []
+        click.echo(json.dumps({
+            "date": today.isoformat(),
+            "weekday": _WEEKDAY_CN[today.weekday()],
+            "offline": offline,
+            "semester": semester.name if semester else None,
+            "week": week,
+            "events": events,
+        }, ensure_ascii=False, indent=2))
+        return
     tag = " [离线]" if offline else ""
     click.echo(f"日期：{today.isoformat()}（{_WEEKDAY_CN[today.weekday()]}）{tag}")
 
-    semester = calendar.current(today)
     if semester is None:
         click.echo("学期：当前不在任何学期的教学范围内")
         click.echo("周次：—（假期或学期外）")
@@ -546,8 +580,9 @@ def calendar_today(offline: bool) -> None:
 
 @calendar_cmd.command(name="events")
 @click.option("--offline", is_flag=True, help="离线模式：使用本地离线快照数据。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def calendar_events(offline: bool) -> None:
+def calendar_events(offline: bool, as_json: bool) -> None:
     """列出当前学期（或最近学期）的全部校历事件。"""
     calendar = _load_calendar(offline=offline)
     semester = calendar.current(date.today())
@@ -557,6 +592,18 @@ def calendar_events(offline: bool) -> None:
         click.secho("未找到任何学期数据。", fg="red", err=True)
         raise SystemExit(1)
 
+    if as_json:
+        click.echo(json.dumps({
+            "semester": semester.name,
+            "start": semester.start.isoformat(),
+            "end": semester.end.isoformat(),
+            "offline": offline,
+            "events": [
+                {"start": e.start.isoformat(), "end": e.end.isoformat() if e.end else None, "title": e.title}
+                for e in semester.events
+            ],
+        }, ensure_ascii=False, indent=2))
+        return
     tag = " [离线]" if offline else ""
     click.echo(f"学期：{semester.name}（{semester.start.isoformat()} ~ {semester.end.isoformat()}）{tag}")
     rows = [
@@ -653,13 +700,20 @@ def _campus(value: str | None):
 @click.option("--campus", type=click.Choice(["云谷", "玉皇山"]), default=None, help="只看某校区（始发）。")
 @click.option("--limit", type=int, default=3, show_default=True, help="返回条数。")
 @click.option("--offline", is_flag=True, help="离线模式：使用本地快照数据。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def transit_next(campus: str | None, limit: int, offline: bool) -> None:
+def transit_next(campus: str | None, limit: int, offline: bool, as_json: bool) -> None:
     """显示下一批发车时刻（默认取前 3 班）。"""
     from westlake_survival.transit import transit
 
     data = transit(offline=offline)
     departures = data.next_departures(campus=_campus(campus), limit=limit)
+    if as_json:
+        click.echo(json.dumps([
+            {"time": time_str, "campus": table.campus.value, "day_kind": table.day_kind.value}
+            for table, time_str in departures
+        ], ensure_ascii=False, indent=2))
+        return
     if not departures:
         click.echo("暂无后续班车信息。")
         return
@@ -674,8 +728,9 @@ def transit_next(campus: str | None, limit: int, offline: bool) -> None:
 @click.option("--campus", type=click.Choice(["云谷", "玉皇山"]), default=None, help="校区。")
 @click.option("--day", type=click.Choice(["工作日", "双休日与节假日"]), default=None, help="日别。")
 @click.option("--offline", is_flag=True, help="离线模式：使用本地快照数据。")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def transit_table(campus: str | None, day: str | None, offline: bool) -> None:
+def transit_table(campus: str | None, day: str | None, offline: bool, as_json: bool) -> None:
     """显示指定校区/日别的班车时刻表。"""
     from westlake_survival.transit import DayKind, transit
 
@@ -688,6 +743,19 @@ def transit_table(campus: str | None, day: str | None, offline: bool) -> None:
         if (campus_enum is None or t.campus == campus_enum)
         and (day_enum is None or t.day_kind == day_enum)
     ]
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "campus": t.campus.value,
+                "day_kind": t.day_kind.value,
+                "direction_note": t.direction_note,
+                "morning": list(t.morning),
+                "noon": list(t.noon),
+                "night": list(t.night),
+            }
+            for t in tables
+        ], ensure_ascii=False, indent=2))
+        return
     if not tables:
         click.echo("未找到匹配的时刻表。")
         return
@@ -2190,12 +2258,26 @@ def pms_cmd() -> None:
 
 
 @pms_cmd.command(name="stations")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def pms_stations() -> None:
+def pms_stations(as_json: bool) -> None:
     """列出全部打印网点（无需登录）。"""
     from westlake_survival.pms import pms
 
     stations = pms().list_stations()
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "name": getattr(s, "name", None),
+                "campus": getattr(s, "campus_display", None) or getattr(s, "campus", None),
+                "position": getattr(s, "position_display", None) or getattr(s, "position", None),
+                "status": getattr(s, "status_text", None),
+                "is_idle": getattr(s, "is_idle", None),
+                "papers": list(getattr(s, "papers", ()) or ()),
+            }
+            for s in stations
+        ], ensure_ascii=False, indent=2))
+        return
     if not stations:
         click.echo("未获取到打印网点。")
         return
@@ -2213,12 +2295,25 @@ def pms_stations() -> None:
 
 
 @pms_cmd.command(name="jobs")
+@click.option("--json", "as_json", is_flag=True, help="以 JSON 格式输出。")
 @_handle_errors
-def pms_jobs() -> None:
+def pms_jobs(as_json: bool) -> None:
     """列出个人打印任务（需登录）。"""
     from westlake_survival.pms import pms
 
     jobs = pms().list_print_jobs()
+    if as_json:
+        click.echo(json.dumps([
+            {
+                "id": getattr(job, "id", None),
+                "name": getattr(job, "name", None),
+                "copies": getattr(job, "copies", None),
+                "pages": getattr(job, "pages", None),
+                "status": getattr(job, "status_text", None),
+            }
+            for job in jobs
+        ], ensure_ascii=False, indent=2))
+        return
     if not jobs:
         click.echo("当前无打印任务。")
         return

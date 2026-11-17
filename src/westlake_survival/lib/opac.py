@@ -720,13 +720,15 @@ def _new_books_catalog(*, limit: int, session: Any) -> list[Book]:
 
 def my_loans(*, auth: Any = None, session: Any = None, force_refresh: bool = False) -> list[Loan]:
     """当前借阅记录（需登录，优先对接 mylib 新系统）。"""
-    try:
+    if auth is None:
         from westlake_survival.lib.mylib import get_reader_loans
 
-        return get_reader_loans(force_refresh=force_refresh, session=session)
-    except Exception as exc:
-        if isinstance(exc, (AuthError, OffCampusError)):
+        try:
+            return get_reader_loans(force_refresh=force_refresh, session=session)
+        except WestlakeError:
             raise
+        except Exception:
+            pass
 
     auth = auth if auth is not None else _lib_auth()
     get = auth.get if hasattr(auth, "get") else (session or _session()).get

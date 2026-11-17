@@ -100,13 +100,17 @@ def get_mylib_jwt(*, force_refresh: bool = False) -> str:
     target_entry = f"{MYLIB_BASE_URL}/entrance/myLibEntrance/myLibIndex/MyLibBorrowNow"
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True, args=["--no-proxy-server"])
         context = browser.new_context()
         page = context.new_page()
 
         try:
             page.goto(target_entry, timeout=30000)
             for _ in range(20):
+                if page.url.startswith("chrome-error://"):
+                    raise OffCampusError(
+                        "新版图书馆登录页无法打开，请确认处于校园网/VPN 环境或稍后重试。"
+                    )
                 if "iam.westlake" in page.url or "mylib" in page.url:
                     break
                 page.wait_for_timeout(500)
@@ -118,12 +122,23 @@ def get_mylib_jwt(*, force_refresh: bool = False) -> str:
                 page.locator('button.content_submit, span:has-text("立即登录")').first.click()
 
             for _ in range(40):
+                if page.url.startswith("chrome-error://"):
+                    raise OffCampusError(
+                        "新版图书馆登录跳转失败，请确认处于校园网/VPN 环境或稍后重试。"
+                    )
                 if "mylib.westlake.edu.cn" in page.url and "transition" not in page.url:
                     page.wait_for_timeout(2000)
                     break
                 page.wait_for_timeout(500)
 
-            user_info_raw = page.evaluate('() => localStorage.getItem("userInfo")')
+            if not page.url.startswith("https://mylib.westlake.edu.cn"):
+                raise OffCampusError(
+                    "新版图书馆未能跳转到主页（请检查校园网/VPN 或统一认证状态）。"
+                )
+            try:
+                user_info_raw = page.evaluate('() => localStorage.getItem("userInfo")')
+            except Exception as exc:
+                raise AuthError(f"读取图书馆会话信息失败：{exc}") from exc
             if not user_info_raw:
                 raise AuthError("图书馆认证未返回读者信息，统一认证密码可能不正确或账号受限。")
 

@@ -674,9 +674,11 @@ def _setup_context() -> dict:
 
 
 _PAGE_CACHE_TTL = 180.0
+_TIMELINE_CACHE_TTL = 60.0
 _page_cache_lock = threading.Lock()
 _sis_page_cache: dict[str, Any] = {"ts": 0.0, "key": None, "data": None}
 _canvas_page_cache: dict[str, Any] = {"ts": 0.0, "key": None, "data": None}
+_timeline_page_cache: dict[tuple[Any, ...], tuple[float, Any]] = {}
 _sites_swr_lock = threading.Lock()
 _sites_swr_fetching = False
 
@@ -705,6 +707,7 @@ def _invalidate_page_caches() -> None:
     with _page_cache_lock:
         _sis_page_cache.update(ts=0.0, key=None, data=None)
         _canvas_page_cache.update(ts=0.0, key=None, data=None)
+        _timeline_page_cache.clear()
 
 
 def _merge_sis_schedule_rows(raw_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2715,6 +2718,7 @@ def create_app() -> Flask:
         from westlake_survival.timeline import build_timeline
 
         offline = request.args.get("offline") == "1"
+        refresh = request.args.get("refresh") == "1"
         raw_date = (request.args.get("date") or "").strip()
         today_d = datetime.now(CHINA_TZ).date()
         target_d = today_d
@@ -2723,10 +2727,21 @@ def create_app() -> Flask:
                 target_d = date.fromisoformat(raw_date)
             except ValueError:
                 target_d = today_d
-        try:
-            report = build_timeline(target_date=target_d, offline=offline)
-        except Exception:
-            report = build_timeline(target_date=target_d, offline=True)
+        cache_key = (target_d.isoformat(), offline, _page_cache_key())
+        report = None
+        if not refresh and not _is_testing_app():
+            with _page_cache_lock:
+                hit = _timeline_page_cache.get(cache_key)
+                if hit and (_time_mod.time() - hit[0]) < _TIMELINE_CACHE_TTL:
+                    report = hit[1]
+        if report is None:
+            try:
+                report = build_timeline(target_date=target_d, offline=offline)
+            except Exception:
+                report = build_timeline(target_date=target_d, offline=True)
+            if not _is_testing_app():
+                with _page_cache_lock:
+                    _timeline_page_cache[cache_key] = (_time_mod.time(), report)
         now_hhmm = datetime.now(CHINA_TZ).strftime("%H:%M") if target_d == today_d else ""
         return render_template(
             "timeline.html",
@@ -2766,6 +2781,8 @@ def create_app() -> Flask:
         if not text:
             return jsonify({"error": "text required"}), 400
         memo = add_memo(text, time_str=time_str)
+        with _page_cache_lock:
+            _timeline_page_cache.clear()
         return jsonify(memo.to_dict())
 
     @app.route("/api/timeline/memo/done", methods=["POST"])
@@ -2779,6 +2796,8 @@ def create_app() -> Flask:
             return jsonify({"error": "memo_id required"}), 400
         try:
             memo = toggle_memo(memo_id, done=done)
+            with _page_cache_lock:
+                _timeline_page_cache.clear()
             return jsonify(memo.to_dict())
         except Exception as exc:
             return jsonify({"error": str(exc)}), 404
@@ -2792,6 +2811,8 @@ def create_app() -> Flask:
         if not memo_id:
             return jsonify({"error": "memo_id required"}), 400
         ok = delete_memo(memo_id)
+        with _page_cache_lock:
+            _timeline_page_cache.clear()
         return jsonify({"ok": ok, "memo_id": memo_id})
 
     @app.route("/api/pms/print", methods=["POST"])

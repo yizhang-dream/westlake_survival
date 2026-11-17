@@ -44,7 +44,7 @@
     <a class="tl-pill {{ 'active' if viewing_date == today_date else '' }}" href="/timeline">今天</a>
     <a class="tl-pill" href="/timeline?date={{ next_date }}">后一天 →</a>
     <a class="tl-pill" href="/api/calendar/export" download="westlake_schedule.ics">📅 导出日历</a>
-    <a class="tl-pill" href="/timeline?date={{ viewing_date }}" title="重新同步">↻ 刷新</a>
+    <a class="tl-pill" href="/timeline?date={{ viewing_date }}&refresh=1" title="重新同步">↻ 刷新</a>
   </div>
 </div>
 
@@ -94,7 +94,7 @@
             {% elif it.category == 'booking' %}
             <span class="chip plain">场地</span>
             {% elif it.category == 'transit' %}
-            <span class="chip" style="background:#e9d8fd; color:#6b46c1;">班车建议</span>
+            <span class="chip" style="background:rgba(128,90,213,.16); color:var(--heading); border-color:rgba(128,90,213,.35);">班车建议</span>
             {% elif it.category == 'holiday' %}
             <span class="chip star">校历假期</span>
             {% else %}
@@ -106,7 +106,7 @@
             <span class="chip ok" style="font-size:.72rem;">▶ 接下来</span>
             {% endif %}
             {% if it.is_conflict %}
-            <span class="chip" style="background:#fed7d7; color:#9b2c2c; font-weight:700;">时间冲突</span>
+            <span class="chip" style="background:rgba(229,62,62,.16); color:#e53e3e; border-color:rgba(229,62,62,.35); font-weight:700;">时间冲突</span>
             {% endif %}
           </div>
           {% if it.location %}
