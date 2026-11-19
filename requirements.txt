@@ -17,7 +17,7 @@ urllib3==2.8.0
 keyring==25.7.0
 
 # —— 可选：browser（share 讲义 / hosts 渲染深挖 / scholar 数据库 SSO）——
-playwright==1.64.1
+playwright==1.65.2
 
 # —— 可选：test（跑 src/test 端到端用例）——
 pytest==9.2.0
